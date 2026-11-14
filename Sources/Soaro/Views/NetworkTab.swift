@@ -140,7 +140,7 @@ struct NetworkTab: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: "Connection")
             Card {
-                if let name = MachineInfo.localNetworkName() { KeyValueRow("Network name", name) }
+                if let name = DemoMode.isEnabled ? DemoData.localNetworkName : MachineInfo.localNetworkName() { KeyValueRow("Network name", name) }
                 KeyValueRow("Local IP address", net.localIP ?? "—")
                 if let wifi = net.wifi {
                     KeyValueRow("Wi-Fi", qualityLabel(wifi), color: qualityColor(wifi))

@@ -215,7 +215,7 @@ extension MenuBarRenderer {
             view.subviews.forEach { dump($0, depth + 1) }
         }
         for window in NSApp?.windows ?? [] where String(describing: type(of: window)).contains("StatusBar") {
-            out += "fenêtre \(type(of: window)) frame=\(window.frame) ignoresMouse=\(window.ignoresMouseEvents)\n"
+            out += "window \(type(of: window)) frame=\(window.frame) ignoresMouse=\(window.ignoresMouseEvents)\n"
             if let content = window.contentView { dump(content, 1) }
         }
         return out

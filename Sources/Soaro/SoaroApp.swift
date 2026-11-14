@@ -11,8 +11,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Relancer l'app alors qu'elle tourne déjà (Finder, Spotlight, `open`) ouvre la fenêtre indépendante.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         MainActor.assumeIsolated {
-            let requested = ProcessInfo.processInfo.environment["SOARO_SECTION"]
-            let section: WindowSection = requested == "machine" ? .machine : (requested.flatMap(AppTab.init(rawValue:)).map(WindowSection.tab) ?? .tab(.overview))
+            // For screenshots: "overview", "machine", "settings", or "cleanup:largeFiles" (a cleanup tool).
+            let requested = ProcessInfo.processInfo.environment["SOARO_SECTION"] ?? ""
+            let parts = requested.split(separator: ":").map(String.init)
+            let section: WindowSection
+            switch parts.first {
+            case "machine": section = .machine
+            case "settings": section = .settings
+            case .some(let name): section = .tab(AppTab(rawValue: name) ?? .overview)
+            case nil: section = .tab(.overview)
+            }
+            if parts.count > 1, let route = CleanupRoute(rawValue: parts[1]) { AppState.shared.requestedCleanupRoute = route }
             MainWindowController.shared.show(state: .shared, section: section)
             if let path = ProcessInfo.processInfo.environment["SOARO_CAPTURE"] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) { MainWindowController.shared.captureForDebugging(to: path) }
@@ -33,7 +42,7 @@ struct SoaroApp: App {
         if Diagnostics.isAdviceRequested { Diagnostics.advice() }
         if let directory = Snapshot.outputDirectory { MainActor.assumeIsolated { Snapshot.run(into: directory) } }
         // Reprise des données de l'ancienne version, avant tout accès aux préférences ou à l'historique.
-        if Snapshot.outputDirectory == nil { LegacyMigration.run() }
+        if Snapshot.outputDirectory == nil, !DemoMode.isEnabled { LegacyMigration.run() }
         UserDefaults.standard.register(defaults: SettingsKey.defaults)
     }
 
@@ -80,7 +89,7 @@ struct MenuBarLabel: View {
             let text = MenuBarTooltip.text(recommendations: state.recommendations, snapshot: state.snapshot, items: items)
             let count = MenuBarRenderer.setToolTip(text)
             if ProcessInfo.processInfo.environment["SOARO_DEBUG"] != nil {
-                FileHandle.standardError.write(Data("infobulle : \(count) vue(s) mises à jour\n\(MenuBarRenderer.debugHierarchy())---\n".utf8))
+                FileHandle.standardError.write(Data("tooltip: \(count) view(s) updated\n\(MenuBarRenderer.debugHierarchy())---\n".utf8))
             }
         }
     }
