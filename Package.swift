@@ -2,18 +2,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "Accalmie",
+    name: "Soaro",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "Accalmie",
-            path: "Sources/Accalmie",
+            name: "Soaro",
+            path: "Sources/Soaro",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "AccalmieTests",
-            dependencies: ["Accalmie"],
-            path: "Tests/AccalmieTests",
+            name: "SoaroTests",
+            dependencies: ["Soaro"],
+            path: "Tests/SoaroTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

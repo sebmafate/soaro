@@ -346,7 +346,7 @@ struct StartupItemsView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(model.loginItemsDenied
-                             ? "Accès refusé. Autorisez Accalmie à contrôler « System Events » dans Réglages Système › Confidentialité › Automatisation."
+                             ? "Accès refusé. Autorisez Soaro à contrôler « System Events » dans Réglages Système › Confidentialité › Automatisation."
                              : "Affiche la liste « Ouvrir à la connexion » de Réglages Système. macOS demandera votre autorisation.")
                             .font(.caption).foregroundStyle(.secondary)
                         Button(model.loginItemsDenied ? "Réessayer" : "Afficher") { model.loadLoginItems() }.controlSize(.small)

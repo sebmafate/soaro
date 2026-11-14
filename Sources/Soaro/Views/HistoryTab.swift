@@ -34,7 +34,7 @@ struct HistoryTab: View {
                 chart
                 summary
             }
-            Text("Conservé 30 jours, uniquement sur ce Mac (~/Library/Application Support/Accalmie).")
+            Text("Conservé 30 jours, uniquement sur ce Mac (~/Library/Application Support/Soaro).")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         // Recharge à chaque changement de choix, puis toutes les 30 s tant que l'onglet est ouvert.

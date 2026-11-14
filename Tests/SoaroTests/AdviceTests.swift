@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Accalmie
+@testable import Soaro
 
 @Suite struct AdviceParsingTests {
     @Test func parsesRealBattlimitOutput() {

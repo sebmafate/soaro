@@ -1,8 +1,8 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# Accalmie
+# Soaro
 
-*Accalmie* : le moment où la houle s'apaise. C'est l'idée de l'icône : des vagues qui s'aplatissent jusqu'à devenir une ligne droite, comme un Mac qu'on a remis au calme.
+*Soaro*, de l'anglais *to soar* : s'élever, planer. Un Mac allégé de tout ce qui l'alourdit, libre de ses mouvements.
 
 Application macOS native (Swift / SwiftUI) qui vit dans la barre de menus : elle surveille **CPU, GPU, mémoire, disque, réseau et batterie**, garde un historique, et propose des actions concrètes pour garder le Mac rapide et propre. Empreinte au repos : ~20-35 Mo de RAM, ~1-2 % de CPU.
 
@@ -13,7 +13,7 @@ Application macOS native (Swift / SwiftUI) qui vit dans la barre de menus : elle
 
 La barre de menus affiche les mesures choisies en style **compact** (petit libellé au-dessus de la valeur) ou en texte sur une ligne : CPU, GPU, mémoire, disque, réseau, batterie.
 
-Chaque valeur change de couleur selon son niveau : par défaut (normal), **orange** (moyen), **rouge** (élevé), **pastille écarlate** (critique). Seuils par défaut, **réglables dans les réglages** : CPU/GPU 60 / 80 / 95 % ; disque 80 / 90 / 95 % occupés ; batterie 20 / 10 / 5 % hors secteur. Non réglable : la mémoire, colorée d'après la *pression réelle* de macOS (et le swap), pas le pourcentage utilisé. L'icône d'Accalmie reste toujours visible, avec un petit badge en cas d'alerte, et une **infobulle au survol** explique chaque alerte et chaque valeur colorée.
+Chaque valeur change de couleur selon son niveau : par défaut (normal), **orange** (moyen), **rouge** (élevé), **pastille écarlate** (critique). Seuils par défaut, **réglables dans les réglages** : CPU/GPU 60 / 80 / 95 % ; disque 80 / 90 / 95 % occupés ; batterie 20 / 10 / 5 % hors secteur. Non réglable : la mémoire, colorée d'après la *pression réelle* de macOS (et le swap), pas le pourcentage utilisé. L'icône d'Soaro reste toujours visible, avec un petit badge en cas d'alerte, et une **infobulle au survol** explique chaque alerte et chaque valeur colorée.
 
 ## Onglets
 
@@ -34,7 +34,7 @@ Disque presque plein · mémoire sous pression (propose de quitter l'app la plus
 
 ## Conseils de réglage
 
-Section distincte des alertes (ni notification, ni badge), dans l'Aperçu. Accalmie **lit** certains réglages de macOS et explique quoi faire ; elle **ne modifie jamais un réglage** : le bouton ouvre le bon panneau de Réglages Système. Chaque conseil peut être ignoré définitivement (et réaffiché depuis les réglages).
+Section distincte des alertes (ni notification, ni badge), dans l'Aperçu. Soaro **lit** certains réglages de macOS et explique quoi faire ; elle **ne modifie jamais un réglage** : le bouton ouvre le bon panneau de Réglages Système. Chaque conseil peut être ignoré définitivement (et réaffiché depuis les réglages).
 
 | Conseil | Quand |
 | --- | --- |
@@ -47,7 +47,7 @@ Section distincte des alertes (ni notification, ni badge), dans l'Aperçu. Accal
 | Mise à jour de macOS disponible | Version en attente plus récente que celle installée |
 | Sauvegarde Time Machine | Aucune destination, ou dernière sauvegarde de plus de 14 jours |
 
-`Accalmie --advice` affiche en texte les réglages lus et les conseils qui en découlent.
+`Soaro --advice` affiche en texte les réglages lus et les conseils qui en découlent.
 
 ## Sécurité et vie privée
 
@@ -63,26 +63,26 @@ Section distincte des alertes (ni notification, ni badge), dans l'Aperçu. Accal
 ```bash
 swift run                         # lancer en développement
 swift test                        # tests (128)
-scripts/build-app.sh              # produit build/Accalmie.app (icône, LSUIElement, signature ad-hoc)
+scripts/build-app.sh              # produit build/Soaro.app (icône, LSUIElement, signature ad-hoc)
 scripts/build-app.sh --install    # idem + copie dans /Applications
 ```
 
 Outils de vérification (aucune écriture, aucune suppression) :
 
 ```bash
-Accalmie --diagnostics           # affiche toutes les mesures en texte (CPU/cœurs, GPU, batterie, réseau, capteurs…)
-Accalmie --diagnostics --public-ip   # idem + requête IP publique (explicite)
-Accalmie --scan [--per-root]     # lance les scanners de nettoyage en lecture seule sur votre dossier personnel
-Accalmie --snapshot <dossier> [--dark] [--tools] [--window]   # rend chaque onglet en PNG (historique factice en mémoire)
+Soaro --diagnostics           # affiche toutes les mesures en texte (CPU/cœurs, GPU, batterie, réseau, capteurs…)
+Soaro --diagnostics --public-ip   # idem + requête IP publique (explicite)
+Soaro --scan [--per-root]     # lance les scanners de nettoyage en lecture seule sur votre dossier personnel
+Soaro --snapshot <dossier> [--dark] [--tools] [--window]   # rend chaque onglet en PNG (historique factice en mémoire)
 ```
 
 Prérequis : macOS 14+, Xcode / Swift 6.
 
-L'identifiant de l'app (`local.accalmie`) est volontairement neutre : à remplacer par un domaine qui vous appartient (`BUNDLE_ID` dans `scripts/build-app.sh`) avant toute diffusion.
+L'identifiant de l'app est `app.soaro` (le domaine `soaro.app` à l'envers), défini par `BUNDLE_ID` dans `scripts/build-app.sh`.
 
 ### Anciennes versions
 
-L'app s'est d'abord appelée « MyCleaner ». Au premier lancement, `LegacyMigration` reprend l'historique (`~/Library/Application Support/MyCleaner` → `Accalmie`) et les préférences (`com.mycleaner.app`), sans jamais écraser une valeur existante. Les anciens fichiers de préférences (`~/Library/Preferences/com.mycleaner.app.plist` et `MyCleaner.plist`) peuvent être supprimés à la main.
+L'app s'est successivement appelée « MyCleaner » puis « Accalmie », et a eu l'identifiant provisoire `local.soaro` avant l'achat du domaine. Au premier lancement, `LegacyMigration` reprend, de la version la plus récente à la plus ancienne, l'historique (`~/Library/Application Support/Accalmie` puis `MyCleaner` → `Soaro`) et les préférences (`local.soaro`, `local.accalmie`, puis `com.mycleaner.app` : réglages, seuils de couleur, conseils ignorés, épingle et position de la fenêtre), sans jamais écraser une valeur existante. Les anciens fichiers de préférences (`~/Library/Preferences/local.soaro.plist`, `local.accalmie.plist`, `com.mycleaner.app.plist`, `MyCleaner.plist`) peuvent être supprimés à la main.
 
 ### Autorisations demandées par macOS
 

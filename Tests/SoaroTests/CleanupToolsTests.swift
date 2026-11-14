@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Accalmie
+@testable import Soaro
 
 /// Arborescence temporaire supprimée à la fin du test.
 private final class Sandbox {
@@ -9,7 +9,7 @@ private final class Sandbox {
     /// `insideHome` : nécessaire pour tester les suppressions, que `isSafeToDelete` limite au dossier personnel.
     init(insideHome: Bool = false) throws {
         let base = insideHome ? URL(fileURLWithPath: NSHomeDirectory()) : FileManager.default.temporaryDirectory
-        root = base.appendingPathComponent(insideHome ? ".accalmie-test-\(UUID().uuidString)" : "accalmie-\(UUID().uuidString)")
+        root = base.appendingPathComponent(insideHome ? ".soaro-test-\(UUID().uuidString)" : "soaro-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 

@@ -340,7 +340,7 @@ struct CleanupRow: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .help(size == nil && kind == .trash
-                          ? "macOS protège la corbeille : sa taille n'est pas lisible sans « Accès complet au disque », mais Accalmie peut la vider."
+                          ? "macOS protège la corbeille : sa taille n'est pas lisible sans « Accès complet au disque », mais Soaro peut la vider."
                           : "")
                 Button("Nettoyer", action: onClean)
                     .controlSize(.small)

@@ -41,7 +41,7 @@ enum PublicIPService {
         config.httpCookieStorage = nil
         config.httpShouldSetCookies = false
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
-        config.httpAdditionalHeaders = ["User-Agent": "Accalmie", "Accept": "application/json"]
+        config.httpAdditionalHeaders = ["User-Agent": "Soaro", "Accept": "application/json"]
         return URLSession(configuration: config)
     }
 

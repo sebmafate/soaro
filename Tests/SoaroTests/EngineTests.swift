@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Accalmie
+@testable import Soaro
 
 private let GB: UInt64 = 1_000_000_000
 

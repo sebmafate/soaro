@@ -73,7 +73,7 @@ struct NetworkTab: View {
     private var publicIPOptIn: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("IP publique et pays").font(.caption.weight(.medium))
-            Text("Pour afficher votre IP vue d'Internet et son pays, Accalmie doit interroger un service tiers (ipwho.is) qui verra votre IP publique. Rien n'est enregistré.")
+            Text("Pour afficher votre IP vue d'Internet et son pays, Soaro doit interroger un service tiers (ipwho.is) qui verra votre IP publique. Rien n'est enregistré.")
                 .font(.caption2).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Afficher l'IP publique et le pays") {

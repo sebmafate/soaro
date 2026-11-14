@@ -9,10 +9,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Relancer l'app alors qu'elle tourne déjà (Finder, Spotlight, `open`) ouvre la fenêtre indépendante.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         MainActor.assumeIsolated {
-            let requested = ProcessInfo.processInfo.environment["ACCALMIE_SECTION"]
+            let requested = ProcessInfo.processInfo.environment["SOARO_SECTION"]
             let section: WindowSection = requested == "machine" ? .machine : (requested.flatMap(AppTab.init(rawValue:)).map(WindowSection.tab) ?? .tab(.overview))
             MainWindowController.shared.show(state: .shared, section: section)
-            if let path = ProcessInfo.processInfo.environment["ACCALMIE_CAPTURE"] {
+            if let path = ProcessInfo.processInfo.environment["SOARO_CAPTURE"] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) { MainWindowController.shared.captureForDebugging(to: path) }
             }
         }
@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
-struct AccalmieApp: App {
+struct SoaroApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var state = AppState.shared
 
@@ -77,7 +77,7 @@ struct MenuBarLabel: View {
         .onChange(of: state.snapshot?.date, initial: true) {
             let text = MenuBarTooltip.text(recommendations: state.recommendations, snapshot: state.snapshot, items: items)
             let count = MenuBarRenderer.setToolTip(text)
-            if ProcessInfo.processInfo.environment["ACCALMIE_DEBUG"] != nil {
+            if ProcessInfo.processInfo.environment["SOARO_DEBUG"] != nil {
                 FileHandle.standardError.write(Data("infobulle : \(count) vue(s) mises à jour\n\(MenuBarRenderer.debugHierarchy())---\n".utf8))
             }
         }

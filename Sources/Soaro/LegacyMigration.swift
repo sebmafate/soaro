@@ -1,16 +1,39 @@
 import Foundation
 
-/// Reprend les données de la version précédente de l'app (qui s'appelait « MyCleaner ») :
-/// l'historique des mesures et les préférences. Sans cela, le changement de nom ferait repartir de zéro.
+/// Reprend les données des versions précédentes de l'app, qui portaient d'autres noms ou un autre identifiant
+/// (`local.soaro`, « Accalmie », puis « MyCleaner ») : historique des mesures et préférences.
+/// Sans cela, chaque changement ferait repartir de zéro.
 enum LegacyMigration {
-    static let legacyBundleID = "com.mycleaner.app"
-    static let legacyFolderName = "MyCleaner"
-    static let currentFolderName = "Accalmie"
-    static let doneFlag = "migratedFromMyCleaner"
+    /// Une ancienne version : son identifiant (domaine de préférences) et son dossier dans Application Support.
+    struct Source: Equatable {
+        let bundleID: String
+        let folderName: String
+        /// Clés de position de fenêtre dont le nom contenait l'ancien nom : (ancienne clé, nouvelle clé).
+        var renamedKeys: [(String, String)] = []
 
-    /// Préférences reprises (les seules clés que l'app écrit).
+        static func == (l: Source, r: Source) -> Bool { l.bundleID == r.bundleID && l.folderName == r.folderName }
+    }
+
+    /// Du plus récent au plus ancien : en cas de conflit, la version la plus récente l'emporte.
+    static let sources: [Source] = [
+        // Identifiant provisoire de Soaro, avant l'achat du domaine soaro.app : même dossier de données, autres préférences.
+        Source(bundleID: "local.soaro", folderName: "Soaro"),
+        Source(bundleID: "local.accalmie", folderName: "Accalmie",
+               renamedKeys: [("NSWindow Frame AccalmieMainWindow", "NSWindow Frame SoaroMainWindow")]),
+        Source(bundleID: "com.mycleaner.app", folderName: "MyCleaner"),
+    ]
+
+    static let currentFolderName = "Soaro"
+    static let doneFlag = "legacyMigrationDone"
+
+    /// Préférences reprises (les seules clés que l'app écrit) : réglages, trafic du jour, épingle de la fenêtre,
+    /// conseils ignorés, seuils de couleur et position de la fenêtre.
     static var migratedKeys: [String] {
-        Array(SettingsKey.defaults.keys) + ["traffic.day", "traffic.down", "traffic.up"]
+        var keys = Array(SettingsKey.defaults.keys) + ["traffic.day", "traffic.down", "traffic.up", "windowPinned", "dismissedAdvice", "NSWindow Frame SoaroMainWindow"]
+        for measure in ["load", "disk", "battery"] {
+            for level in ["medium", "high", "critical"] { keys.append("threshold.\(measure).\(level)") }
+        }
+        return keys
     }
 
     static var defaultSupportDirectory: URL {
@@ -22,14 +45,24 @@ enum LegacyMigration {
     static func run(
         supportDirectory: URL = defaultSupportDirectory,
         defaults: UserDefaults = .standard,
-        legacyPreferences: [String: Any]? = UserDefaults.standard.persistentDomain(forName: legacyBundleID)
+        legacyPreferences: (String) -> [String: Any]? = { UserDefaults.standard.persistentDomain(forName: $0) }
     ) {
         guard !defaults.bool(forKey: doneFlag) else { return }
-        moveFolder(
-            from: supportDirectory.appendingPathComponent(legacyFolderName, isDirectory: true),
-            to: supportDirectory.appendingPathComponent(currentFolderName, isDirectory: true)
-        )
-        if let legacyPreferences { copyPreferences(legacyPreferences, into: defaults) }
+        for source in sources {
+            // Même dossier que l'actuel : rien à déplacer (et surtout pas de risque de le vider).
+            if source.folderName != currentFolderName {
+                moveFolder(
+                    from: supportDirectory.appendingPathComponent(source.folderName, isDirectory: true),
+                    to: supportDirectory.appendingPathComponent(currentFolderName, isDirectory: true)
+                )
+            }
+            if let legacy = legacyPreferences(source.bundleID) {
+                copyPreferences(legacy, into: defaults)
+                for (old, new) in source.renamedKeys where defaults.object(forKey: new) == nil {
+                    if let value = legacy[old] { defaults.set(value, forKey: new) }
+                }
+            }
+        }
         defaults.set(true, forKey: doneFlag)
     }
 

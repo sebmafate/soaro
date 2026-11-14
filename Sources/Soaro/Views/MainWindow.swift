@@ -60,7 +60,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let host = NSHostingController(rootView: MainWindowView(initialSection: section).environmentObject(state))
             host.sceneBridgingOptions = [.toolbars, .title]      // la barre d'outils SwiftUI devient celle de la fenêtre
             let window = NSWindow(contentViewController: host)
-            window.title = "Accalmie"
+            window.title = "Soaro"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             window.toolbarStyle = .unified
             // Fenêtre translucide : c'est le fond flouté (WindowGlassBackground) qui se voit, pas un aplat opaque.
@@ -71,7 +71,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             window.minSize = NSSize(width: 700, height: 520)
             window.isReleasedWhenClosed = false
             window.delegate = self
-            window.setFrameAutosaveName("AccalmieMainWindow")
+            window.setFrameAutosaveName("SoaroMainWindow")
             if window.frame.origin == .zero { window.center() }
             self.window = window
             self.state = state
@@ -81,7 +81,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         window?.makeKeyAndOrderFront(nil)
     }
 
-    /// Mode trace (`ACCALMIE_CAPTURE=<fichier.png>`) : photographie la vraie fenêtre, verre compris.
+    /// Mode trace (`SOARO_CAPTURE=<fichier.png>`) : photographie la vraie fenêtre, verre compris.
     /// Une app peut capturer ses propres fenêtres sans autorisation d'enregistrement d'écran.
     func captureForDebugging(to path: String) {
         guard let window else { return }
@@ -89,7 +89,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return }
         let create = unsafeBitCast(symbol, to: CreateImage.self)
         // .null = cadre de la fenêtre ; 8 = optionIncludingWindow ; 1 = boundsIgnoreFraming
-        if let offset = ProcessInfo.processInfo.environment["ACCALMIE_SCROLL"].flatMap(Double.init) {
+        if let offset = ProcessInfo.processInfo.environment["SOARO_SCROLL"].flatMap(Double.init) {
             func scroll(_ view: NSView) {
                 if let sv = view as? NSScrollView, let doc = sv.documentView { doc.scroll(NSPoint(x: 0, y: offset)) }
                 view.subviews.forEach(scroll)
@@ -102,7 +102,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     }
 
-    /// Épinglée : la fenêtre flotte au-dessus des autres apps, y compris quand Accalmie n'est pas active.
+    /// Épinglée : la fenêtre flotte au-dessus des autres apps, y compris quand Soaro n'est pas active.
     func applyPinned(_ pinned: Bool) {
         window?.level = pinned ? .floating : .normal
         window?.hidesOnDeactivate = false
@@ -147,7 +147,7 @@ struct MainWindowView: View {
         } detail: {
             clearContainer(detail)
                 .scrollContentBackground(.hidden)
-                .navigationTitle(selection?.title ?? "Accalmie")
+                .navigationTitle(selection?.title ?? "Soaro")
                 .overlay(alignment: .top) { TitleBarBlur() }
                 .overlay(alignment: .bottom) { toast }
                 .toolbar {

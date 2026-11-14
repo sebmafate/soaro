@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Accalmie
+@testable import Soaro
 
 @Suite struct MenuBarItemTests {
     private let GB: UInt64 = 1_000_000_000
@@ -94,7 +94,7 @@ import Testing
 
 @Suite struct AdjustableThresholdTests {
     private func makeDefaults() -> (UserDefaults, () -> Void) {
-        let name = "accalmie.thresholds.\(UUID().uuidString)"
+        let name = "soaro.thresholds.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!
         return (defaults, { defaults.removePersistentDomain(forName: name) })
     }
@@ -172,7 +172,7 @@ import Testing
 
     @Test func calmStateSaysSo() {
         let text = MenuBarTooltip.text(recommendations: [], snapshot: snapshot(), items: [.stacked(label: "CPU", value: "30%")])
-        #expect(text == "Accalmie : tout est en ordre")
+        #expect(text == "Soaro : tout est en ordre")
     }
 
     @Test func listsAlertsWithTheirReasonThenSuggestions() {
@@ -180,14 +180,14 @@ import Testing
             recommendations: [rec("a", .warning, "Mémoire sous pression"), rec("b", .info, "28 Go à récupérer")],
             snapshot: snapshot(), items: []
         )
-        #expect(text.hasPrefix("Accalmie : 1 point d'attention\n• Mémoire sous pression\n   Détail de Mémoire sous pression"))
+        #expect(text.hasPrefix("Soaro : 1 point d'attention\n• Mémoire sous pression\n   Détail de Mémoire sous pression"))
         #expect(text.contains("1 suggestion :\n• 28 Go à récupérer"))
         #expect(!text.contains("Détail de 28 Go"))                  // les suggestions restent courtes
     }
 
     @Test func criticalAlertsAreMarkedAndCounted() {
         let text = MenuBarTooltip.text(recommendations: [rec("a", .critical, "Disque presque plein"), rec("b", .warning, "CPU saturé")], snapshot: nil, items: [])
-        #expect(text.hasPrefix("Accalmie : 2 points d'attention\n⚠︎ Disque presque plein"))
+        #expect(text.hasPrefix("Soaro : 2 points d'attention\n⚠︎ Disque presque plein"))
         #expect(text.contains("• CPU saturé"))
     }
 

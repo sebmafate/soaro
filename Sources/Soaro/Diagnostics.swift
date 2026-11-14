@@ -1,13 +1,13 @@
 import Foundation
 
-/// `Accalmie --diagnostics` : affiche toutes les mesures en texte puis quitte.
+/// `Soaro --diagnostics` : affiche toutes les mesures en texte puis quitte.
 /// Utile pour vérifier ce que lit chaque capteur sur une machine donnée.
 enum Diagnostics {
     static var isRequested: Bool { CommandLine.arguments.contains("--diagnostics") }
     static var isScanRequested: Bool { CommandLine.arguments.contains("--scan") }
     static var isAdviceRequested: Bool { CommandLine.arguments.contains("--advice") }
 
-    /// `Accalmie --advice` : affiche les réglages lus sur ce Mac et les conseils qui en découlent. Lecture seule.
+    /// `Soaro --advice` : affiche les réglages lus sur ce Mac et les conseils qui en découlent. Lecture seule.
     static func advice() -> Never {
         let facts = AdviceProbe.collect()
         print("== Réglages lus")
@@ -34,7 +34,7 @@ enum Diagnostics {
         exit(0)
     }
 
-    /// `Accalmie --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.
+    /// `Soaro --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.
     static func scan() -> Never {
         func timed<T>(_ label: String, _ block: () -> T) -> T {
             let start = Date()

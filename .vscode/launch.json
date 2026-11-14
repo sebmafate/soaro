@@ -5,40 +5,20 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:mycleaner}",
-            "name": "Debug MyCleaner",
-            "target": "MyCleaner",
+            "name": "Debug Soaro",
+            "target": "Soaro",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug MyCleaner"
+            "preLaunchTask": "swift: Build Debug Soaro"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:mycleaner}",
-            "name": "Release MyCleaner",
-            "target": "MyCleaner",
+            "name": "Release Soaro",
+            "target": "Soaro",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release MyCleaner"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:mycleaner}",
-            "name": "Debug Accalmie",
-            "target": "Accalmie",
-            "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug Accalmie"
-        },
-        {
-            "type": "swift",
-            "request": "launch",
-            "args": [],
-            "cwd": "${workspaceFolder:mycleaner}",
-            "name": "Release Accalmie",
-            "target": "Accalmie",
-            "configuration": "release",
-            "preLaunchTask": "swift: Build Release Accalmie"
+            "preLaunchTask": "swift: Build Release Soaro"
         }
     ]
 }

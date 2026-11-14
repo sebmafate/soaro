@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// `Accalmie --snapshot <dossier> [--dark]` : rend chaque onglet en PNG (rendu hors écran) puis quitte.
+/// `Soaro --snapshot <dossier> [--dark]` : rend chaque onglet en PNG (rendu hors écran) puis quitte.
 /// Sert à vérifier l'interface sans ouvrir la barre de menus (tests visuels, captures de documentation).
 @MainActor
 enum Snapshot {

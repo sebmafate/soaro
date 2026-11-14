@@ -207,7 +207,7 @@ extension MenuBarRenderer {
         return updated
     }
 
-    /// Trace de la hiérarchie de vues de l'élément de barre de menus (mode `ACCALMIE_DEBUG`).
+    /// Trace de la hiérarchie de vues de l'élément de barre de menus (mode `SOARO_DEBUG`).
     static func debugHierarchy() -> String {
         var out = ""
         func dump(_ view: NSView, _ depth: Int) {
@@ -253,7 +253,7 @@ extension PressureLevel {
     }
 }
 
-/// Le glyphe d'Accalmie, identique à l'icône de l'app : la houle qui s'apaise jusqu'à la ligne droite.
+/// Le glyphe d'Soaro, identique à l'icône de l'app : la houle qui s'apaise jusqu'à la ligne droite.
 struct BrandGlyph: Shape {
     func path(in rect: CGRect) -> Path {
         // Mêmes courbes que assets/icon.svg (x : 200…824, y : 214…694), ramenées au rectangle.
@@ -357,9 +357,9 @@ enum MenuBarTooltip {
         let alerts = recommendations.filter { $0.severity >= .warning }
         let suggestions = recommendations.filter { $0.severity == .info }
         if alerts.isEmpty {
-            lines.append("Accalmie : tout est en ordre")
+            lines.append("Soaro : tout est en ordre")
         } else {
-            lines.append(alerts.count == 1 ? "Accalmie : 1 point d'attention" : "Accalmie : \(alerts.count) points d'attention")
+            lines.append(alerts.count == 1 ? "Soaro : 1 point d'attention" : "Soaro : \(alerts.count) points d'attention")
             for rec in alerts {
                 lines.append("\(rec.severity == .critical ? "⚠︎" : "•") \(rec.title)")
                 lines.append("   \(rec.detail)")

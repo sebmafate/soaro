@@ -45,7 +45,7 @@ struct SettingsView: View {
             }
             .onChange(of: thresholds) { _, new in new.save() }
             Section("Conseils de réglage") {
-                Text("Accalmie lit certains réglages de macOS pour proposer des conseils (batterie, veille, démarrage, stockage, mises à jour, sauvegarde). Elle ne modifie jamais un réglage : elle ouvre le bon panneau de Réglages Système.")
+                Text("Soaro lit certains réglages de macOS pour proposer des conseils (batterie, veille, démarrage, stockage, mises à jour, sauvegarde). Elle ne modifie jamais un réglage : elle ouvre le bon panneau de Réglages Système.")
                     .font(.caption).foregroundStyle(.secondary)
                 Button(state.dismissedAdviceCount == 0 ? "Aucun conseil ignoré" : "Réafficher les \(state.dismissedAdviceCount) conseil(s) ignoré(s)") {
                     state.restoreDismissedAdvice()
@@ -72,11 +72,11 @@ struct SettingsView: View {
             }
             Section("Données") {
                 Button("Effacer l'historique") { state.clearHistory() }
-                Text("Accalmie ne transmet aucune donnée : l'historique reste dans ~/Library/Application Support/Accalmie.")
+                Text("Soaro ne transmet aucune donnée : l'historique reste dans ~/Library/Application Support/Soaro.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("À propos") {
-                Text("Accalmie surveille CPU, GPU, mémoire, disque, réseau et batterie. Il ne supprime que des caches, journaux et dossiers régénérables de votre dossier personnel, ou met à la corbeille (récupérable), toujours après confirmation.")
+                Text("Soaro surveille CPU, GPU, mémoire, disque, réseau et batterie. Il ne supprime que des caches, journaux et dossiers régénérables de votre dossier personnel, ou met à la corbeille (récupérable), toujours après confirmation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

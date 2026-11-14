@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import Accalmie
+@testable import Soaro
 
 @Suite struct BatteryParsingTests {
     /// Propriétés réelles relevées sur un MacBook Pro M1 Pro (secteur, chargée).

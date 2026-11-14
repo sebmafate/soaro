@@ -79,7 +79,7 @@ struct PopoverContent: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Accalmie").font(.headline)
+                Text("Soaro").font(.headline)
                 Text(statusLine).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
@@ -103,7 +103,7 @@ struct PopoverContent: View {
                 Image(systemName: "power")
             }
             .buttonStyle(.borderless)
-            .help("Quitter Accalmie")
+            .help("Quitter Soaro")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }

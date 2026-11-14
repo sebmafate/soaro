@@ -67,16 +67,16 @@ enum HistoryRange: String, CaseIterable, Identifiable {
     }
 }
 
-/// Historique persistant dans `~/Library/Application Support/Accalmie/history.sqlite`.
+/// Historique persistant dans `~/Library/Application Support/Soaro/history.sqlite`.
 /// Tous les accès passent par une file série : l'objet est utilisable depuis n'importe quel thread.
 final class HistoryStore: @unchecked Sendable {
     private var db: OpaquePointer?
-    private let queue = DispatchQueue(label: "accalmie.history", qos: .utility)
+    private let queue = DispatchQueue(label: "soaro.history", qos: .utility)
     static let retention: TimeInterval = 30 * 86_400
 
     static var defaultURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Accalmie", isDirectory: true)
+            .appendingPathComponent("Soaro", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("history.sqlite")
     }
