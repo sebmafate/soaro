@@ -85,10 +85,16 @@ final class MainWindowController: NSObject, NSWindowDelegate {
     /// Une app peut capturer ses propres fenêtres sans autorisation d'enregistrement d'écran.
     func captureForDebugging(to path: String) {
         guard let window else { return }
+        // Capture at 2x: move the window to a Retina screen if the Mac has one (an external display is often 1x).
+        if let retina = NSScreen.screens.first(where: { $0.backingScaleFactor >= 2 }), window.screen != retina {
+            let area = retina.visibleFrame
+            window.setFrameOrigin(NSPoint(x: area.minX + 80, y: area.maxY - window.frame.height - 40))
+            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+        }
         typealias CreateImage = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
         guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return }
         let create = unsafeBitCast(symbol, to: CreateImage.self)
-        // .null = cadre de la fenêtre ; 8 = optionIncludingWindow ; 1 = boundsIgnoreFraming
+        // .null = window frame; 8 = optionIncludingWindow; 1 | 8 = boundsIgnoreFraming + bestResolution (2x on Retina)
         if let offset = ProcessInfo.processInfo.environment["SOARO_SCROLL"].flatMap(Double.init) {
             func scroll(_ view: NSView) {
                 if let sv = view as? NSScrollView, let doc = sv.documentView { doc.scroll(NSPoint(x: 0, y: offset)) }
@@ -97,7 +103,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             if let content = window.contentView { scroll(content) }
             RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         }
-        guard let image = create(.null, 8, UInt32(window.windowNumber), 1)?.takeRetainedValue() else { return }
+        guard let image = create(.null, 8, UInt32(window.windowNumber), 9)?.takeRetainedValue() else { return }
         let rep = NSBitmapImageRep(cgImage: image)
         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     }
@@ -256,6 +262,7 @@ struct MachineView: View {
         }
         .task {
             guard info == nil else { return }
+            if DemoMode.isEnabled { info = DemoData.machine; return }
             var loaded = await Task.detached(priority: .userInitiated) { MachineInfo.load() }.value
             loaded.displays = MachineInfo.currentDisplays()
             info = loaded
@@ -302,7 +309,7 @@ struct MachineView: View {
         Card {
             row("Processor", [
                 info.chip,
-                "\(info.totalCores) cœurs",
+                String(localized: "\(info.totalCores) cores"),
                 info.efficiencyCores > 0 ? String(localized: "\(info.performanceCores) performance · \(info.efficiencyCores) efficiency") : nil,
             ])
             Divider()

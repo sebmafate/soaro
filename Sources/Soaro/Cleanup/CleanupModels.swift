@@ -32,6 +32,12 @@ final class LargeFilesModel: ObservableObject {
     var selectedSize: UInt64 { selectedFiles.reduce(0) { $0 + $1.size } }
 
     func scan() {
+        if DemoMode.isEnabled {
+            files = DemoData.largeFiles.filter { $0.size >= UInt64(minSizeMB) * 1_000_000 }
+            selected = []
+            hasScanned = true
+            return
+        }
         token?.cancel()
         let token = CancelToken()
         self.token = token
@@ -91,6 +97,12 @@ final class DevArtifactsModel: ObservableObject {
     var totalSize: UInt64 { artifacts.reduce(0) { $0 + $1.size } }
 
     func scan() {
+        if DemoMode.isEnabled {
+            artifacts = DemoData.devArtifacts
+            selected = Set(artifacts.filter { ($0.daysInactive() ?? 0) >= DevArtifactScanner.staleAfterDays }.map(\.id))
+            hasScanned = true
+            return
+        }
         token?.cancel()
         let token = CancelToken()
         self.token = token
@@ -170,6 +182,7 @@ final class UninstallerModel: ObservableObject {
     }
 
     func load() {
+        if DemoMode.isEnabled { apps = DemoData.apps; return }
         guard !isLoading else { return }
         token?.cancel()
         let token = CancelToken()
@@ -196,6 +209,10 @@ final class UninstallerModel: ObservableObject {
         current = app
         leftovers = []
         excluded = []
+        if DemoMode.isEnabled {
+            leftovers = DemoData.leftovers(for: app)
+            return
+        }
         isLoadingLeftovers = true
         Task { [weak self] in
             let found = await Task.detached(priority: .userInitiated) { AppUninstaller.leftovers(for: app) }.value
@@ -245,6 +262,7 @@ final class StartupModel: ObservableObject {
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     func load() {
+        if DemoMode.isEnabled { agents = DemoData.agents; return }
         isLoading = true
         Task { [weak self] in
             let list = await Task.detached(priority: .utility) { () -> [LaunchAgentItem] in
@@ -257,6 +275,7 @@ final class StartupModel: ObservableObject {
 
     /// Déclenche la demande d'autorisation d'automatisation (System Events) : à lancer sur action de l'utilisateur.
     func loadLoginItems() {
+        if DemoMode.isEnabled { loginItems = DemoData.loginItems; return }
         Task { [weak self] in
             let items = await Task.detached(priority: .userInitiated) { StartupItemsService.loginItems() }.value
             self?.loginItems = items

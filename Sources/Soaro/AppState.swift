@@ -127,7 +127,7 @@ final class AppState: ObservableObject {
     let history: HistoryStore?
 
     /// Instance de l'app (créée au premier accès, donc après la migration des anciennes données).
-    static let shared = AppState()
+    static let shared = AppState(history: DemoMode.isEnabled ? Snapshot.demoStore() : HistoryStore())
 
     init(history: HistoryStore? = HistoryStore()) { self.history = history }
 
@@ -154,6 +154,7 @@ final class AppState: ObservableObject {
     private var factsRefreshInFlight = false
     private static let dismissedAdviceKey = "dismissedAdvice"
     private static let osVersion: String = {
+        if DemoMode.isEnabled { return DemoMode.osVersion }
         let v = ProcessInfo.processInfo.operatingSystemVersion
         return "\(v.majorVersion).\(v.minorVersion)" + (v.patchVersion > 0 ? ".\(v.patchVersion)" : "")
     }()
@@ -181,6 +182,7 @@ final class AppState: ObservableObject {
 
     func start() {
         guard timer == nil else { return }
+        if DemoMode.isEnabled { startDemo(); return }
         restoreTraffic()
         history?.prune()
         requestNotificationPermission()
@@ -295,6 +297,7 @@ final class AppState: ObservableObject {
     // MARK: Rafraîchissements liés à l'onglet visible
 
     private func refreshForActiveTabs(periodic: Bool = false) {
+        guard !DemoMode.isEnabled else { return }
         for tab in activeTabs { refresh(tab, periodic: periodic) }
     }
 
@@ -354,7 +357,7 @@ final class AppState: ObservableObject {
     /// Interroge le service tiers seulement si l'utilisateur l'a activé : au plus toutes les 5 min,
     /// ou quand la connexion change (autre réseau, VPN allumé/éteint). `force` = bouton « Actualiser ».
     func refreshPublicIP(force: Bool = false) {
-        guard publicIPEnabled, publicIPState != .loading else { return }
+        guard !DemoMode.isEnabled, publicIPEnabled, publicIPState != .loading else { return }
         let now = Date()
         let fingerprint = "\(snapshot?.network?.localIP ?? "-")|\(vpn?.isActive == true ? "vpn" : "none")|\(vpn?.interface ?? "-")|\(vpn?.name ?? "-")"
         let changed = fingerprint != publicIPFingerprint
@@ -380,6 +383,7 @@ final class AppState: ObservableObject {
 
     /// Appelé quand l'utilisateur coupe l'option : on n'en garde aucune trace, même en mémoire.
     func forgetPublicIP() {
+        guard !DemoMode.isEnabled else { return }
         publicIP = nil
         publicIPState = .idle
         publicIPFingerprint = ""
@@ -436,7 +440,7 @@ final class AppState: ObservableObject {
     // MARK: Processus
 
     func refreshProcesses() {
-        guard !processRefreshInFlight else { return }
+        guard !DemoMode.isEnabled, !processRefreshInFlight else { return }
         processRefreshInFlight = true
         lastProcessRefresh = Date()
         Task { [weak self] in
@@ -522,7 +526,7 @@ final class AppState: ObservableObject {
     // MARK: Conseils de réglage
 
     private func refreshSystemFacts() {
-        guard !factsRefreshInFlight else { return }
+        guard !DemoMode.isEnabled, !factsRefreshInFlight else { return }
         factsRefreshInFlight = true
         lastFactsRefresh = Date()
         Task { [weak self] in
@@ -612,6 +616,7 @@ final class AppState: ObservableObject {
     // MARK: Nettoyage
 
     func scanCleanup() {
+        guard !DemoMode.isEnabled else { return }
         lastCleanupScan = Date()
         Task { [weak self] in
             let sizes = await Task.detached(priority: .utility) { () -> [CleanupKind: UInt64?] in
@@ -696,7 +701,7 @@ final class AppState: ObservableObject {
     // MARK: Notifications
 
     private var canUseNotifications: Bool {
-        Bundle.main.bundleIdentifier != nil && Bundle.main.bundlePath.hasSuffix(".app")
+        !DemoMode.isEnabled && Bundle.main.bundleIdentifier != nil && Bundle.main.bundlePath.hasSuffix(".app")
     }
 
     private func requestNotificationPermission() {
@@ -732,5 +737,37 @@ enum ProcessSort: String, CaseIterable, Identifiable {
         case .memory: String(localized: "Memory")
         case .disk: String(localized: "Disk")
         }
+    }
+}
+
+// MARK: - Demo mode
+
+extension AppState {
+    /// Fills the state with made-up values (see `DemoMode`). No timer, no measurement: the numbers stay still.
+    func startDemo() {
+        let snap = DemoData.snapshot()
+        snapshot = snap
+        cpuHistory = DemoData.curve(last: snap.cpu.total, spread: 0.12)
+        memoryHistory = DemoData.curve(last: snap.memory.usedFraction, spread: 0.03, phase: 1)
+        gpuHistory = DemoData.curve(last: snap.gpu?.utilization ?? 0, spread: 0.1, phase: 2)
+        netDownHistory = DemoData.curve(last: 2_000_000, spread: 1_400_000, phase: 3)
+        netUpHistory = DemoData.curve(last: 300_000, spread: 220_000, phase: 4)
+        batteryHistory = DemoData.curve(last: 0.62, spread: 0.02, phase: 5)
+        processes = DemoData.processes
+        networkProcesses = DemoData.networkProcesses
+        energyEntries = DemoData.energyEntries
+        leaks = DemoData.leaks
+        cleanupSizes = DemoData.cleanupSizes
+        smartStatus = "Verified"
+        latencyMs = 12
+        todayTraffic = DemoData.traffic
+        vpn = DemoData.vpn
+        publicIP = DemoData.publicIP()
+        systemFacts = DemoData.facts()
+        recommendations = RecommendationEngine.evaluate(EngineInput(
+            snapshot: snap, processes: processes, recentCPUAverage: snap.cpu.total, recentCPUSamples: 10,
+            cleanupSizes: cleanupSizes, leaks: leaks
+        ))
+        updateAdvice()
     }
 }

@@ -141,6 +141,13 @@ enum Snapshot {
     }
 
     /// 36 h de données factices (cycle jour/nuit) pour juger les graphiques.
+    /// In-memory history filled with 36 hours of made-up data, for demo mode.
+    static func demoStore() -> HistoryStore? {
+        let store = HistoryStore(path: ":memory:")
+        seed(store)
+        return store
+    }
+
     private static func seed(_ store: HistoryStore?) {
         guard let store else { return }
         let now = Date()
@@ -148,11 +155,14 @@ enum Snapshot {
             let t = now.addingTimeInterval(-Double(i) * 30)
             let hour = Double(i) / 120
             let wave = (sin(hour / 3) + 1) / 2
+            // Deterministic noise, so the charts look like real measurements and not like a sine wave.
+            func noise(_ k: Double) -> Double { sin(Double(i) * 12.9898 * k) * 0.5 + sin(Double(i) * 0.37 * k) * 0.5 }
+            let jitter = noise(1) * 0.07 + noise(2.3) * 0.04
             store.insert(HistoryRow(
-                timestamp: t, cpu: 0.15 + 0.5 * wave, memory: 0.6 + 0.25 * wave, gpu: 0.05 + 0.2 * wave,
-                netDown: 200_000 + 3_000_000 * wave, netUp: 50_000 + 400_000 * wave,
-                diskRead: 1_000_000 * wave, diskWrite: 500_000 * wave,
-                battery: 100 - 60 * (1 - wave), cpuTemp: 38 + 30 * wave, power: 8 + 25 * wave
+                timestamp: t, cpu: max(0.02, 0.15 + 0.5 * wave + jitter), memory: 0.6 + 0.25 * wave + jitter * 0.2, gpu: max(0, 0.05 + 0.2 * wave + jitter * 0.5),
+                netDown: max(0, 200_000 + 3_000_000 * wave * (1 + jitter * 3)), netUp: max(0, 50_000 + 400_000 * wave * (1 + jitter * 3)),
+                diskRead: max(0, 1_000_000 * wave * (1 + jitter * 4)), diskWrite: max(0, 500_000 * wave * (1 + jitter * 4)),
+                battery: 100 - 60 * (1 - wave), cpuTemp: 38 + 30 * wave + jitter * 20, power: max(3, 8 + 25 * wave + jitter * 15)
             ))
         }
     }

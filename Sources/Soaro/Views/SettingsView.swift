@@ -89,6 +89,13 @@ struct SettingsView: View {
                 Text("Soaro monitors CPU, GPU, memory, disk, network and battery. It only deletes caches, logs and rebuildable folders in your home folder, or moves items to the Trash (recoverable), always after confirmation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                // Opens the browser: the app itself sends nothing.
+                Link(destination: SupportLink.url) {
+                    Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
+                }
+                Text("Soaro is free and open source. Supporting it is optional.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -140,4 +147,9 @@ struct ThresholdEditor: View {
             }
         }
     }
+}
+
+/// Where the "Buy me a coffee" button leads.
+enum SupportLink {
+    static let url = URL(string: "https://buymeacoffee.com/sebmafate")!
 }
