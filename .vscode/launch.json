@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mycleaner}",
+            "name": "Debug MyCleaner",
+            "target": "MyCleaner",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug MyCleaner"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mycleaner}",
+            "name": "Release MyCleaner",
+            "target": "MyCleaner",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release MyCleaner"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mycleaner}",
+            "name": "Debug Accalmie",
+            "target": "Accalmie",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Accalmie"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:mycleaner}",
+            "name": "Release Accalmie",
+            "target": "Accalmie",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Accalmie"
+        }
+    ]
+}
