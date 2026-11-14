@@ -112,5 +112,3 @@ L'app s'est successivement appelée « MyCleaner » puis « Accalmie », et a eu
 | `Views/MainWindow.swift`, `MachineInfo.swift` | Fenêtre indépendante (AppKit, créée à la demande, détruite à la fermeture) et fiche « Ce Mac » |
 | `Views/MenuBarWidgets.swift` | Libellé compact de la barre de menus, dessiné dans une image modèle |
 | `Views/` | Panneau à onglets. Le contenu est retiré de la hiérarchie SwiftUI quand le panneau est caché, pour ne rien coûter au repos |
-
-Créé avec [T3 Code](https://t3.codes).

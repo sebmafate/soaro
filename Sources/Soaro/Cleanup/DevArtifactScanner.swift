@@ -53,7 +53,7 @@ struct DevArtifact: Identifiable, Equatable {
 enum DevArtifactScanner {
     /// Dossiers à ne jamais parcourir.
     static let skippedNames: Set<String> = ["Library", "Applications", ".Trash", "Pictures", "Movies", "Music", "node_modules"]
-    /// Seul dossier caché exploré (les projets T3 Code y vivent) ; les autres (.git, .cache…) sont ignorés.
+    /// Seul dossier caché exploré (c'est là que vivent certains projets de développement) ; les autres (.git, .cache…) sont ignorés.
     static let allowedHidden: Set<String> = [".t3"]
     static let maxDepth = 8
     /// Un projet inactif depuis ce nombre de jours est pré-sélectionné.
