@@ -10,14 +10,14 @@ enum Diagnostics {
     /// `Soaro --advice` : affiche les réglages lus sur ce Mac et les conseils qui en découlent. Lecture seule.
     static func advice() -> Never {
         let facts = AdviceProbe.collect()
-        print("== Réglages lus")
-        print("limite de charge : \(facts.chargeLimit.map { "\($0) %" } ?? "aucune")")
-        print("mode économie d'énergie : \(facts.lowPowerMode ? "activé" : "désactivé")")
-        print("veille empêchée par : " + (facts.sleepBlockers.isEmpty ? "aucune app tierce" : facts.sleepBlockers.map { "\($0.name) (\(Format.minutes($0.seconds / 60)))" }.joined(separator: ", ")))
-        print("programmes au démarrage (actifs) : \(facts.enabledAgentCount)")
-        print("corbeille vidée automatiquement : \(facts.autoEmptyTrash ? "oui" : "non")")
-        print("mise à jour en attente : \(facts.pendingUpdateVersion ?? "aucune")")
-        print("Time Machine : \(facts.timeMachineConfigured ? "configuré" : "non configuré"), dernière sauvegarde : \(facts.lastBackup.map { "\($0)" } ?? "inconnue")")
+        print("== Settings read")
+        print("charge limit: \(facts.chargeLimit.map { "\($0) %" } ?? "none")")
+        print("Low Power Mode: \(facts.lowPowerMode ? "on" : "off")")
+        print("sleep prevented by: " + (facts.sleepBlockers.isEmpty ? "no third-party app" : facts.sleepBlockers.map { "\($0.name) (\(Format.minutes($0.seconds / 60)))" }.joined(separator: ", ")))
+        print("login programs (enabled): \(facts.enabledAgentCount)")
+        print("Trash emptied automatically: \(facts.autoEmptyTrash ? "yes" : "no")")
+        print("pending update: \(facts.pendingUpdateVersion ?? "none")")
+        print("Time Machine: \(facts.timeMachineConfigured ? "configured" : "not configured"), last backup: \(facts.lastBackup.map { "\($0)" } ?? "unknown")")
 
         let sampler = SystemSampler()
         let snap = sampler.snapshot()
@@ -25,7 +25,7 @@ enum Diagnostics {
         let os = "\(v.majorVersion).\(v.minorVersion)" + (v.patchVersion > 0 ? ".\(v.patchVersion)" : "")
         let list = AdviceEngine.evaluate(AdviceInput(facts: facts, battery: BatterySampler.sample(), disk: snap.disk,
                                                      processes: SystemSampler.processGroups(), osVersion: os))
-        print("== Conseils (\(list.count))")
+        print("== Tips (\(list.count))")
         for item in list {
             print("• \(item.title)")
             print("    \(item.detail)")
@@ -39,18 +39,18 @@ enum Diagnostics {
         func timed<T>(_ label: String, _ block: () -> T) -> T {
             let start = Date()
             let result = block()
-            print(String(format: "(%@ : %.1f s)", label, Date().timeIntervalSince(start)))
+            print(String(format: "(%@: %.1f s)", label, Date().timeIntervalSince(start)))
             return result
         }
 
-        print("== Caches de nettoyage")
+        print("== Cleanup caches")
         for kind in CleanupKind.allCases {
             let size = CleanupService.size(of: kind)
-            print("\(kind.title) : \(size.map(Format.fileBytes) ?? "inaccessible / absent")")
+            print("\(kind.title) : \(size.map { Format.fileBytes($0) } ?? "inaccessible / absent")")
         }
 
         if CommandLine.arguments.contains("--per-root") {
-            print("== Temps par racine")
+            print("== Time per root")
             for root in LargeFileScanner.defaultRoots() {
                 let start = Date()
                 _ = LargeFileScanner.scan(roots: [root], minSize: 200_000_000, limit: 1)
@@ -58,30 +58,30 @@ enum Diagnostics {
             }
         }
 
-        print("== Gros fichiers (> 200 Mo)")
+        print("== Large files (> 200 MB)")
         let files = timed("scan") { LargeFileScanner.scan(roots: LargeFileScanner.defaultRoots(), minSize: 200_000_000, limit: 8) }
         for f in files { print("\(Format.fileBytes(f.size))  \(f.folder)/\(f.name)") }
 
-        print("== Projets (node_modules, .build, target, Pods)")
+        print("== Projects (node_modules, .build, target, Pods)")
         let artifacts = timed("scan") { DevArtifactScanner.scan() }
-        print("\(artifacts.count) dossiers, \(Format.fileBytes(artifacts.reduce(0) { $0 + $1.size })) au total")
+        print("\(artifacts.count) folders, \(Format.fileBytes(artifacts.reduce(0) { $0 + $1.size })) in total")
         for a in artifacts.prefix(8) {
-            print("\(Format.fileBytes(a.size))  \(a.kind.label)  \(a.projectPath)  (inactif \(a.daysInactive().map(String.init) ?? "?") j)")
+            print("\(Format.fileBytes(a.size))  \(a.kind.label)  \(a.projectPath)  (inactive \(a.daysInactive().map(String.init) ?? "?") d)")
         }
 
-        print("== Applications installées")
+        print("== Installed apps")
         let apps = AppUninstaller.installedApps()
-        print("\(apps.count) apps, \(apps.filter(AppUninstaller.canUninstall).count) désinstallables")
+        print("\(apps.count) apps, \(apps.filter(AppUninstaller.canUninstall).count) can be uninstalled")
         if let sample = apps.first(where: AppUninstaller.canUninstall) {
             let left = AppUninstaller.leftovers(for: sample)
-            print("exemple « \(sample.name) » (\(sample.bundleID ?? "?")) : \(left.count) restes")
+            print("example “\(sample.name)” (\(sample.bundleID ?? "?")): \(left.count) leftovers")
             for l in left.prefix(5) { print("  \(l.displayPath)  \(Format.fileBytes(l.size))") }
         }
 
-        print("== Démarrage")
+        print("== Startup")
         let disabled = StartupItemsService.disabledLabels()
         let agents = StartupItemsService.launchAgents(disabled: disabled)
-        print("\(agents.count) agents tiers, \(disabled.count) services désactivés")
+        print("\(agents.count) third-party agents, \(disabled.count) disabled services")
         for a in agents.prefix(8) { print("  \(a.isDisabled ? "OFF" : "ON ")  \(a.label)") }
         exit(0)
     }
@@ -103,67 +103,67 @@ enum Diagnostics {
         let cores = snap.cpu.perCore.enumerated().map { i, v in
             "\(snap.cpu.coreLabel(i)): \(Int(v * 100)) %"
         }
-        print("cœurs (\(snap.cpu.efficiencyCores) E) : " + cores.joined(separator: " · "))
+        print("cores (\(snap.cpu.efficiencyCores) E): " + cores.joined(separator: " · "))
 
-        print("== Mémoire")
+        print("== Memory")
         let m = snap.memory
-        print("utilisée \(Format.bytes(m.used)) / \(Format.bytes(m.total)) · pression \(m.pressure.label) · swap \(Format.bytes(m.swapUsed))")
+        print("used \(Format.bytes(m.used)) / \(Format.bytes(m.total)) · pressure \(m.pressure.label) · swap \(Format.bytes(m.swapUsed))")
 
         print("== GPU")
         if let gpu = GPUSampler.sample() {
-            print("utilisation \(Format.percent(gpu.utilization)) · mémoire \(Format.bytes(gpu.memoryUsed))")
+            print("usage \(Format.percent(gpu.utilization)) · memory \(Format.bytes(gpu.memoryUsed))")
         } else { print("indisponible") }
 
-        print("== Batterie")
+        print("== Battery")
         if let b = BatterySampler.sample() {
-            print(String(format: "%.0f %% · branché %@ · en charge %@ · cycles %d", b.percent, b.isPluggedIn ? "oui" : "non", b.isCharging ? "oui" : "non", b.cycleCount))
-            print("santé \(b.health.map { Format.percent($0) } ?? "?") (\(b.maxCapacity ?? 0)/\(b.designCapacity ?? 0) mAh) · temp \(b.temperature.map { String(format: "%.1f °C", $0) } ?? "?")")
-            print("puissance batterie \(b.batteryPower.map { String(format: "%.1f W", $0) } ?? "?") · système \(b.systemPower.map { String(format: "%.1f W", $0) } ?? "?") · chargeur \(b.adapterWatts.map { "\($0) W" } ?? "—")")
-            print("temps restant \(b.minutesRemaining.map(Format.minutes) ?? "—")")
-        } else { print("pas de batterie") }
+            print(String(format: "%.0f %% · plugged in %@ · charging %@ · cycles %d", b.percent, b.isPluggedIn ? "oui" : "non", b.isCharging ? "oui" : "non", b.cycleCount))
+            print("health \(b.health.map { Format.percent($0) } ?? "?") (\(b.maxCapacity ?? 0)/\(b.designCapacity ?? 0) mAh) · temp \(b.temperature.map { String(format: "%.1f °C", $0) } ?? "?")")
+            print("battery power \(b.batteryPower.map { String(format: "%.1f W", $0) } ?? "?") · system \(b.systemPower.map { String(format: "%.1f W", $0) } ?? "?") · charger \(b.adapterWatts.map { "\($0) W" } ?? "—")")
+            print("time left \(b.minutesRemaining.map { Format.minutes($0) } ?? "—")")
+        } else { print("no battery") }
 
-        print("== Réseau")
+        print("== Network")
         print("↓ \(Format.rate(net.downRate)) ↑ \(Format.rate(net.upRate)) · IP \(net.localIP ?? "—")")
         if let w = net.wifi {
-            print("Wi-Fi \(w.ssid ?? "(SSID masqué)") · \(w.rssi) dBm · \(Int(w.txRate)) Mb/s · canal \(w.channel.map(String.init) ?? "?")")
-        } else { print("Wi-Fi : non connecté") }
+            print("Wi-Fi \(w.ssid ?? "(SSID hidden)") · \(w.rssi) dBm · \(Int(w.txRate)) Mb/s · channel \(w.channel.map(String.init) ?? "?")")
+        } else { print("Wi-Fi: not connected") }
 
-        print("== VPN (détection locale)")
+        print("== VPN (local detection)")
         let vpn = VPNDetector.detect(processNames: system.runningProcessNames())
-        print("mode \(vpn.mode) · nom \(vpn.name ?? "—") · interface \(vpn.interface ?? "—")")
+        print("mode \(vpn.mode) · name \(vpn.name ?? "—") · interface \(vpn.interface ?? "—")")
         if CommandLine.arguments.contains("--public-ip") {
-            print("== IP publique (requête vers un service tiers, demandée par --public-ip)")
+            print("== Public IP (request to a third-party service, asked for by --public-ip)")
             let semaphore = DispatchSemaphore(value: 0)
             Task {
                 do {
                     let info = try await PublicIPService.fetch()
                     print("\(info.flag ?? "?") \(info.ip) · \(info.country ?? "?") · \(info.city ?? "?") · \(info.provider ?? "?")")
-                } catch { print("échec : \(error.localizedDescription)") }
+                } catch { print("failed: \(error.localizedDescription)") }
                 semaphore.signal()
             }
             semaphore.wait()
         }
 
-        print("== Disque")
-        print("libre \(Format.fileBytes(snap.disk.available)) / \(Format.fileBytes(snap.disk.total)) · SMART \(DiskIOSampler.smartStatus() ?? "?")")
-        if let io { print("E/S : lecture \(Format.rate(io.readRate)) · écriture \(Format.rate(io.writeRate))") }
+        print("== Disk")
+        print("free \(Format.fileBytes(snap.disk.available)) / \(Format.fileBytes(snap.disk.total)) · SMART \(DiskIOSampler.smartStatus() ?? "?")")
+        if let io { print("I/O: read \(Format.rate(io.readRate)) · write \(Format.rate(io.writeRate))") }
 
-        print("== Capteurs")
+        print("== Sensors")
         if let s = sensors.sample() {
             func t(_ v: Double?) -> String { v.map { String(format: "%.0f °C", $0) } ?? "—" }
-            print("CPU \(t(s.cpu)) · GPU \(t(s.gpu)) · SSD \(t(s.ssd)) · batterie \(t(s.battery)) · puissance \(s.systemPower.map { String(format: "%.1f W", $0) } ?? "—")")
-            print("ventilateurs : " + (s.fans.isEmpty ? "—" : s.fans.map { "#\($0.index) \(Int($0.rpm)) tr/min" }.joined(separator: ", ")))
-            print("capteurs bruts : " + s.all.map { "\($0.name)=\(Int($0.celsius))" }.joined(separator: ", "))
-        } else { print("aucun capteur lisible") }
+            print("CPU \(t(s.cpu)) · GPU \(t(s.gpu)) · SSD \(t(s.ssd)) · battery \(t(s.battery)) · power \(s.systemPower.map { String(format: "%.1f W", $0) } ?? "—")")
+            print("fans: " + (s.fans.isEmpty ? "—" : s.fans.map { "#\($0.index) \(Int($0.rpm)) rpm" }.joined(separator: ", ")))
+            print("raw sensors: " + s.all.map { "\($0.name)=\(Int($0.celsius))" }.joined(separator: ", "))
+        } else { print("no readable sensor") }
 
-        print("== Trafic par app (nettop)")
+        print("== Traffic by app (nettop)")
         for row in NetworkSampler.processTraffic().sorted(by: { $0.down + $0.up > $1.down + $1.up }).prefix(5) {
             print("\(row.name) (\(row.pid)) ↓ \(Format.rate(row.down)) ↑ \(Format.rate(row.up))")
         }
 
-        print("== Énergie (top)")
+        print("== Energy (top)")
         for (pid, impact) in EnergySampler.impactByPID().sorted(by: { $0.value > $1.value }).prefix(5) {
-            print("pid \(pid) : \(impact)")
+            print("pid \(pid): \(impact)")
         }
         exit(0)
     }

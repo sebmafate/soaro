@@ -18,8 +18,8 @@ enum WindowSection: Hashable, Identifiable {
     var title: String {
         switch self {
         case .tab(let tab): tab.title
-        case .machine: "Ce Mac"
-        case .settings: "Réglages"
+        case .machine: String(localized: "This Mac")
+        case .settings: String(localized: "Settings")
         }
     }
 
@@ -153,10 +153,10 @@ struct MainWindowView: View {
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Toggle(isOn: $pinned) {
-                            Label("Toujours au premier plan", systemImage: pinned ? "pin.fill" : "pin")
+                            Label("Always on top", systemImage: pinned ? "pin.fill" : "pin")
                         }
                         .toggleStyle(.button)
-                        .help(pinned ? "Ne plus garder la fenêtre au premier plan" : "Garder la fenêtre au premier plan")
+                        .help(pinned ? "Stop keeping the window on top" : "Keep the window on top")
                     }
                 }
         }
@@ -218,10 +218,10 @@ struct MainWindowView: View {
 
     private var statusText: String {
         switch state.worstSeverity {
-        case .critical: "Action recommandée"
-        case .warning: "\(state.recommendations.count) point(s) d'attention"
+        case .critical: String(localized: "Action recommended")
+        case .warning: String(localized: "Attention points: \(state.recommendations.count)")
         case .info: "\(state.recommendations.count) suggestion(s)"
-        case nil: "Tout est en ordre"
+        case nil: String(localized: "Everything is fine")
         }
     }
 
@@ -271,7 +271,7 @@ struct MachineView: View {
                     .interpolation(.high)
                     .scaledToFit()
                     .frame(width: 150, height: 150)
-                    .accessibilityLabel(info.title.isEmpty ? "Ce Mac" : info.title)
+                    .accessibilityLabel(info.title.isEmpty ? String(localized: "This Mac") : info.title)
             } else {
                 Image(systemName: info.modelName?.contains("Book") == true ? "laptopcomputer" : "desktopcomputer")
                     .font(.system(size: 64, weight: .light))
@@ -288,10 +288,10 @@ struct MachineView: View {
                 Button {
                     state.perform(Advice.Action.openSettings(SettingsPane.softwareUpdate))
                 } label: {
-                    Label("Mise à jour disponible : macOS \(pending)", systemImage: "arrow.down.circle.fill")
+                    Label("Update available: macOS \(pending)", systemImage: "arrow.down.circle.fill")
                 }
                 .controlSize(.small)
-                .help("Ouvrir Réglages Système › Mise à jour de logiciels")
+                .help("Open System Settings › Software Update")
                 .padding(.top, 2)
             }
         }
@@ -300,20 +300,20 @@ struct MachineView: View {
 
     private func hardware(_ info: MachineInfo) -> some View {
         Card {
-            row("Processeur", [
+            row("Processor", [
                 info.chip,
                 "\(info.totalCores) cœurs",
-                info.efficiencyCores > 0 ? "\(info.performanceCores) performance · \(info.efficiencyCores) économes" : nil,
+                info.efficiencyCores > 0 ? String(localized: "\(info.performanceCores) performance · \(info.efficiencyCores) efficiency") : nil,
             ])
             Divider()
-            row("Mémoire", [Format.bytes(info.memory)])
+            row("Memory", [Format.bytes(info.memory)])
             if let gpu = info.gpuCores {
                 Divider()
-                row("Graphiques", [[info.chip, "(\(gpu) cœurs)"].compactMap { $0 }.joined(separator: " ")])
+                row("Graphics", [[info.chip, String(localized: "(\(gpu) cores)")].compactMap { $0 }.joined(separator: " ")])
             }
             if let disk = state.snapshot?.disk {
                 Divider()
-                row("Disque", ["\(Format.fileBytes(disk.total))", "\(Format.fileBytes(disk.available)) libres"])
+                row("Disk", ["\(Format.fileBytes(disk.total))", String(localized: "\(Format.fileBytes(disk.available)) free")])
             }
         }
     }
@@ -323,7 +323,7 @@ struct MachineView: View {
             Card {
                 ForEach(Array(info.displays.enumerated()), id: \.offset) { index, display in
                     if index > 0 { Divider() }
-                    row(index == 0 ? "Écrans" : "", [display.name, "\(display.pixels) · \(display.refreshRate) Hz"])
+                    row(index == 0 ? "Displays" : "", [display.name, "\(display.pixels) · \(display.refreshRate) Hz"])
                 }
             }
         }
@@ -331,27 +331,27 @@ struct MachineView: View {
 
     private func identity(_ info: MachineInfo) -> some View {
         Card {
-            if let name = info.computerName { row("Nom de l'ordinateur", [name]) }
+            if let name = info.computerName { row("Computer name", [name]) }
             if let host = info.localHostName {
                 Divider()
-                row("Nom sur le réseau", ["\(host).local"])
+                row("Network name", ["\(host).local"])
             }
             if let id = info.modelIdentifier {
                 if info.computerName != nil || info.localHostName != nil { Divider() }
-                row("Identifiant du modèle", [id])
+                row("Model identifier", [id])
             }
             if let serial = info.serialNumber {
                 Divider()
-                row("Numéro de série", [serial])
+                row("Serial number", [serial])
             }
             if let uptime = state.snapshot?.uptime {
                 Divider()
-                row("Allumé depuis", [Format.uptime(uptime)])
+                row("Uptime", [Format.uptime(uptime)])
             }
         }
     }
 
-    private func row(_ label: String, _ values: [String?]) -> some View {
+    private func row(_ label: LocalizedStringKey, _ values: [String?]) -> some View {
         HStack(alignment: .top) {
             Text(label).font(.callout.weight(.medium))
             Spacer()

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var state: AppState
+    @ObservedObject private var updater = Updater.shared
     @AppStorage(SettingsKey.notifications) private var notifications = true
     @AppStorage(SettingsKey.menuBarCPU) private var showCPU = true
     @AppStorage(SettingsKey.menuBarMemory) private var showMemory = false
@@ -18,65 +19,74 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Dans la barre de menus") {
+            Section("In the menu bar") {
                 Picker("Style", selection: $compact) {
-                    Text("Compact (libellé au-dessus)").tag(true)
-                    Text("Texte sur une ligne").tag(false)
+                    Text("Compact (label above)").tag(true)
+                    Text("Single line of text").tag(false)
                 }
-                Toggle("Charge CPU", isOn: $showCPU)
-                Toggle("Charge GPU", isOn: $showGPU)
-                Toggle("Mémoire utilisée", isOn: $showMemory)
-                Toggle("Disque utilisé", isOn: $showDisk)
-                if state.hasBattery { Toggle("Niveau de batterie", isOn: $showBattery) }
-                Toggle("Débit réseau", isOn: $showNetwork)
+                Toggle("CPU load", isOn: $showCPU)
+                Toggle("GPU load", isOn: $showGPU)
+                Toggle("Memory used", isOn: $showMemory)
+                Toggle("Disk used", isOn: $showDisk)
+                if state.hasBattery { Toggle("Battery level", isOn: $showBattery) }
+                Toggle("Network speed", isOn: $showNetwork)
             }
-            Section("Couleurs des valeurs") {
-                Text("Dans la barre de menus, une valeur passe à l'orange, au rouge puis à l'écarlate quand elle franchit ces seuils.")
+            Section("Value colors") {
+                Text("In the menu bar, a value turns orange, then red, then scarlet when it crosses these thresholds.")
                     .font(.caption).foregroundStyle(.secondary)
-                ThresholdEditor(title: "Processeur et GPU (charge)", thresholds: $thresholds.load, ascending: true)
-                ThresholdEditor(title: "Disque (espace occupé)", thresholds: $thresholds.disk, ascending: true)
+                ThresholdEditor(title: "Processor and GPU (load)", thresholds: $thresholds.load, ascending: true)
+                ThresholdEditor(title: "Disk (space used)", thresholds: $thresholds.disk, ascending: true)
                 if state.hasBattery {
-                    ThresholdEditor(title: "Batterie (niveau restant, hors secteur)", thresholds: $thresholds.battery, ascending: false)
+                    ThresholdEditor(title: "Battery (level left, on battery power)", thresholds: $thresholds.battery, ascending: false)
                 }
-                Text("La mémoire n'a pas de seuil : sa couleur suit la pression réelle mesurée par macOS (orange : pression élevée ; rouge : avec un swap d'au moins la moitié de la RAM ; écarlate : pression critique).")
+                Text("Memory has no threshold: its color follows the real pressure measured by macOS (orange: high pressure; red: with swap of at least half the RAM; scarlet: critical pressure).")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("Rétablir les seuils par défaut") { thresholds = .default }
+                Button("Reset thresholds to defaults") { thresholds = .default }
                     .disabled(thresholds == .default)
             }
             .onChange(of: thresholds) { _, new in new.save() }
-            Section("Conseils de réglage") {
-                Text("Soaro lit certains réglages de macOS pour proposer des conseils (batterie, veille, démarrage, stockage, mises à jour, sauvegarde). Elle ne modifie jamais un réglage : elle ouvre le bon panneau de Réglages Système.")
+            Section("Settings tips") {
+                Text("Soaro reads some macOS settings to suggest tips (battery, sleep, startup, storage, updates, backup). It never changes a setting: it opens the right System Settings pane.")
                     .font(.caption).foregroundStyle(.secondary)
-                Button(state.dismissedAdviceCount == 0 ? "Aucun conseil ignoré" : "Réafficher les \(state.dismissedAdviceCount) conseil(s) ignoré(s)") {
+                Button(state.dismissedAdviceCount == 0 ? "No dismissed tips" : "Show dismissed tips again (\(state.dismissedAdviceCount))") {
                     state.restoreDismissedAdvice()
                 }
                 .disabled(state.dismissedAdviceCount == 0)
             }
-            Section("Comportement") {
-                Toggle("Notifier en cas de problème critique", isOn: $notifications)
-                Toggle("Ouvrir au démarrage de session", isOn: Binding(
+            Section("Behavior") {
+                Toggle("Notify on critical problems", isOn: $notifications)
+                Toggle("Open at login", isOn: Binding(
                     get: { launchAtLogin },
                     set: { setLaunchAtLogin($0) }
                 ))
             }
-            Section("Réseau") {
-                Toggle("Afficher l'IP publique et le pays", isOn: $publicIP)
+            Section("Network") {
+                Toggle("Show public IP and country", isOn: $publicIP)
                     .onChange(of: publicIP) { _, enabled in
                         if enabled { state.refreshPublicIP(force: true) } else { state.forgetPublicIP() }
                     }
-                Text("Désactivé par défaut : interroge un service tiers (ipwho.is, ou ipapi.co en secours) qui voit alors votre IP publique. Au plus une requête toutes les 5 minutes, uniquement quand l'onglet Réseau est ouvert. Rien n'est enregistré. La détection du VPN, elle, est entièrement locale.")
+                Text("Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. At most one request every 5 minutes, only while the Network tab is open. Nothing is stored. VPN detection is entirely local.")
                     .font(.caption).foregroundStyle(.secondary)
-                Toggle("Mesurer la latence (ping vers 1.1.1.1)", isOn: $latency)
-                Text("Désactivé par défaut : cette option envoie un petit paquet à un serveur Cloudflare toutes les 10 secondes, uniquement quand l'onglet Réseau est ouvert.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Données") {
-                Button("Effacer l'historique") { state.clearHistory() }
-                Text("Soaro ne transmet aucune donnée : l'historique reste dans ~/Library/Application Support/Soaro.")
+                Toggle("Measure latency (ping to 1.1.1.1)", isOn: $latency)
+                Text("Off by default: this option sends a small packet to a Cloudflare server every 10 seconds, only while the Network tab is open.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section("À propos") {
-                Text("Soaro surveille CPU, GPU, mémoire, disque, réseau et batterie. Il ne supprime que des caches, journaux et dossiers régénérables de votre dossier personnel, ou met à la corbeille (récupérable), toujours après confirmation.")
+            Section("Data") {
+                Button("Clear history") { state.clearHistory() }
+                Text("Soaro sends no data: history stays in ~/Library/Application Support/Soaro.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if updater.isAvailable {
+                Section("Updates") {
+                    Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
+                    Button("Check for updates…") { updater.checkForUpdates() }
+                        .disabled(!updater.canCheckForUpdates)
+                    Text("Once a day, Soaro downloads a small public file from soaro.app to see if a new version exists. It sends no personal data.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Section("About") {
+                Text("Soaro monitors CPU, GPU, memory, disk, network and battery. It only deletes caches, logs and rebuildable folders in your home folder, or moves items to the Trash (recoverable), always after confirmation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -88,7 +98,7 @@ struct SettingsView: View {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            state.showToast("Démarrage automatique impossible : placez l'app dans Applications.")
+            state.showToast(String(localized: "Cannot open at login: put the app in Applications."))
         }
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
@@ -96,24 +106,22 @@ struct SettingsView: View {
 
 /// Trois seuils réglables, toujours gardés dans l'ordre (chaque réglage est borné par ses voisins).
 struct ThresholdEditor: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var thresholds: LevelThresholds
     /// `true` : la valeur est mauvaise quand elle monte ; `false` : quand elle descend (batterie).
     let ascending: Bool
-
-    private var word: String { ascending ? "à partir de" : "en dessous de" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.callout.weight(.medium))
             if ascending {
-                row("Orange", .orange, $thresholds.medium, 5...(thresholds.high - 5))
-                row("Rouge", .red, $thresholds.high, (thresholds.medium + 5)...(thresholds.critical - 5))
-                row("Écarlate", PressureLevel.scarlet, $thresholds.critical, (thresholds.high + 5)...100)
+                row(String(localized: "Orange"), .orange, $thresholds.medium, 5...(thresholds.high - 5))
+                row(String(localized: "Red"), .red, $thresholds.high, (thresholds.medium + 5)...(thresholds.critical - 5))
+                row(String(localized: "Scarlet"), PressureLevel.scarlet, $thresholds.critical, (thresholds.high + 5)...100)
             } else {
-                row("Orange", .orange, $thresholds.medium, (thresholds.high + 5)...95)
-                row("Rouge", .red, $thresholds.high, (thresholds.critical + 5)...(thresholds.medium - 5))
-                row("Écarlate", PressureLevel.scarlet, $thresholds.critical, 5...(thresholds.high - 5))
+                row(String(localized: "Orange"), .orange, $thresholds.medium, (thresholds.high + 5)...95)
+                row(String(localized: "Red"), .red, $thresholds.high, (thresholds.critical + 5)...(thresholds.medium - 5))
+                row(String(localized: "Scarlet"), PressureLevel.scarlet, $thresholds.critical, 5...(thresholds.high - 5))
             }
         }
         .padding(.vertical, 2)
@@ -123,10 +131,13 @@ struct ThresholdEditor: View {
         Stepper(value: value, in: range, step: 5) {
             HStack(spacing: 6) {
                 Circle().fill(color).frame(width: 8, height: 8)
-                Text("\(name) \(word) \(value.wrappedValue) %").font(.callout).monospacedDigit()
+                // « Orange from 60 % » / « Red below 20 % » : deux phrases entières, pour que chaque langue place les mots comme elle veut.
+                if ascending {
+                    Text("\(name) from \(value.wrappedValue) %").font(.callout).monospacedDigit()
+                } else {
+                    Text("\(name) below \(value.wrappedValue) %").font(.callout).monospacedDigit()
+                }
             }
         }
-        .accessibilityLabel("\(title), seuil \(name.lowercased())")
-        .accessibilityValue("\(value.wrappedValue) %")
     }
 }

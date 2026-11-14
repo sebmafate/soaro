@@ -21,12 +21,12 @@ import Testing
     @Test func buildsSelectedItemsInFixedOrder() {
         let items = MenuBarItem.items(for: snapshot(), cpu: true, gpu: true, memory: true, disk: true, network: true, battery: true)
         #expect(items == [
-            .stacked(label: "CPU", value: "43%"),
-            .stacked(label: "GPU", value: "6%"),
-            .stacked(label: "RAM", value: "81%"),
-            .stacked(label: "SSD", value: "86%", level: .medium),
+            .stacked(label: "CPU", value: Format.percent(0.43)),
+            .stacked(label: "GPU", value: Format.percent(0.06)),
+            .stacked(label: "RAM", value: Format.percent(0.8125)),
+            .stacked(label: "SSD", value: Format.percent(0.86), level: .medium),
             .pair(top: "↑ 99 KB/s", bottom: "↓ 13 KB/s"),
-            .stacked(label: "BAT ⚡︎", value: "100%"),
+            .stacked(label: "BAT ⚡︎", value: Format.percent(1)),
         ])
     }
 
@@ -34,7 +34,7 @@ import Testing
         #expect(MenuBarItem.items(for: snapshot(), cpu: false, gpu: false, memory: false, disk: false, network: false, battery: false).isEmpty)
         // Batterie demandée sur un Mac sans batterie : simplement absente.
         let items = MenuBarItem.items(for: snapshot(battery: false), cpu: true, gpu: false, memory: false, disk: false, network: false, battery: true)
-        #expect(items == [.stacked(label: "CPU", value: "43%")])
+        #expect(items == [.stacked(label: "CPU", value: Format.percent(0.43))])
     }
 
     @Test func inlineTextJoinsItems() {
@@ -151,7 +151,7 @@ import Testing
         t.load = LevelThresholds(medium: 40, high: 60, critical: 80)
         t.disk = LevelThresholds(medium: 90, high: 95, critical: 99)
         let items = MenuBarItem.items(for: s, cpu: true, gpu: false, memory: false, disk: true, network: false, battery: false, thresholds: t)
-        #expect(items == [.stacked(label: "CPU", value: "45%", level: .medium), .stacked(label: "SSD", value: "86%", level: .normal)])
+        #expect(items == [.stacked(label: "CPU", value: Format.percent(0.45), level: .medium), .stacked(label: "SSD", value: Format.percent(0.86), level: .normal)])
     }
 }
 
@@ -167,28 +167,28 @@ import Testing
     }
 
     private func rec(_ id: String, _ severity: Severity, _ title: String) -> Recommendation {
-        Recommendation(id: id, severity: severity, title: title, detail: "Détail de \(title)", action: nil, actionLabel: nil)
+        Recommendation(id: id, severity: severity, title: title, detail: "Detail of \(title)", action: nil, actionLabel: nil)
     }
 
     @Test func calmStateSaysSo() {
         let text = MenuBarTooltip.text(recommendations: [], snapshot: snapshot(), items: [.stacked(label: "CPU", value: "30%")])
-        #expect(text == "Soaro : tout est en ordre")
+        #expect(text == "Soaro: everything is fine")
     }
 
     @Test func listsAlertsWithTheirReasonThenSuggestions() {
         let text = MenuBarTooltip.text(
-            recommendations: [rec("a", .warning, "Mémoire sous pression"), rec("b", .info, "28 Go à récupérer")],
+            recommendations: [rec("a", .warning, "Memory under pressure"), rec("b", .info, "28 GB to free")],
             snapshot: snapshot(), items: []
         )
-        #expect(text.hasPrefix("Soaro : 1 point d'attention\n• Mémoire sous pression\n   Détail de Mémoire sous pression"))
-        #expect(text.contains("1 suggestion :\n• 28 Go à récupérer"))
-        #expect(!text.contains("Détail de 28 Go"))                  // les suggestions restent courtes
+        #expect(text.hasPrefix("Soaro: 1 attention point\n• Memory under pressure\n   Detail of Memory under pressure"))
+        #expect(text.contains("1 suggestion:\n• 28 GB to free"))
+        #expect(!text.contains("Detail of 28 GB"))                  // les suggestions restent courtes
     }
 
     @Test func criticalAlertsAreMarkedAndCounted() {
-        let text = MenuBarTooltip.text(recommendations: [rec("a", .critical, "Disque presque plein"), rec("b", .warning, "CPU saturé")], snapshot: nil, items: [])
-        #expect(text.hasPrefix("Soaro : 2 points d'attention\n⚠︎ Disque presque plein"))
-        #expect(text.contains("• CPU saturé"))
+        let text = MenuBarTooltip.text(recommendations: [rec("a", .critical, "Disk almost full"), rec("b", .warning, "CPU overloaded")], snapshot: nil, items: [])
+        #expect(text.hasPrefix("Soaro: 2 attention points\n⚠︎ Disk almost full"))
+        #expect(text.contains("• CPU overloaded"))
     }
 
     @Test func explainsEveryColouredValue() {
@@ -196,33 +196,64 @@ import Testing
         let items = MenuBarItem.items(for: s, cpu: true, gpu: false, memory: true, disk: true, network: false, battery: false)
         let lines = MenuBarTooltip.explanations(for: items, snapshot: s)
         #expect(lines.count == 2)                                    // CPU à 30 % : normal, donc pas d'explication
-        #expect(lines[0].hasPrefix("Mémoire : pression élevée, swap") && lines[0].hasSuffix("(niveau élevé)"))
-        #expect(lines[1].hasPrefix("Disque rempli à 86%") && lines[1].hasSuffix("(niveau moyen)"))
+        #expect(lines[0].hasPrefix("Memory: high pressure, swap") && lines[0].hasSuffix("(level: high)"))
+        #expect(lines[1].hasPrefix("Disk \(Format.percent(0.86)) full") && lines[1].hasSuffix("(level: medium)"))
 
         let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: items)
-        #expect(text.contains("Valeurs en couleur :"))
+        #expect(text.contains("Colored values:"))
     }
 }
 
 @Suite struct RateFormatTests {
+    private let en = Locale(identifier: "en_US")
+    private let fr = Locale(identifier: "fr_FR")
+
     @Test func shortUnitsOnly() {
-        #expect(Format.rate(0) == "0 B/s")
-        #expect(Format.rate(512) == "512 B/s")
-        #expect(Format.rate(999) == "999 B/s")
-        #expect(Format.rate(1_000) == "1 KB/s")
-        #expect(Format.rate(99_400) == "99 KB/s")
-        #expect(Format.rate(1_500_000) == "1,5 MB/s")
-        #expect(Format.rate(2_300_000_000) == "2,3 GB/s")
-        #expect(!Format.rate(5).contains("bytes"))
+        #expect(Format.rate(0, locale: en) == "0 B/s")
+        #expect(Format.rate(512, locale: en) == "512 B/s")
+        #expect(Format.rate(999, locale: en) == "999 B/s")
+        #expect(Format.rate(1_000, locale: en) == "1 KB/s")
+        #expect(Format.rate(99_400, locale: en) == "99 KB/s")
+        #expect(Format.rate(1_500_000, locale: en) == "1.5 MB/s")
+        #expect(Format.rate(2_300_000_000, locale: en) == "2.3 GB/s")
+        #expect(!Format.rate(5, locale: en).contains("bytes"))
+    }
+
+    @Test func decimalSeparatorFollowsTheLanguage() {
+        #expect(Format.rate(1_500_000, locale: fr) == "1,5 MB/s")
+        #expect(Format.menuBarRate(12_400_000, locale: fr) == "12,4 MB/s")
     }
 
     @Test func menuBarNeverShowsBytes() {
-        #expect(Format.menuBarRate(0) == "0 KB/s")
-        #expect(Format.menuBarRate(400) == "0 KB/s")
-        #expect(Format.menuBarRate(600) == "1 KB/s")
-        #expect(Format.menuBarRate(99_000) == "99 KB/s")
-        #expect(Format.menuBarRate(999_700) == "1,0 MB/s")           // jamais « 1000 KB/s »
-        #expect(Format.menuBarRate(12_400_000) == "12,4 MB/s")
+        #expect(Format.menuBarRate(0, locale: en) == "0 KB/s")
+        #expect(Format.menuBarRate(400, locale: en) == "0 KB/s")
+        #expect(Format.menuBarRate(600, locale: en) == "1 KB/s")
+        #expect(Format.menuBarRate(99_000, locale: en) == "99 KB/s")
+        #expect(Format.menuBarRate(999_700, locale: en) == "1.0 MB/s")           // jamais « 1000 KB/s »
+        #expect(Format.menuBarRate(12_400_000, locale: en) == "12.4 MB/s")
+    }
+
+    @Test func percentFollowsTheLanguage() {
+        #expect(Format.percent(0.43, locale: en) == "43%")
+        #expect(Format.percent(0, locale: en) == "0%")
+        #expect(Format.percent(1, locale: en) == "100%")
+        // En français, l'espace avant « % » est une espace insécable fine.
+        #expect(Format.percent(0.43, locale: fr).replacingOccurrences(of: "\u{202F}", with: " ").replacingOccurrences(of: "\u{00A0}", with: " ") == "43 %")
+    }
+
+    @Test func bytesNeverSpellOutZero() {
+        #expect(Format.bytes(0, locale: en) == "0 bytes")
+        #expect(!Format.fileBytes(0, locale: en).lowercased().contains("zero"))
+        #expect(Format.fileBytes(1_500_000_000, locale: en) == "1.5 GB")
+    }
+
+    @Test func durationsUseTheLanguageAbbreviations() {
+        #expect(Format.minutes(45, locale: en) == "45m")
+        #expect(Format.minutes(192, locale: en) == "3h 12m")
+        #expect(Format.uptime(5 * 86_400 + 9 * 3_600 + 1_234, locale: en) == "5d 9h")
+        #expect(Format.uptime(3 * 3_600 + 5 * 60, locale: en) == "3h 5m")
+        #expect(Format.uptime(5 * 86_400 + 9 * 3_600, locale: fr) == "5j 9h")
+        #expect(Format.uptime(5 * 86_400 + 9 * 3_600, locale: Locale(identifier: "ja_JP")) == "5日9時間")
     }
 }
 

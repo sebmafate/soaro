@@ -123,7 +123,7 @@ import Testing
         input.facts.sleepBlockers = [SleepBlocker(name: "Amphetamine", seconds: 5 * 3_600), SleepBlocker(name: "Zoom", seconds: 60)]
         let advice = AdviceEngine.evaluate(input)
         #expect(advice.map(\.id) == ["sleep.blocked"])
-        #expect(advice[0].title == "Amphetamine empêche la mise en veille")
+        #expect(advice[0].title == "Amphetamine is preventing sleep")
         #expect(!advice[0].detail.contains("Zoom"))
     }
 
@@ -134,7 +134,7 @@ import Testing
         input.facts.enabledAgentCount = 28
         let advice = AdviceEngine.evaluate(input)
         #expect(advice.first?.action == .showStartupItems)
-        #expect(advice.first?.title.hasPrefix("28 programmes") == true)
+        #expect(advice.first?.title == "Programs launching at login: 28")
     }
 
     @Test func spotlightIndexingIsExplainedWithoutAction() {
@@ -175,7 +175,7 @@ import Testing
         #expect(ids(input) == ["backup.none"])
         input.facts.timeMachineConfigured = true
         input.facts.lastBackup = input.now.addingTimeInterval(-20 * 86_400)
-        #expect(AdviceEngine.evaluate(input).first?.title == "Dernière sauvegarde il y a 20 jours")
+        #expect(AdviceEngine.evaluate(input).first?.title == "Last backup 20 days ago")
         input.facts.lastBackup = input.now.addingTimeInterval(-2 * 86_400)
         #expect(ids(input).isEmpty)
         input.facts.lastBackup = nil                   // configuré mais date illisible : on ne conclut rien

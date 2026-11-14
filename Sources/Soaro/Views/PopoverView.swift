@@ -89,32 +89,32 @@ struct PopoverContent: View {
                 Image(systemName: "macwindow")
             }
             .buttonStyle(.borderless)
-            .help("Ouvrir dans une fenêtre (reste ouverte quand on clique ailleurs)")
+            .help("Open in a window (stays open when you click elsewhere)")
             Button {
                 showSettings.toggle()
             } label: {
                 Image(systemName: showSettings ? "xmark.circle.fill" : "gearshape")
             }
             .buttonStyle(.borderless)
-            .help(showSettings ? "Fermer les réglages" : "Réglages")
+            .help(showSettings ? "Close settings" : "Settings")
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
                 Image(systemName: "power")
             }
             .buttonStyle(.borderless)
-            .help("Quitter Soaro")
+            .help("Quit Soaro")
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
     private var statusLine: String {
-        guard state.snapshot != nil else { return "Mesure en cours…" }
+        guard state.snapshot != nil else { return String(localized: "Measuring…") }
         switch state.worstSeverity {
-        case .critical: return "Action recommandée"
-        case .warning: return "\(state.recommendations.count) point(s) d'attention"
+        case .critical: return String(localized: "Action recommended")
+        case .warning: return String(localized: "Attention points: \(state.recommendations.count)")
         case .info: return "\(state.recommendations.count) suggestion(s)"
-        case nil: return "Tout est en ordre"
+        case nil: return String(localized: "Everything is fine")
         }
     }
 

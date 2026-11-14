@@ -6,19 +6,19 @@ enum CleanupRoute: String, Identifiable {
 
     var title: String {
         switch self {
-        case .largeFiles: "Gros fichiers"
-        case .devProjects: "Projets inactifs"
-        case .uninstaller: "Désinstaller des apps"
-        case .startup: "Éléments de démarrage"
+        case .largeFiles: String(localized: "Large files")
+        case .devProjects: String(localized: "Inactive projects")
+        case .uninstaller: String(localized: "Uninstall apps")
+        case .startup: String(localized: "Startup items")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .largeFiles: "Retrouver ce qui occupe le plus de place"
-        case .devProjects: "node_modules, .build, target… de vieux projets"
-        case .uninstaller: "Supprimer une app et ses restes"
-        case .startup: "Ce qui se lance à l'ouverture de session"
+        case .largeFiles: String(localized: "Find what takes up the most space")
+        case .devProjects: String(localized: "node_modules, .build, target… from old projects")
+        case .uninstaller: String(localized: "Remove an app and its leftovers")
+        case .startup: String(localized: "What starts when you log in")
         }
     }
 
@@ -72,7 +72,7 @@ struct CleanupTab: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 quickClean
-                SectionHeader(title: "Système")
+                SectionHeader(title: "System")
                 VStack(spacing: 2) {
                     ForEach(CleanupKind.systemKinds) { kind in
                         CleanupRow(kind: kind, size: state.cleanupSizes[kind] ?? nil, busy: state.busyKinds.contains(kind)) {
@@ -81,7 +81,7 @@ struct CleanupTab: View {
                     }
                 }
                 developerSection
-                SectionHeader(title: "Outils")
+                SectionHeader(title: "Tools")
                 VStack(spacing: 6) {
                     ForEach([CleanupRoute.largeFiles, .devProjects, .uninstaller, .startup]) { item in
                         Button { open(item) } label: {
@@ -110,18 +110,18 @@ struct CleanupTab: View {
         Card {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Nettoyage rapide").font(.headline)
+                    Text("Quick clean").font(.headline)
                     Text(state.quickCleanReclaimable > 0
-                         ? "\(Format.fileBytes(state.quickCleanReclaimable)) récupérables sans risque"
-                         : "Rien d'important à nettoyer")
+                         ? "\(Format.fileBytes(state.quickCleanReclaimable)) can be freed safely"
+                         : "Nothing important to clean")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Nettoyer") { state.perform(.quickCleanup) }
+                Button("Clean") { state.perform(.quickCleanup) }
                     .buttonStyle(.borderedProminent)
                     .disabled(!state.busyKinds.isEmpty || state.quickCleanReclaimable == 0)
             }
-            Text("Caches d'applications, journaux et DerivedData. La corbeille et les caches de dépendances restent à votre main.")
+            Text("App caches, logs and DerivedData. The Trash and dependency caches are left for you to decide.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
     }
@@ -129,7 +129,7 @@ struct CleanupTab: View {
     @ViewBuilder private var developerSection: some View {
         let visible = CleanupKind.developerKinds.filter { ((state.cleanupSizes[$0] ?? nil) ?? 0) > 0 }
         if !visible.isEmpty {
-            SectionHeader(title: "Développeur")
+            SectionHeader(title: "Developer")
             VStack(spacing: 2) {
                 ForEach(visible) { kind in
                     CleanupRow(kind: kind, size: state.cleanupSizes[kind] ?? nil, busy: state.busyKinds.contains(kind)) {
@@ -158,7 +158,7 @@ struct CleanupTab: View {
                     largeFiles.cancel(); devProjects.cancel(); uninstaller.cancel()
                     self.route = nil
                 } label: {
-                    Label("Nettoyage", systemImage: "chevron.left")
+                    Label("Cleanup", systemImage: "chevron.left")
                 }
                 .buttonStyle(.borderless)
                 Spacer()

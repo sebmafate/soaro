@@ -13,9 +13,9 @@ enum MemoryPressure: Int, Equatable {
 
     var label: String {
         switch self {
-        case .normal: "Normale"
-        case .warning: "Élevée"
-        case .critical: "Critique"
+        case .normal: String(localized: "Normal")
+        case .warning: String(localized: "High")
+        case .critical: String(localized: "Critical")
         }
     }
 }
@@ -179,29 +179,29 @@ enum CleanupKind: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .caches: "Caches des applications"
-        case .logs: "Journaux (logs)"
-        case .trash: "Corbeille"
+        case .caches: String(localized: "App caches")
+        case .logs: String(localized: "Logs")
+        case .trash: String(localized: "Trash")
         case .derivedData: "Xcode DerivedData"
-        case .npmCache: "Cache npm"
-        case .gradleCache: "Cache Gradle"
-        case .cargoCache: "Cache Cargo (Rust)"
-        case .xcodeDeviceSupport: "Xcode iOS DeviceSupport"
-        case .simulatorCaches: "Caches des simulateurs iOS"
+        case .npmCache: String(localized: "npm cache")
+        case .gradleCache: String(localized: "Gradle cache")
+        case .cargoCache: String(localized: "Cargo cache (Rust)")
+        case .xcodeDeviceSupport: String(localized: "Xcode iOS DeviceSupport")
+        case .simulatorCaches: String(localized: "iOS Simulator caches")
         }
     }
 
     var detail: String {
         switch self {
-        case .caches: "Fichiers temporaires recréés à la demande (hors caches Apple)"
-        case .logs: "Anciens journaux d'applications"
-        case .trash: "Vider la corbeille"
-        case .derivedData: "Fichiers de compilation Xcode, régénérés au prochain build"
-        case .npmCache: "Paquets téléchargés, re-téléchargés au besoin"
-        case .gradleCache: "Dépendances et caches de build, re-téléchargés au besoin"
-        case .cargoCache: "Archives de crates, re-téléchargées au besoin"
-        case .xcodeDeviceSupport: "Symboles des anciens appareils iOS, recréés au branchement"
-        case .simulatorCaches: "Caches des simulateurs, sans effet sur vos appareils virtuels"
+        case .caches: String(localized: "Temporary files rebuilt on demand (Apple caches excluded)")
+        case .logs: String(localized: "Old app logs")
+        case .trash: String(localized: "Empty the Trash")
+        case .derivedData: String(localized: "Xcode build files, rebuilt on the next build")
+        case .npmCache: String(localized: "Downloaded packages, downloaded again when needed")
+        case .gradleCache: String(localized: "Dependencies and build caches, downloaded again when needed")
+        case .cargoCache: String(localized: "Crate archives, downloaded again when needed")
+        case .xcodeDeviceSupport: String(localized: "Symbols for old iOS devices, recreated when you plug them in")
+        case .simulatorCaches: String(localized: "Simulator caches, no effect on your virtual devices")
         }
     }
 
@@ -264,60 +264,58 @@ struct Recommendation: Identifiable, Equatable {
 
 // MARK: - Formatage
 
+/// Mise en forme des valeurs affichées. Tout suit la langue de l'utilisateur (séparateur décimal, unités, abréviations) ;
+/// le paramètre `locale` n'existe que pour que les tests ne dépendent pas de la langue de la machine.
 enum Format {
-    /// `ByteCountFormatter` écrit « Zero KB » pour 0 : on force un format numérique.
-    private static func format(_ value: Int64, _ style: ByteCountFormatter.CountStyle) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = style
-        formatter.allowsNonnumericFormatting = false
-        return formatter.string(fromByteCount: value)
+    /// Octets « mémoire » (1 Ko = 1024 octets), comme le Moniteur d'activité.
+    static func bytes(_ value: UInt64, locale: Locale = .current) -> String {
+        Int64(clamping: value).formatted(ByteCountFormatStyle(style: .memory, allowedUnits: .all, spellsOutZero: false, includesActualByteCount: false, locale: locale))
     }
 
-    static func bytes(_ value: UInt64) -> String { format(Int64(clamping: value), .memory) }
-
-    static func fileBytes(_ value: UInt64) -> String { format(Int64(clamping: value), .file) }
-
-    static func percent(_ fraction: Double) -> String {
-        "\(Int((fraction * 100).rounded()))%"
+    /// Octets « fichier » (1 Ko = 1000 octets), comme le Finder.
+    static func fileBytes(_ value: UInt64, locale: Locale = .current) -> String {
+        Int64(clamping: value).formatted(ByteCountFormatStyle(style: .file, allowedUnits: .all, spellsOutZero: false, includesActualByteCount: false, locale: locale))
     }
 
-    /// Débit court : « 512 B/s », « 99 KB/s », « 1,5 MB/s » (jamais « bytes/s », trop long).
-    static func rate(_ bytesPerSecond: Double) -> String {
+    static func percent(_ fraction: Double, locale: Locale = .current) -> String {
+        fraction.formatted(.percent.precision(.fractionLength(0)).locale(locale))
+    }
+
+    /// Débit court : « 512 B/s », « 99 KB/s », « 1.5 MB/s » (jamais « bytes/s », trop long).
+    static func rate(_ bytesPerSecond: Double, locale: Locale = .current) -> String {
         let v = max(0, bytesPerSecond)
         if v < 1_000 { return "\(Int(v)) B/s" }
-        return scaledRate(v)
+        return scaledRate(v, locale: locale)
     }
 
     /// Barre de menus : toujours en KB/s ou MB/s, pour que la largeur ne saute pas à chaque mesure.
-    static func menuBarRate(_ bytesPerSecond: Double) -> String {
+    static func menuBarRate(_ bytesPerSecond: Double, locale: Locale = .current) -> String {
         let v = max(0, bytesPerSecond)
         if v < 999_500 { return "\(Int((v / 1_000).rounded())) KB/s" }
-        return scaledRate(v)
+        return scaledRate(v, locale: locale)
     }
 
-    private static func scaledRate(_ v: Double) -> String {
-        func one(_ x: Double) -> String { x.formatted(.number.precision(.fractionLength(1))) }
+    private static func scaledRate(_ v: Double, locale: Locale) -> String {
+        func one(_ x: Double) -> String { x.formatted(.number.precision(.fractionLength(1)).locale(locale)) }
         if v < 999_500 { return "\(Int((v / 1_000).rounded())) KB/s" }
         if v < 999_500_000 { return "\(one(v / 1_000_000)) MB/s" }
         return "\(one(v / 1_000_000_000)) GB/s"
     }
 
-    /// Débit court pour la barre de menus : « 1,2M », « 340K ».
-    static func compactRate(_ bytesPerSecond: Double) -> String {
-        switch bytesPerSecond {
-        case ..<1_000: "0K"
-        case ..<1_000_000: "\(Int(bytesPerSecond / 1_000))K"
-        default: String(format: "%.1fM", bytesPerSecond / 1_000_000)
-        }
+    /// « 45 min », « 3 h 12 min » : abréviations de la langue de l'utilisateur.
+    static func minutes(_ minutes: Int, locale: Locale = .current) -> String {
+        let allowed: Set<Duration.UnitsFormatStyle.Unit> = minutes >= 60 ? [.hours, .minutes] : [.minutes]
+        return Duration.seconds(minutes * 60).formatted(
+            .units(allowed: allowed, width: .narrow, fractionalPart: .hide(rounded: .down)).locale(locale)
+        )
     }
 
-    static func minutes(_ minutes: Int) -> String {
-        minutes >= 60 ? "\(minutes / 60) h \(String(format: "%02d", minutes % 60))" : "\(minutes) min"
-    }
-
-    static func uptime(_ seconds: TimeInterval) -> String {
-        let days = Int(seconds) / 86_400
-        let hours = (Int(seconds) % 86_400) / 3_600
-        return days > 0 ? "\(days) j \(hours) h" : "\(hours) h"
+    /// « 5 j 9 h », « 5d 9h »… ; en dessous d'un jour : heures et minutes.
+    static func uptime(_ seconds: TimeInterval, locale: Locale = .current) -> String {
+        let total = max(0, Int(seconds))
+        let allowed: Set<Duration.UnitsFormatStyle.Unit> = total >= 86_400 ? [.days, .hours] : [.hours, .minutes]
+        return Duration.seconds(total).formatted(
+            .units(allowed: allowed, width: .narrow, fractionalPart: .hide(rounded: .down)).locale(locale)
+        )
     }
 }

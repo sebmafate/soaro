@@ -26,12 +26,12 @@ enum AppTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .overview: "Aperçu"
-        case .performance: "Performances"
-        case .battery: "Batterie"
-        case .network: "Réseau"
-        case .history: "Historique"
-        case .cleanup: "Nettoyage"
+        case .overview: String(localized: "Overview")
+        case .performance: String(localized: "Performance")
+        case .battery: String(localized: "Battery")
+        case .network: String(localized: "Network")
+        case .history: String(localized: "History")
+        case .cleanup: String(localized: "Cleanup")
         }
     }
 
@@ -257,7 +257,7 @@ final class AppState: ObservableObject {
 
     func clearHistory() {
         history?.clear()
-        showToast("Historique effacé")
+        showToast(String(localized: "History cleared"))
     }
 
     // MARK: Trafic quotidien
@@ -323,7 +323,7 @@ final class AppState: ObservableObject {
         Task { [weak self] in
             let status = await Task.detached(priority: .utility) { DiskIOSampler.smartStatus() }.value
             self?.smartInFlight = false
-            self?.smartStatus = status ?? "Indisponible"
+            self?.smartStatus = status ?? "Unavailable"
         }
     }
 
@@ -409,7 +409,7 @@ final class AppState: ObservableObject {
             var totals: [String: EnergyEntry] = [:]
             for (pid, impact) in impacts {
                 let group = byPID[pid]
-                let name = group?.name ?? "Processus \(pid)"
+                let name = group?.name ?? String(localized: "Process \(pid)")
                 var entry = totals[name] ?? EnergyEntry(name: name, appPath: group?.appPath, impact: 0)
                 entry.impact += impact
                 totals[name] = entry
@@ -566,7 +566,7 @@ final class AppState: ObservableObject {
     func restoreDismissedAdvice() {
         UserDefaults.standard.removeObject(forKey: Self.dismissedAdviceKey)
         updateAdvice()
-        showToast("Conseils réaffichés")
+        showToast(String(localized: "Tips shown again"))
     }
 
     func perform(_ action: Advice.Action) {
@@ -602,10 +602,10 @@ final class AppState: ObservableObject {
     func quitApp(path: String, name: String) {
         let app = NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }
         if app?.terminate() == true {
-            showToast("Demande de fermeture envoyée à \(name)")
+            showToast(String(localized: "Quit request sent to \(name)"))
             Task { try? await Task.sleep(for: .seconds(2)); refreshProcesses() }
         } else {
-            showToast("Impossible de quitter \(name)")
+            showToast(String(localized: "Could not quit \(name)"))
         }
     }
 
@@ -635,11 +635,11 @@ final class AppState: ObservableObject {
 
         let total = kinds.reduce(UInt64(0)) { $0 + ((cleanupSizes[$1] ?? nil) ?? 0) }
         var info = kinds.map { "• \($0.title)" }.joined(separator: "\n")
-        if total > 0 { info += "\n\nEnviron \(Format.fileBytes(total)) seront libérés." }
-        if kinds.contains(.trash) { info += "\nLa suppression de la corbeille est définitive." }
+        if total > 0 { info += String(localized: "\n\nAbout \(Format.fileBytes(total)) will be freed.") }
+        if kinds.contains(.trash) { info += String(localized: "\nEmptying the Trash is permanent.") }
         guard Self.confirm(
-            title: kinds.count == 1 ? "Nettoyer « \(kinds[0].title) » ?" : "Lancer le nettoyage rapide ?",
-            message: info, button: "Nettoyer", critical: kinds.contains(.trash)
+            title: kinds.count == 1 ? String(localized: "Clean “\(kinds[0].title)”?") : String(localized: "Run the quick clean?"),
+            message: info, button: String(localized: "Clean"), critical: kinds.contains(.trash)
         ) else { return }
 
         busyKinds.formUnion(kinds)
@@ -662,8 +662,8 @@ final class AppState: ObservableObject {
             if let first = outcome.errors.first {
                 self.showToast(first)
             } else {
-                var message = "\(Format.fileBytes(outcome.freed)) libérés"
-                if outcome.failures > 0 { message += " (\(outcome.failures) éléments en cours d'utilisation ignorés)" }
+                var message = String(localized: "\(Format.fileBytes(outcome.freed)) freed")
+                if outcome.failures > 0 { message += String(localized: " (\(outcome.failures) items in use were skipped)") }
                 self.showToast(message)
             }
             self.scanCleanup()
@@ -676,7 +676,7 @@ final class AppState: ObservableObject {
         alert.messageText = title
         alert.informativeText = message
         alert.addButton(withTitle: button)
-        alert.addButton(withTitle: "Annuler")
+        alert.addButton(withTitle: String(localized: "Cancel"))
         alert.alertStyle = critical ? .warning : .informational
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn
@@ -722,6 +722,15 @@ final class AppState: ObservableObject {
 }
 
 enum ProcessSort: String, CaseIterable, Identifiable {
-    case cpu = "CPU", memory = "Mémoire", disk = "Disque"
+    case cpu = "CPU", memory = "Memory", disk = "Disk"
     var id: String { rawValue }
+
+    /// Libellé affiché (traduit) ; `rawValue` ne sert que d'identifiant.
+    var title: String {
+        switch self {
+        case .cpu: "CPU"
+        case .memory: String(localized: "Memory")
+        case .disk: String(localized: "Disk")
+        }
+    }
 }

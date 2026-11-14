@@ -49,7 +49,7 @@ private struct SelectionRow<Content: View>: View {
                     .font(.title3)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isOn ? "Sélectionné" : "Non sélectionné")
+            .accessibilityLabel(isOn ? "Selected" : "Not selected")
             content
         }
         .padding(.vertical, 4)
@@ -65,16 +65,16 @@ struct LargeFilesView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Taille minimale").font(.caption).foregroundStyle(.secondary)
-                Picker("Taille minimale", selection: $model.minSizeMB) {
+                Text("Minimum size").font(.caption).foregroundStyle(.secondary)
+                Picker("Minimum size", selection: $model.minSizeMB) {
                     ForEach(LargeFilesModel.thresholds, id: \.self) { mb in
-                        Text(mb >= 1_000 ? "\(mb / 1_000) Go" : "\(mb) Mo").tag(mb)
+                        Text(Format.fileBytes(UInt64(mb) * 1_000_000)).tag(mb)
                     }
                 }
                 .pickerStyle(.segmented).labelsHidden()
                 .frame(width: 220)
                 Spacer()
-                Button(model.hasScanned ? "Relancer" : "Analyser") { model.scan() }
+                Button(model.hasScanned ? "Scan again" : "Scan") { model.scan() }
                     .controlSize(.small).disabled(model.isScanning)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -83,14 +83,14 @@ struct LargeFilesView: View {
             if model.isScanning {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text("Analyse de votre dossier personnel…").font(.caption).foregroundStyle(.secondary)
-                    Text("macOS peut vous demander l'accès à Documents, Téléchargements, etc.").font(.caption2).foregroundStyle(.tertiary)
+                    Text("Scanning your home folder…").font(.caption).foregroundStyle(.secondary)
+                    Text("macOS may ask for access to Documents, Downloads, and so on.").font(.caption2).foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !model.hasScanned {
                 intro
             } else if model.files.isEmpty {
-                EmptyHint(text: "Aucun fichier de plus de \(model.minSizeMB) Mo trouvé.", systemImage: "checkmark.circle")
+                EmptyHint(text: "No file larger than \(model.minSizeMB) MB found.", systemImage: "checkmark.circle")
                     .padding(14).frame(maxHeight: .infinity, alignment: .top)
             } else {
                 List {
@@ -98,20 +98,20 @@ struct LargeFilesView: View {
                         SelectionRow(isOn: model.selected.contains(file.id), toggle: { model.toggle(file) }) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
-                                Text("\(file.folder) · modifié \(relativeDate(file.modified))")
+                                Text("\(file.folder) · modified \(relativeDate(file.modified))")
                                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
                             }
                             Spacer()
                             Text(Format.fileBytes(file.size)).font(.caption.monospacedDigit())
                             Button { revealInFinder(file.url) } label: { Image(systemName: "magnifyingglass.circle") }
-                                .buttonStyle(.borderless).help("Afficher dans le Finder")
+                                .buttonStyle(.borderless).help("Show in Finder")
                         }
                     }
                 }
                 .listStyle(.plain)
                 ActionBar(
-                    summary: model.selected.isEmpty ? "\(model.files.count) fichiers" : "\(model.selected.count) sélectionné(s) · \(Format.fileBytes(model.selectedSize))",
-                    button: "Mettre à la corbeille", enabled: !model.selected.isEmpty, action: model.trashSelected
+                    summary: model.selected.isEmpty ? String(localized: "Files: \(model.files.count)") : String(localized: "Selected: \(model.selected.count) · \(Format.fileBytes(model.selectedSize))"),
+                    button: String(localized: "Move to Trash"), enabled: !model.selected.isEmpty, action: model.trashSelected
                 )
             }
         }
@@ -119,7 +119,7 @@ struct LargeFilesView: View {
     }
 
     private var intro: some View {
-        EmptyHint(text: "Lancez l'analyse pour lister vos plus gros fichiers.", systemImage: "doc.zipper")
+        EmptyHint(text: "Run a scan to list your largest files.", systemImage: "doc.zipper")
             .padding(14).frame(maxHeight: .infinity, alignment: .top)
     }
 }
@@ -132,10 +132,10 @@ struct DevProjectsView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(model.hasScanned ? "\(Format.fileBytes(model.totalSize)) dans \(model.artifacts.count) dossiers" : "Analyse des projets")
+                Text(model.hasScanned ? "Folders found: \(model.artifacts.count) · \(Format.fileBytes(model.totalSize))" : "Project scan")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button(model.hasScanned ? "Relancer" : "Analyser") { model.scan() }
+                Button(model.hasScanned ? "Scan again" : "Scan") { model.scan() }
                     .controlSize(.small).disabled(model.isScanning)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -144,11 +144,11 @@ struct DevProjectsView: View {
             if model.isScanning {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text("Recherche de node_modules, .build, target, Pods…").font(.caption).foregroundStyle(.secondary)
+                    Text("Looking for node_modules, .build, target, Pods…").font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.hasScanned && model.artifacts.isEmpty {
-                EmptyHint(text: "Aucun dossier de dépendances ou de build trouvé.", systemImage: "checkmark.circle")
+                EmptyHint(text: "No dependency or build folder found.", systemImage: "checkmark.circle")
                     .padding(14).frame(maxHeight: .infinity, alignment: .top)
             } else {
                 List {
@@ -169,18 +169,18 @@ struct DevProjectsView: View {
                                 Spacer()
                                 Text(Format.fileBytes(item.size)).font(.caption.monospacedDigit())
                                 Button { revealInFinder(item.url) } label: { Image(systemName: "magnifyingglass.circle") }
-                                    .buttonStyle(.borderless).help("Afficher dans le Finder")
+                                    .buttonStyle(.borderless).help("Show in Finder")
                             }
                         }
                     } footer: {
-                        Text("Les projets inactifs depuis plus de \(DevArtifactScanner.staleAfterDays) jours sont pré-sélectionnés. Ces dossiers se recréent avec « npm install », « swift build », etc. ; vos sources ne sont jamais touchées.")
+                        Text("Projects inactive for more than \(DevArtifactScanner.staleAfterDays) days are pre-selected. These folders can be rebuilt with “npm install”, “swift build”, and so on; your sources are never touched.")
                             .font(.caption2)
                     }
                 }
                 .listStyle(.plain)
                 ActionBar(
-                    summary: model.selected.isEmpty ? "Rien de sélectionné" : "\(model.selected.count) sélectionné(s) · \(Format.fileBytes(model.selectedSize))",
-                    button: "Supprimer", enabled: !model.selected.isEmpty, destructive: true, action: model.removeSelected
+                    summary: model.selected.isEmpty ? String(localized: "Nothing selected") : String(localized: "Selected: \(model.selected.count) · \(Format.fileBytes(model.selectedSize))"),
+                    button: String(localized: "Delete"), enabled: !model.selected.isEmpty, destructive: true, action: model.removeSelected
                 )
             }
         }
@@ -188,8 +188,8 @@ struct DevProjectsView: View {
     }
 
     private func activityText(_ item: DevArtifact) -> String {
-        guard let days = item.daysInactive() else { return "activité inconnue" }
-        return days == 0 ? "actif aujourd'hui" : "inactif depuis \(days) j"
+        guard let days = item.daysInactive() else { return String(localized: "activity unknown") }
+        return days == 0 ? String(localized: "active today") : String(localized: "inactive for \(days) d")
     }
 }
 
@@ -211,7 +211,7 @@ struct UninstallerView: View {
 
     private var list: some View {
         VStack(spacing: 0) {
-            TextField("Rechercher une application", text: $model.search)
+            TextField("Search for an app", text: $model.search)
                 .textFieldStyle(.roundedBorder)
                 .padding(.horizontal, 14).padding(.vertical, 8)
             Divider()
@@ -224,11 +224,11 @@ struct UninstallerView: View {
                             AppIconView(path: app.url.path).frame(width: 28, height: 28)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(app.name).font(.callout).lineLimit(1)
-                                Text("Dernière ouverture : \(relativeDate(app.lastUsed))")
+                                Text("Last opened: \(relativeDate(app.lastUsed))")
                                     .font(.caption2).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(app.size.map(Format.fileBytes) ?? "…").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            Text(app.size.map { Format.fileBytes($0) } ?? "…").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                         }
                         .contentShape(Rectangle())
@@ -247,7 +247,7 @@ struct UninstallerView: View {
                 AppIconView(path: app.url.path).frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(app.name).font(.headline)
-                    Text([app.version.map { "v\($0)" }, app.size.map(Format.fileBytes)].compactMap { $0 }.joined(separator: " · "))
+                    Text([app.version.map { "v\($0)" }, app.size.map { Format.fileBytes($0) }].compactMap { $0 }.joined(separator: " · "))
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -258,7 +258,7 @@ struct UninstallerView: View {
             if model.isLoadingLeftovers {
                 VStack(spacing: 8) {
                     ProgressView()
-                    Text("Recherche des fichiers associés…").font(.caption).foregroundStyle(.secondary)
+                    Text("Looking for related files…").font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -268,12 +268,12 @@ struct UninstallerView: View {
                             Image(systemName: "app.fill").foregroundStyle(.secondary)
                             Text(app.url.path).font(.caption).lineLimit(1).truncationMode(.middle)
                             Spacer()
-                            Text(app.size.map(Format.fileBytes) ?? "").font(.caption.monospacedDigit())
+                            Text(app.size.map { Format.fileBytes($0) } ?? "").font(.caption.monospacedDigit())
                         }
                     }
-                    Section("Fichiers associés (\(model.leftovers.count))") {
+                    Section("Related files (\(model.leftovers.count))") {
                         if model.leftovers.isEmpty {
-                            Text("Aucun reste trouvé dans ~/Library.").font(.caption).foregroundStyle(.secondary)
+                            Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(model.leftovers) { item in
                             SelectionRow(isOn: !model.excluded.contains(item.id), toggle: {
@@ -288,8 +288,8 @@ struct UninstallerView: View {
                 }
                 .listStyle(.plain)
                 ActionBar(
-                    summary: "\(Format.fileBytes(model.totalToFree)) libérés",
-                    button: "Désinstaller", enabled: true, destructive: true, action: model.uninstall
+                    summary: String(localized: "\(Format.fileBytes(model.totalToFree)) freed"),
+                    button: String(localized: "Uninstall"), enabled: true, destructive: true, action: model.uninstall
                 )
             }
         }
@@ -307,7 +307,7 @@ struct StartupItemsView: View {
                 if model.isLoading && model.agents.isEmpty {
                     ProgressView()
                 } else if model.agents.isEmpty {
-                    Text("Aucun agent de lancement tiers.").font(.caption).foregroundStyle(.secondary)
+                    Text("No third-party launch agents.").font(.caption).foregroundStyle(.secondary)
                 }
                 ForEach(model.agents) { agent in
                     HStack(spacing: 8) {
@@ -322,43 +322,43 @@ struct StartupItemsView: View {
                             set: { model.setEnabled(agent, enabled: $0) }
                         ))
                         .toggleStyle(.switch).labelsHidden().controlSize(.small)
-                        .accessibilityLabel("Lancer \(agent.displayName) à l'ouverture de session")
+                        .accessibilityLabel("Launch \(agent.displayName) at login")
                     }
                 }
             } header: {
-                Text("Agents de lancement")
+                Text("Launch agents")
             } footer: {
-                Text("Désactiver arrête l'agent et l'empêche de revenir, sans supprimer son fichier : il suffit de le réactiver. Les agents d'Apple ne sont pas listés.")
+                Text("Turning an agent off stops it and keeps it from coming back, without deleting its file: just turn it on again. Apple's agents are not listed.")
                     .font(.caption2)
             }
 
             Section {
                 if let items = model.loginItems {
-                    if items.isEmpty { Text("Aucun élément d'ouverture.").font(.caption).foregroundStyle(.secondary) }
+                    if items.isEmpty { Text("No login items.").font(.caption).foregroundStyle(.secondary) }
                     ForEach(items) { item in
                         HStack {
                             AppIconView(path: item.path).frame(width: 20, height: 20)
                             Text(item.name).font(.callout)
                             Spacer()
-                            Button("Retirer") { model.remove(item) }.controlSize(.small)
+                            Button("Remove") { model.remove(item) }.controlSize(.small)
                         }
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(model.loginItemsDenied
-                             ? "Accès refusé. Autorisez Soaro à contrôler « System Events » dans Réglages Système › Confidentialité › Automatisation."
-                             : "Affiche la liste « Ouvrir à la connexion » de Réglages Système. macOS demandera votre autorisation.")
+                             ? "Access denied. Allow Soaro to control “System Events” in System Settings › Privacy & Security › Automation."
+                             : "Shows the “Open at Login” list from System Settings. macOS will ask for your permission.")
                             .font(.caption).foregroundStyle(.secondary)
-                        Button(model.loginItemsDenied ? "Réessayer" : "Afficher") { model.loadLoginItems() }.controlSize(.small)
+                        Button(model.loginItemsDenied ? "Try again" : "Show") { model.loadLoginItems() }.controlSize(.small)
                     }
                 }
             } header: {
-                Text("Ouvrir à la connexion")
+                Text("Open at login")
             } footer: {
                 HStack {
-                    Text("Les « apps en arrière-plan » ne peuvent se gérer que dans Réglages Système.").font(.caption2)
+                    Text("“Allow in the Background” apps can only be managed in System Settings.").font(.caption2)
                     Spacer()
-                    Button("Ouvrir les réglages") { model.openSystemSettings() }.controlSize(.mini)
+                    Button("Open System Settings") { model.openSystemSettings() }.controlSize(.mini)
                 }
             }
         }

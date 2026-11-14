@@ -12,7 +12,7 @@ struct BatteryTab: View {
                 energySection
             }
         } else {
-            EmptyHint(text: "Aucune batterie détectée sur ce Mac.", systemImage: "battery.0percent")
+            EmptyHint(text: "No battery detected on this Mac.", systemImage: "battery.0percent")
         }
     }
 
@@ -38,14 +38,14 @@ struct BatteryTab: View {
             }
             .frame(width: 112, height: 112)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Niveau de batterie")
+            .accessibilityLabel("Battery level")
             .accessibilityValue(Format.percent(fraction))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(statusTitle(b)).font(.headline)
                 Text(statusDetail(b)).font(.callout).foregroundStyle(.secondary)
                 if let w = b.adapterWatts {
-                    Label("Chargeur \(w) W", systemImage: "powerplug").font(.caption).foregroundStyle(.secondary)
+                    Label("Charger \(w) W", systemImage: "powerplug").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 0)
@@ -54,36 +54,36 @@ struct BatteryTab: View {
     }
 
     private func statusTitle(_ b: BatteryStats) -> String {
-        if b.isCharging { return "En charge" }
-        if b.isPluggedIn { return b.isFullyCharged ? "Chargée" : "Sur secteur" }
-        return "Sur batterie"
+        if b.isCharging { return String(localized: "Charging") }
+        if b.isPluggedIn { return b.isFullyCharged ? String(localized: "Charged") : String(localized: "On power adapter") }
+        return String(localized: "On battery")
     }
 
     private func statusDetail(_ b: BatteryStats) -> String {
-        if b.isCharging { return b.minutesRemaining.map { "Pleine dans \(Format.minutes($0))" } ?? "Estimation en cours…" }
+        if b.isCharging { return b.minutesRemaining.map { String(localized: "Full in \(Format.minutes($0))") } ?? String(localized: "Estimating…") }
         if b.isPluggedIn {
-            if b.isFullyCharged { return "Branchée, charge terminée" }
-            if let limit = state.systemFacts.chargeLimit, limit < 100 { return "Branchée, charge limitée à \(limit) % par macOS" }
-            return "Branchée, charge en pause"
+            if b.isFullyCharged { return String(localized: "Plugged in, charging complete") }
+            if let limit = state.systemFacts.chargeLimit, limit < 100 { return String(localized: "Plugged in, charge limited to \(limit) % by macOS") }
+            return String(localized: "Plugged in, charging paused")
         }
-        return b.minutesRemaining.map { "\(Format.minutes($0)) d'autonomie restante" } ?? "Autonomie en cours d'estimation…"
+        return b.minutesRemaining.map { String(localized: "\(Format.minutes($0)) of battery left") } ?? String(localized: "Estimating battery life…")
     }
 
     // MARK: Détails
 
     private func details(_ b: BatteryStats) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Détails")
+            SectionHeader(title: "Details")
             Card {
                 if let p = b.batteryPower, abs(p) >= 0.1 {
-                    KeyValueRow(p > 0 ? "Puissance de charge" : "Puissance de décharge", String(format: "%.1f W", abs(p)))
+                    KeyValueRow(p > 0 ? "Charging power" : "Discharging power", String(format: "%.1f W", abs(p)))
                 }
-                if let s = b.systemPower { KeyValueRow("Consommation du Mac", String(format: "%.1f W", s)) }
+                if let s = b.systemPower { KeyValueRow("Mac power draw", String(format: "%.1f W", s)) }
                 if let t = b.temperature ?? state.snapshot?.sensors?.battery {
-                    KeyValueRow("Température", "\(Int(t.rounded())) °C", color: t >= 42 ? .orange : .green)
+                    KeyValueRow("Temperature", "\(Int(t.rounded())) °C", color: t >= 42 ? .orange : .green)
                 }
                 if let max = b.maxCapacity, let design = b.designCapacity {
-                    KeyValueRow("Capacité actuelle", "\(max) / \(design) mAh")
+                    KeyValueRow("Current capacity", "\(max) / \(design) mAh")
                 }
             }
         }
@@ -93,12 +93,12 @@ struct BatteryTab: View {
 
     private func healthSection(_ b: BatteryStats) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Santé de la batterie")
+            SectionHeader(title: "Battery health")
             Card {
                 if let h = b.health {
                     ProgressView(value: h) {
                         HStack {
-                            Text("Capacité maximale").font(.caption)
+                            Text("Maximum capacity").font(.caption)
                             Spacer()
                             Text(Format.percent(h)).font(.caption.weight(.semibold).monospacedDigit())
                         }
@@ -107,26 +107,26 @@ struct BatteryTab: View {
                     Text(healthAdvice(h)).font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                KeyValueRow("Cycles de charge", "\(b.cycleCount)")
+                KeyValueRow("Charge cycles", "\(b.cycleCount)")
             }
         }
     }
 
     private func healthAdvice(_ h: Double) -> String {
         switch h {
-        case 0.9...: "Excellente : la batterie conserve presque toute sa capacité d'origine."
-        case 0.8..<0.9: "Bonne : usure normale pour une batterie utilisée régulièrement."
-        case 0.7..<0.8: "Usée : l'autonomie est sensiblement réduite. Un remplacement sera bientôt à envisager."
-        default: "Très usée : un remplacement est recommandé."
+        case 0.9...: String(localized: "Excellent: the battery keeps almost all of its original capacity.")
+        case 0.8..<0.9: String(localized: "Good: normal wear for a battery that is used regularly.")
+        case 0.7..<0.8: String(localized: "Worn: battery life is noticeably shorter. Consider a replacement soon.")
+        default: String(localized: "Heavily worn: a replacement is recommended.")
         }
     }
 
     // MARK: Énergie par application
 
     @ViewBuilder private var energySection: some View {
-        SectionHeader(title: "Impact énergétique par application")
+        SectionHeader(title: "Energy impact by app")
         if state.energyEntries.isEmpty {
-            EmptyHint(text: "Mesure en cours… (environ 2 secondes)", systemImage: "hourglass")
+            EmptyHint(text: "Measuring… (about 2 seconds)", systemImage: "hourglass")
         } else {
             let maxImpact = max(state.energyEntries.map(\.impact).max() ?? 1, 1)
             VStack(spacing: 6) {
@@ -144,7 +144,7 @@ struct BatteryTab: View {
                     }
                 }
             }
-            Text("Même échelle que la colonne « Impact énergétique » du Moniteur d'activité : plus la valeur est haute, plus l'app vide la batterie.")
+            Text("Same scale as the “Energy Impact” column in Activity Monitor: the higher the value, the faster the app drains the battery.")
                 .font(.caption2).foregroundStyle(.secondary)
         }
     }

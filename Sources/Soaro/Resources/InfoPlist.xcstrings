@@ -1,0 +1,64 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSAppleEventsUsageDescription": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro needs to control the Finder to empty the Trash."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro a besoin de contrôler le Finder pour vider la corbeille."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro muss den Finder steuern, um den Papierkorb zu leeren."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro necesita controlar el Finder para vaciar la papelera."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro deve controllare il Finder per svuotare il Cestino."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Soaro precisa controlar o Finder para esvaziar a Lixeira."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaroがゴミ箱を空にするには、Finderを操作する必要があります。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro 需要控制“访达”才能清倒废纸篓。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro가 휴지통을 비우려면 Finder를 제어해야 합니다."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

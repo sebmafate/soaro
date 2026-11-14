@@ -233,10 +233,10 @@ extension MenuBarRenderer {
 extension PressureLevel {
     var label: String {
         switch self {
-        case .normal: "normal"
-        case .medium: "moyen"
-        case .high: "élevé"
-        case .critical: "critique"
+        case .normal: String(localized: "normal")
+        case .medium: String(localized: "medium")
+        case .high: String(localized: "high")
+        case .critical: String(localized: "critical")
         }
     }
 
@@ -357,9 +357,9 @@ enum MenuBarTooltip {
         let alerts = recommendations.filter { $0.severity >= .warning }
         let suggestions = recommendations.filter { $0.severity == .info }
         if alerts.isEmpty {
-            lines.append("Soaro : tout est en ordre")
+            lines.append(String(localized: "Soaro: everything is fine"))
         } else {
-            lines.append(alerts.count == 1 ? "Soaro : 1 point d'attention" : "Soaro : \(alerts.count) points d'attention")
+            lines.append(alerts.count == 1 ? String(localized: "Soaro: 1 attention point") : String(localized: "Soaro: \(alerts.count) attention points"))
             for rec in alerts {
                 lines.append("\(rec.severity == .critical ? "⚠︎" : "•") \(rec.title)")
                 lines.append("   \(rec.detail)")
@@ -369,12 +369,12 @@ enum MenuBarTooltip {
         let colored = snapshot.map { explanations(for: items, snapshot: $0) } ?? []
         if !colored.isEmpty {
             lines.append("")
-            lines.append("Valeurs en couleur :")
+            lines.append(String(localized: "Colored values:"))
             lines.append(contentsOf: colored.map { "• \($0)" })
         }
         if !suggestions.isEmpty {
             lines.append("")
-            lines.append(suggestions.count == 1 ? "1 suggestion :" : "\(suggestions.count) suggestions :")
+            lines.append(suggestions.count == 1 ? String(localized: "1 suggestion:") : String(localized: "\(suggestions.count) suggestions:"))
             lines.append(contentsOf: suggestions.map { "• \($0.title)" })
         }
         return lines.joined(separator: "\n")
@@ -384,13 +384,13 @@ enum MenuBarTooltip {
     static func explanations(for items: [MenuBarItem], snapshot s: SystemSnapshot) -> [String] {
         items.compactMap { item in
             guard case .stacked(let label, let value, let level) = item, level > .normal else { return nil }
-            let suffix = "(niveau \(level.label))"
+            let suffix = String(localized: "(level: \(level.label))")
             switch label.prefix(3) {
-            case "CPU": return "Processeur à \(value) \(suffix)"
-            case "GPU": return "Processeur graphique à \(value) \(suffix)"
-            case "RAM": return "Mémoire : pression \(s.memory.pressure.label.lowercased()), swap \(Format.bytes(s.memory.swapUsed)) \(suffix)"
-            case "SSD": return "Disque rempli à \(value), \(Format.fileBytes(s.disk.available)) libres \(suffix)"
-            case "BAT": return "Batterie à \(value), non branchée \(suffix)"
+            case "CPU": return String(localized: "Processor at \(value) \(suffix)")
+            case "GPU": return String(localized: "Graphics processor at \(value) \(suffix)")
+            case "RAM": return String(localized: "Memory: \(s.memory.pressure.label.lowercased()) pressure, swap \(Format.bytes(s.memory.swapUsed)) \(suffix)")
+            case "SSD": return String(localized: "Disk \(value) full, \(Format.fileBytes(s.disk.available)) free \(suffix)")
+            case "BAT": return String(localized: "Battery at \(value), not plugged in \(suffix)")
             default: return "\(label) \(value) \(suffix)"
             }
         }

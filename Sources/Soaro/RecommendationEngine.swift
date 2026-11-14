@@ -28,16 +28,16 @@ enum RecommendationEngine {
             if freeFraction < 0.05 || free < 10 * gigabyte {
                 result.append(Recommendation(
                     id: "disk.low", severity: .critical,
-                    title: "Disque presque plein",
-                    detail: "Il ne reste que \(Format.fileBytes(free)) (\(Format.percent(freeFraction))). Le système ralentit quand le disque est saturé.",
-                    action: .openStorageSettings, actionLabel: "Ouvrir Stockage"
+                    title: String(localized: "Disk almost full"),
+                    detail: String(localized: "Only \(Format.fileBytes(free)) (\(Format.percent(freeFraction))) left. The system slows down when the disk is full."),
+                    action: .openStorageSettings, actionLabel: String(localized: "Open Storage")
                 ))
             } else if freeFraction < 0.10 || free < 25 * gigabyte {
                 result.append(Recommendation(
                     id: "disk.low", severity: .warning,
-                    title: "Espace disque en baisse",
-                    detail: "\(Format.fileBytes(free)) disponibles (\(Format.percent(freeFraction))).",
-                    action: .openStorageSettings, actionLabel: "Ouvrir Stockage"
+                    title: String(localized: "Disk space is getting low"),
+                    detail: String(localized: "\(Format.fileBytes(free)) available (\(Format.percent(freeFraction)))."),
+                    action: .openStorageSettings, actionLabel: String(localized: "Open Storage")
                 ))
             }
         }
@@ -48,18 +48,18 @@ enum RecommendationEngine {
             let urgent = freeFraction < 0.10
             result.append(Recommendation(
                 id: "cleanup.quick", severity: urgent ? .warning : .info,
-                title: "\(Format.fileBytes(reclaimable)) à récupérer",
-                detail: "Caches, journaux et fichiers de compilation sans risque pour vos données.",
-                action: .quickCleanup, actionLabel: "Nettoyer"
+                title: String(localized: "\(Format.fileBytes(reclaimable)) can be freed"),
+                detail: String(localized: "Caches, logs and build files, safe for your data."),
+                action: .quickCleanup, actionLabel: String(localized: "Clean")
             ))
         }
 
         if let trash = (input.cleanupSizes[.trash] ?? nil), trash >= 500_000_000 {
             result.append(Recommendation(
                 id: "cleanup.trash", severity: .info,
-                title: "La corbeille contient \(Format.fileBytes(trash))",
-                detail: "Videz-la pour libérer de l'espace.",
-                action: .cleanup(.trash), actionLabel: "Vider"
+                title: String(localized: "The Trash contains \(Format.fileBytes(trash))"),
+                detail: String(localized: "Empty it to free up space."),
+                action: .cleanup(.trash), actionLabel: String(localized: "Empty")
             ))
         }
 
@@ -71,18 +71,18 @@ enum RecommendationEngine {
                 .filter { $0.canQuit && $0.memory >= 400_000_000 }
                 .max { $0.memory < $1.memory }
             let severity: Severity = m.pressure == .critical ? .critical : .warning
-            let title = m.pressure == .normal ? "Beaucoup de swap utilisé" : "Mémoire sous pression"
+            let title = m.pressure == .normal ? String(localized: "A lot of swap in use") : String(localized: "Memory under pressure")
             if let heavy, let path = heavy.appPath {
                 result.append(Recommendation(
                     id: "memory.pressure", severity: severity, title: title,
-                    detail: "\(heavy.name) occupe \(Format.bytes(heavy.memory)). Le quitter libérerait de la mémoire.",
-                    action: .quitApp(path: path, name: heavy.name), actionLabel: "Quitter \(heavy.name)"
+                    detail: String(localized: "\(heavy.name) uses \(Format.bytes(heavy.memory)). Quitting it would free up memory."),
+                    action: .quitApp(path: path, name: heavy.name), actionLabel: String(localized: "Quit \(heavy.name)")
                 ))
             } else {
                 result.append(Recommendation(
                     id: "memory.pressure", severity: severity, title: title,
-                    detail: "Swap : \(Format.bytes(m.swapUsed)). Fermez les applications inutilisées.",
-                    action: .openActivityMonitor, actionLabel: "Moniteur d'activité"
+                    detail: String(localized: "Swap: \(Format.bytes(m.swapUsed)). Close apps you are not using."),
+                    action: .openActivityMonitor, actionLabel: String(localized: "Activity Monitor")
                 ))
             }
         }
@@ -91,42 +91,42 @@ enum RecommendationEngine {
         if input.recentCPUSamples >= 8, input.recentCPUAverage >= 0.80 {
             let culprit = input.processes.max { $0.cpu < $1.cpu }
             if let culprit, culprit.cpu >= 30 {
-                let detail = "\(culprit.name) utilise environ \(Int(culprit.cpu)) % de CPU depuis un moment."
+                let detail = String(localized: "\(culprit.name) has been using about \(Int(culprit.cpu)) % CPU for a while.")
                 if culprit.canQuit, let path = culprit.appPath {
                     result.append(Recommendation(
-                        id: "cpu.sustained", severity: .warning, title: "Processeur très sollicité",
+                        id: "cpu.sustained", severity: .warning, title: String(localized: "Processor under heavy load"),
                         detail: detail,
-                        action: .quitApp(path: path, name: culprit.name), actionLabel: "Quitter \(culprit.name)"
+                        action: .quitApp(path: path, name: culprit.name), actionLabel: String(localized: "Quit \(culprit.name)")
                     ))
                 } else {
                     result.append(Recommendation(
-                        id: "cpu.sustained", severity: .warning, title: "Processeur très sollicité",
-                        detail: detail, action: .openActivityMonitor, actionLabel: "Moniteur d'activité"
+                        id: "cpu.sustained", severity: .warning, title: String(localized: "Processor under heavy load"),
+                        detail: detail, action: .openActivityMonitor, actionLabel: String(localized: "Activity Monitor")
                     ))
                 }
             } else {
                 result.append(Recommendation(
-                    id: "cpu.sustained", severity: .warning, title: "Processeur très sollicité",
-                    detail: "Utilisation moyenne de \(Format.percent(input.recentCPUAverage)) sur les dernières secondes.",
-                    action: .openActivityMonitor, actionLabel: "Moniteur d'activité"
+                    id: "cpu.sustained", severity: .warning, title: String(localized: "Processor under heavy load"),
+                    detail: String(localized: "Average usage of \(Format.percent(input.recentCPUAverage)) over the last few seconds."),
+                    action: .openActivityMonitor, actionLabel: String(localized: "Activity Monitor")
                 ))
             }
         }
 
         // MARK: Fuites mémoire
         for leak in input.leaks.prefix(2) {
-            let detail = "+\(Format.bytes(leak.growth)) en \(Format.minutes(leak.minutes)), \(Format.bytes(leak.currentMemory)) actuellement. Le relancer remet son compteur à zéro."
+            let detail = String(localized: "+\(Format.bytes(leak.growth)) in \(Format.minutes(leak.minutes)), \(Format.bytes(leak.currentMemory)) now. Restarting it resets its counter.")
             if leak.canQuit, let path = leak.appPath {
                 result.append(Recommendation(
                     id: "leak.\(leak.id)", severity: .warning,
-                    title: "\(leak.name) semble fuir de la mémoire", detail: detail,
-                    action: .quitApp(path: path, name: leak.name), actionLabel: "Quitter \(leak.name)"
+                    title: String(localized: "\(leak.name) seems to be leaking memory"), detail: detail,
+                    action: .quitApp(path: path, name: leak.name), actionLabel: String(localized: "Quit \(leak.name)")
                 ))
             } else {
                 result.append(Recommendation(
                     id: "leak.\(leak.id)", severity: .warning,
-                    title: "\(leak.name) semble fuir de la mémoire", detail: detail,
-                    action: .openActivityMonitor, actionLabel: "Moniteur d'activité"
+                    title: String(localized: "\(leak.name) seems to be leaking memory"), detail: detail,
+                    action: .openActivityMonitor, actionLabel: String(localized: "Activity Monitor")
                 ))
             }
         }
@@ -136,23 +136,23 @@ enum RecommendationEngine {
             if !b.isPluggedIn && b.percent <= 10 {
                 result.append(Recommendation(
                     id: "battery.low", severity: .critical,
-                    title: "Batterie très faible (\(Int(b.percent)) %)",
-                    detail: "Branchez le chargeur pour éviter une extinction.",
+                    title: String(localized: "Battery very low (\(Int(b.percent)) %)"),
+                    detail: String(localized: "Plug in the charger to avoid a shutdown."),
                     action: nil, actionLabel: nil
                 ))
             } else if !b.isPluggedIn && b.percent <= 20 {
                 result.append(Recommendation(
                     id: "battery.low", severity: .warning,
-                    title: "Batterie faible (\(Int(b.percent)) %)",
-                    detail: b.minutesRemaining.map { "Environ \(Format.minutes($0)) d'autonomie restante." } ?? "Pensez à brancher le chargeur.",
+                    title: String(localized: "Battery low (\(Int(b.percent)) %)"),
+                    detail: b.minutesRemaining.map { String(localized: "About \(Format.minutes($0)) of battery left.") } ?? String(localized: "Remember to plug in the charger."),
                     action: nil, actionLabel: nil
                 ))
             }
             if let health = b.health, health < 0.80 {
                 result.append(Recommendation(
                     id: "battery.health", severity: health < 0.70 ? .warning : .info,
-                    title: "Batterie usée : \(Format.percent(health)) de sa capacité d'origine",
-                    detail: "\(b.cycleCount) cycles de charge. En dessous de 80 %, Apple considère la batterie comme consommée.",
+                    title: String(localized: "Battery worn: \(Format.percent(health)) of its original capacity"),
+                    detail: String(localized: "\(b.cycleCount) charge cycles. Below 80 %, Apple considers the battery consumed."),
                     action: nil, actionLabel: nil
                 ))
             }
@@ -160,8 +160,8 @@ enum RecommendationEngine {
             if let t = batteryTemp, t >= 42 {
                 result.append(Recommendation(
                     id: "battery.hot", severity: .warning,
-                    title: "Batterie chaude (\(Int(t)) °C)",
-                    detail: "Une chaleur prolongée use la batterie plus vite. Évitez de charger sous un coussin ou au soleil.",
+                    title: String(localized: "Battery hot (\(Int(t)) °C)"),
+                    detail: String(localized: "Prolonged heat wears the battery faster. Avoid charging under a cushion or in the sun."),
                     action: nil, actionLabel: nil
                 ))
             }
@@ -171,8 +171,8 @@ enum RecommendationEngine {
         if s.thermalState == .serious || s.thermalState == .critical {
             result.append(Recommendation(
                 id: "thermal", severity: s.thermalState == .critical ? .critical : .warning,
-                title: "Le Mac chauffe",
-                detail: "Le système réduit les performances pour se refroidir. Fermez les tâches lourdes et aérez la machine.",
+                title: String(localized: "Your Mac is getting hot"),
+                detail: String(localized: "The system is slowing down to cool off. Close heavy tasks and let the machine breathe."),
                 action: nil, actionLabel: nil
             ))
         }
@@ -180,8 +180,8 @@ enum RecommendationEngine {
         if let cpuTemp = s.sensors?.cpu, cpuTemp >= 95, !result.contains(where: { $0.id == "thermal" }) {
             result.append(Recommendation(
                 id: "thermal", severity: .warning,
-                title: "Processeur très chaud (\(Int(cpuTemp)) °C)",
-                detail: "Fermez les applications gourmandes et vérifiez que les aérations ne sont pas obstruées.",
+                title: String(localized: "Processor very hot (\(Int(cpuTemp)) °C)"),
+                detail: String(localized: "Close demanding apps and check that the vents are not blocked."),
                 action: nil, actionLabel: nil
             ))
         }
@@ -190,8 +190,8 @@ enum RecommendationEngine {
         if s.uptime >= 14 * 86_400 {
             result.append(Recommendation(
                 id: "uptime", severity: .info,
-                title: "Pas de redémarrage depuis \(Format.uptime(s.uptime))",
-                detail: "Un redémarrage libère la mémoire fragmentée et applique les mises à jour.",
+                title: String(localized: "No restart for \(Format.uptime(s.uptime))"),
+                detail: String(localized: "A restart frees fragmented memory and applies updates."),
                 action: nil, actionLabel: nil
             ))
         }

@@ -21,11 +21,11 @@ struct OverviewTab: View {
             LazyVGrid(columns: columns, spacing: 8) {
                 StatCard(
                     title: "CPU", systemImage: "cpu", value: Format.percent(s.cpu.total),
-                    subtitle: "Util. \(Format.percent(s.cpu.user)) · Sys. \(Format.percent(s.cpu.system))",
+                    subtitle: String(localized: "User \(Format.percent(s.cpu.user)) · System \(Format.percent(s.cpu.system))"),
                     tint: loadColor(s.cpu.total), history: state.cpuHistory
                 )
                 StatCard(
-                    title: "Mémoire", systemImage: "memorychip", value: Format.percent(s.memory.usedFraction),
+                    title: "Memory", systemImage: "memorychip", value: Format.percent(s.memory.usedFraction),
                     subtitle: "\(Format.bytes(s.memory.used)) / \(Format.bytes(s.memory.total))",
                     tint: loadColor(s.memory.usedFraction), history: state.memoryHistory
                 )
@@ -37,20 +37,20 @@ struct OverviewTab: View {
                     )
                 }
                 StatCard(
-                    title: "Disque", systemImage: "internaldrive", value: Format.percent(s.disk.usedFraction),
-                    subtitle: "\(Format.fileBytes(s.disk.available)) libres",
+                    title: "Disk", systemImage: "internaldrive", value: Format.percent(s.disk.usedFraction),
+                    subtitle: String(localized: "\(Format.fileBytes(s.disk.available)) free"),
                     tint: loadColor(s.disk.usedFraction), fraction: s.disk.usedFraction
                 )
                 if let net = s.network {
                     StatCard(
-                        title: "Réseau", systemImage: "network", value: "↓ " + Format.rate(net.downRate), valueSize: 15,
+                        title: "Network", systemImage: "network", value: "↓ " + Format.rate(net.downRate), valueSize: 15,
                         subtitle: "↑ " + Format.rate(net.upRate),
                         tint: .blue, history: state.netDownHistory, autoScaleFloor: 50_000
                     )
                 }
                 if let b = s.battery {
                     StatCard(
-                        title: "Batterie", systemImage: Self.batterySymbol(b), value: Format.percent(b.percent / 100),
+                        title: "Battery", systemImage: Self.batterySymbol(b), value: Format.percent(b.percent / 100),
                         subtitle: Self.batterySubtitle(b),
                         tint: b.isPluggedIn ? .green : levelColor(b.percent / 100), fraction: b.percent / 100
                     )
@@ -73,17 +73,17 @@ struct OverviewTab: View {
     }
 
     static func batterySubtitle(_ b: BatteryStats) -> String {
-        if b.isCharging { return b.minutesRemaining.map { "En charge · \(Format.minutes($0))" } ?? "En charge" }
-        if b.isPluggedIn { return b.isFullyCharged ? "Chargée · secteur" : "Sur secteur" }
-        return b.minutesRemaining.map { "\(Format.minutes($0)) restantes" } ?? "Sur batterie"
+        if b.isCharging { return b.minutesRemaining.map { String(localized: "Charging · \(Format.minutes($0))") } ?? String(localized: "Charging") }
+        if b.isPluggedIn { return b.isFullyCharged ? String(localized: "Charged · plugged in") : String(localized: "On power adapter") }
+        return b.minutesRemaining.map { String(localized: "\(Format.minutes($0)) left") } ?? String(localized: "On battery")
     }
 
     // MARK: Recommandations
 
     @ViewBuilder private var recommendations: some View {
-        SectionHeader(title: "Recommandations")
+        SectionHeader(title: "Recommendations")
         if state.recommendations.isEmpty {
-            Label("Rien à signaler : votre Mac est en bonne forme.", systemImage: "checkmark.seal.fill")
+            Label("Nothing to report: your Mac is in good shape.", systemImage: "checkmark.seal.fill")
                 .font(.callout)
                 .foregroundStyle(.green)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -98,7 +98,7 @@ struct OverviewTab: View {
 
     @ViewBuilder private var adviceSection: some View {
         if !state.advice.isEmpty {
-            SectionHeader(title: "Conseils de réglage")
+            SectionHeader(title: "Settings tips")
             ForEach(state.advice) { item in
                 AdviceRow(advice: item, onAction: { state.perform($0) }, onDismiss: { state.dismissAdvice(item) })
             }
@@ -109,10 +109,10 @@ struct OverviewTab: View {
 
     @ViewBuilder private var processes: some View {
         HStack {
-            SectionHeader(title: "Plus gourmandes")
+            SectionHeader(title: "Top consumers")
             Spacer()
-            Picker("Tri", selection: $sort) {
-                ForEach(ProcessSort.allCases) { Text($0.rawValue).tag($0) }
+            Picker("Sort", selection: $sort) {
+                ForEach(ProcessSort.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -130,7 +130,7 @@ struct ProcessList: View {
     var body: some View {
         let list = state.top(by: sort, count: count)
         if list.isEmpty {
-            Text("Chargement…").font(.caption).foregroundStyle(.secondary)
+            Text("Loading…").font(.caption).foregroundStyle(.secondary)
         } else {
             VStack(spacing: 2) {
                 ForEach(list) { group in

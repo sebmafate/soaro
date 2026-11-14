@@ -25,16 +25,16 @@ struct HistoryTab: View {
         VStack(alignment: .leading, spacing: 12) {
             controls
             if state.history == nil {
-                EmptyHint(text: "L'historique est indisponible (base de données inaccessible).", systemImage: "exclamationmark.triangle")
+                EmptyHint(text: "History is unavailable (the database cannot be opened).", systemImage: "exclamationmark.triangle")
             } else if !loaded {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if rows.count < 2 {
-                EmptyHint(text: "Pas encore assez de données : une mesure est enregistrée toutes les 30 secondes.", systemImage: "hourglass")
+                EmptyHint(text: "Not enough data yet: a measurement is saved every 30 seconds.", systemImage: "hourglass")
             } else {
                 chart
                 summary
             }
-            Text("Conservé 30 jours, uniquement sur ce Mac (~/Library/Application Support/Soaro).")
+            Text("Kept for 30 days, on this Mac only (~/Library/Application Support/Soaro).")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         // Recharge à chaque changement de choix, puis toutes les 30 s tant que l'onglet est ouvert.
@@ -51,11 +51,11 @@ struct HistoryTab: View {
 
     private var controls: some View {
         VStack(spacing: 8) {
-            Picker("Mesure", selection: $metric) {
+            Picker("Measurement", selection: $metric) {
                 ForEach(HistoryMetric.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.menu)
-            Picker("Période", selection: $range) {
+            Picker("Period", selection: $range) {
                 ForEach(HistoryRange.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
@@ -71,13 +71,13 @@ struct HistoryTab: View {
         }
         switch metric {
         case .cpu: return [make("CPU", .blue) { $0.cpu.map { $0 * 100 } }]
-        case .memory: return [make("Mémoire", .purple) { $0.memory.map { $0 * 100 } }]
+        case .memory: return [make(String(localized: "Memory"), .purple) { $0.memory.map { $0 * 100 } }]
         case .gpu: return [make("GPU", .green) { $0.gpu.map { $0 * 100 } }]
-        case .network: return [make("Réception", .blue) { $0.netDown }, make("Envoi", .orange) { $0.netUp }]
-        case .disk: return [make("Lecture", .teal) { $0.diskRead }, make("Écriture", .pink) { $0.diskWrite }]
-        case .battery: return [make("Batterie", .green) { $0.battery }]
-        case .temperature: return [make("Température CPU", .red) { $0.cpuTemp }]
-        case .power: return [make("Consommation", .orange) { $0.power }]
+        case .network: return [make(String(localized: "Download"), .blue) { $0.netDown }, make(String(localized: "Upload"), .orange) { $0.netUp }]
+        case .disk: return [make(String(localized: "Read"), .teal) { $0.diskRead }, make(String(localized: "Write"), .pink) { $0.diskWrite }]
+        case .battery: return [make(String(localized: "Battery"), .green) { $0.battery }]
+        case .temperature: return [make(String(localized: "CPU temperature"), .red) { $0.cpuTemp }]
+        case .power: return [make(String(localized: "Power draw"), .orange) { $0.power }]
         }
     }
 
@@ -98,17 +98,17 @@ struct HistoryTab: View {
         let series = self.series
         let allPoints = series.flatMap(\.points)
         if allPoints.isEmpty {
-            EmptyHint(text: "Aucune donnée pour « \(metric.title) » sur cette période (capteur indisponible ?).", systemImage: "questionmark.circle")
+            EmptyHint(text: "No data for “\(metric.title)” in this period (sensor unavailable?).", systemImage: "questionmark.circle")
         } else {
             Chart {
                 ForEach(series) { s in
                     ForEach(s.points) { p in
                         if series.count == 1 {
-                            AreaMark(x: .value("Heure", p.date), y: .value(s.name, p.value))
+                            AreaMark(x: .value("Time", p.date), y: .value(s.name, p.value))
                                 .foregroundStyle(s.color.opacity(0.18))
                                 .interpolationMethod(.monotone)
                         }
-                        LineMark(x: .value("Heure", p.date), y: .value(s.name, p.value), series: .value("Série", s.name))
+                        LineMark(x: .value("Time", p.date), y: .value(s.name, p.value), series: .value("Series", s.name))
                             .foregroundStyle(s.color)
                             .interpolationMethod(.monotone)
                     }
@@ -172,7 +172,7 @@ struct HistoryTab: View {
                             HStack {
                                 stat("Min", label(low))
                                 Spacer()
-                                stat("Moyenne", label(mean))
+                                stat("Average", label(mean))
                                 Spacer()
                                 stat("Max", label(high))
                             }
@@ -183,7 +183,7 @@ struct HistoryTab: View {
         }
     }
 
-    private func stat(_ title: String, _ value: String) -> some View {
+    private func stat(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.caption2).foregroundStyle(.secondary)
             Text(value).font(.callout.weight(.medium).monospacedDigit())

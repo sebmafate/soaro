@@ -23,20 +23,20 @@ struct PerformanceTab: View {
 
     private func cpu(_ s: SystemSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Processeur")
+            SectionHeader(title: "Processor")
             Card {
                 HStack {
                     Text(Format.percent(s.cpu.total))
                         .font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
                     Spacer()
-                    Text("Util. \(Format.percent(s.cpu.user)) · Sys. \(Format.percent(s.cpu.system))")
+                    Text("User \(Format.percent(s.cpu.user)) · System \(Format.percent(s.cpu.system))")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Sparkline(values: state.cpuHistory, color: loadColor(s.cpu.total)).frame(height: 36)
                 if !s.cpu.perCore.isEmpty {
                     CoreBars(cpu: s.cpu).padding(.top, 4)
                     if s.cpu.efficiencyCores > 0 {
-                        Text("\(s.cpu.efficiencyCores) cœurs économes (E) · \(s.cpu.perCore.count - s.cpu.efficiencyCores) cœurs performance (P)")
+                        Text("Efficiency cores (E): \(s.cpu.efficiencyCores) · Performance cores (P): \(s.cpu.perCore.count - s.cpu.efficiencyCores)")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                 }
@@ -49,7 +49,7 @@ struct PerformanceTab: View {
     private func memory(_ s: SystemSnapshot) -> some View {
         let m = s.memory
         return VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Mémoire")
+            SectionHeader(title: "Memory")
             Card {
                 ProgressView(value: m.usedFraction) {
                     HStack {
@@ -59,12 +59,12 @@ struct PerformanceTab: View {
                     }
                 }
                 .tint(loadColor(m.usedFraction))
-                KeyValueRow("Pression", m.pressure.label, color: m.pressure == .normal ? .green : (m.pressure == .warning ? .orange : .red))
-                KeyValueRow("Applications", Format.bytes(m.app))
-                KeyValueRow("Système (réservée)", Format.bytes(m.wired))
-                KeyValueRow("Compressée", Format.bytes(m.compressed))
-                KeyValueRow("En cache (libérable)", Format.bytes(m.cached))
-                KeyValueRow("Swap utilisé", Format.bytes(m.swapUsed), color: m.swapUsed >= 3_000_000_000 ? .orange : nil)
+                KeyValueRow("Pressure", m.pressure.label, color: m.pressure == .normal ? .green : (m.pressure == .warning ? .orange : .red))
+                KeyValueRow("Apps", Format.bytes(m.app))
+                KeyValueRow("System (wired)", Format.bytes(m.wired))
+                KeyValueRow("Compressed", Format.bytes(m.compressed))
+                KeyValueRow("Cached (reclaimable)", Format.bytes(m.cached))
+                KeyValueRow("Swap used", Format.bytes(m.swapUsed), color: m.swapUsed >= 3_000_000_000 ? .orange : nil)
             }
         }
     }
@@ -73,7 +73,7 @@ struct PerformanceTab: View {
 
     private func gpuSection(_ gpu: GPUStats, sensors: SensorStats?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Processeur graphique")
+            SectionHeader(title: "Graphics")
             Card {
                 HStack {
                     Text(Format.percent(gpu.utilization))
@@ -82,7 +82,7 @@ struct PerformanceTab: View {
                     if let t = sensors?.gpu { Text("\(Int(t)) °C").font(.caption).foregroundStyle(.secondary) }
                 }
                 Sparkline(values: state.gpuHistory, color: loadColor(gpu.utilization)).frame(height: 28)
-                KeyValueRow("Mémoire utilisée par le GPU", Format.bytes(gpu.memoryUsed))
+                KeyValueRow("GPU memory used", Format.bytes(gpu.memoryUsed))
             }
         }
     }
@@ -91,22 +91,22 @@ struct PerformanceTab: View {
 
     private func disk(_ s: SystemSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Disque")
+            SectionHeader(title: "Disk")
             Card {
                 ProgressView(value: s.disk.usedFraction) {
                     HStack {
                         Text("\(Format.fileBytes(s.disk.used)) / \(Format.fileBytes(s.disk.total))").font(.caption.monospacedDigit())
                         Spacer()
-                        Text("\(Format.fileBytes(s.disk.available)) libres").font(.caption.monospacedDigit())
+                        Text("\(Format.fileBytes(s.disk.available)) free").font(.caption.monospacedDigit())
                     }
                 }
                 .tint(loadColor(s.disk.usedFraction))
                 if let io = s.diskIO {
-                    KeyValueRow("Lecture", Format.rate(io.readRate))
-                    KeyValueRow("Écriture", Format.rate(io.writeRate))
+                    KeyValueRow("Read", Format.rate(io.readRate))
+                    KeyValueRow("Write", Format.rate(io.writeRate))
                 }
                 if let smart = state.smartStatus {
-                    KeyValueRow("État SMART", smart, color: smart == "Verified" ? .green : (smart == "Indisponible" ? nil : .red))
+                    KeyValueRow("SMART status", smart == "Unavailable" ? String(localized: "Unavailable") : smart, color: smart == "Verified" ? .green : (smart == String(localized: "Unavailable") ? nil : .red))
                 }
             }
         }
@@ -116,20 +116,20 @@ struct PerformanceTab: View {
 
     private func sensorsSection(_ sensors: SensorStats, thermal: ProcessInfo.ThermalState) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Capteurs")
+            SectionHeader(title: "Sensors")
             Card {
-                if let t = sensors.cpu { KeyValueRow("Température CPU", temp(t), color: tempColor(t)) }
-                if let t = sensors.gpu { KeyValueRow("Température GPU", temp(t), color: tempColor(t)) }
-                if let t = sensors.ssd { KeyValueRow("Température SSD", temp(t), color: tempColor(t, hot: 70)) }
-                if let t = sensors.battery { KeyValueRow("Température batterie", temp(t), color: tempColor(t, hot: 40)) }
+                if let t = sensors.cpu { KeyValueRow("CPU temperature", temp(t), color: tempColor(t)) }
+                if let t = sensors.gpu { KeyValueRow("GPU temperature", temp(t), color: tempColor(t)) }
+                if let t = sensors.ssd { KeyValueRow("SSD temperature", temp(t), color: tempColor(t, hot: 70)) }
+                if let t = sensors.battery { KeyValueRow("Battery temperature", temp(t), color: tempColor(t, hot: 40)) }
                 ForEach(sensors.fans) { fan in
                     KeyValueRow(
-                        sensors.fans.count > 1 ? "Ventilateur \(fan.index + 1)" : "Ventilateur",
-                        fan.rpm < 1 ? "À l'arrêt" : "\(Int(fan.rpm)) tr/min"
+                        sensors.fans.count > 1 ? "Fan \(fan.index + 1)" : "Fan",
+                        fan.rpm < 1 ? String(localized: "Stopped") : "\(Int(fan.rpm)) rpm"
                     )
                 }
-                if let w = sensors.systemPower { KeyValueRow("Consommation du Mac", String(format: "%.1f W", w)) }
-                KeyValueRow("Contrainte thermique", Self.thermalLabel(thermal), color: thermal == .nominal ? .green : (thermal == .fair ? .yellow : .orange))
+                if let w = sensors.systemPower { KeyValueRow("Mac power draw", String(format: "%.1f W", w)) }
+                KeyValueRow("Thermal pressure", Self.thermalLabel(thermal), color: thermal == .nominal ? .green : (thermal == .fair ? .yellow : .orange))
             }
         }
     }
@@ -142,11 +142,11 @@ struct PerformanceTab: View {
 
     static func thermalLabel(_ state: ProcessInfo.ThermalState) -> String {
         switch state {
-        case .nominal: "Aucune"
-        case .fair: "Légère"
-        case .serious: "Forte"
-        case .critical: "Critique"
-        @unknown default: "Inconnue"
+        case .nominal: String(localized: "None")
+        case .fair: String(localized: "Light")
+        case .serious: String(localized: "Strong")
+        case .critical: String(localized: "Critical")
+        @unknown default: String(localized: "Unknown")
         }
     }
 
@@ -154,10 +154,10 @@ struct PerformanceTab: View {
 
     @ViewBuilder private var processes: some View {
         HStack {
-            SectionHeader(title: "Processus")
+            SectionHeader(title: "Processes")
             Spacer()
-            Picker("Tri", selection: $sort) {
-                ForEach(ProcessSort.allCases) { Text($0.rawValue).tag($0) }
+            Picker("Sort", selection: $sort) {
+                ForEach(ProcessSort.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -166,8 +166,8 @@ struct PerformanceTab: View {
         HStack {
             Spacer()
             Text("CPU").frame(width: 50, alignment: .trailing)
-            Text("Mémoire").frame(width: 64, alignment: .trailing)
-            Text("Disque").frame(width: 72, alignment: .trailing)
+            Text("Memory").frame(width: 64, alignment: .trailing)
+            Text("Disk").frame(width: 72, alignment: .trailing)
             Color.clear.frame(width: 20, height: 1)
         }
         .font(.caption2).foregroundStyle(.secondary)

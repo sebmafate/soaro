@@ -4,6 +4,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Pas d'icône dans le Dock, même en lançant via `swift run`.
         NSApp.setActivationPolicy(.accessory)
+        // Démarre Sparkle (vérification planifiée des mises à jour) dès le lancement.
+        MainActor.assumeIsolated { Updater.shared.start() }
     }
 
     /// Relancer l'app alors qu'elle tourne déjà (Finder, Spotlight, `open`) ouvre la fenêtre indépendante.

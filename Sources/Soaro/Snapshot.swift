@@ -40,7 +40,7 @@ enum Snapshot {
             captureMenuBar(state: state, directory: directory)
             if CommandLine.arguments.contains("--window") { await captureWindow(state: state, directory: directory, dark: dark) }
             if CommandLine.arguments.contains("--tools") { await captureTools(state: state, window: window, directory: directory, dark: dark) }
-            print("snapshots écrits dans \(directory)")
+            print("snapshots written to \(directory)")
             exit(0)
         }
     }

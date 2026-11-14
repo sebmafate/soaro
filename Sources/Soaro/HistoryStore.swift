@@ -23,13 +23,13 @@ enum HistoryMetric: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .cpu: "CPU"
-        case .memory: "Mémoire"
+        case .memory: String(localized: "Memory")
         case .gpu: "GPU"
-        case .network: "Réseau"
-        case .disk: "Disque (E/S)"
-        case .battery: "Batterie"
-        case .temperature: "Température"
-        case .power: "Consommation"
+        case .network: String(localized: "Network")
+        case .disk: String(localized: "Disk (I/O)")
+        case .battery: String(localized: "Battery")
+        case .temperature: String(localized: "Temperature")
+        case .power: String(localized: "Power draw")
         }
     }
 }
@@ -40,10 +40,10 @@ enum HistoryRange: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .hour: "1 h"
-        case .day: "24 h"
-        case .week: "7 j"
-        case .month: "30 j"
+        case .hour: String(localized: "1 h")
+        case .day: String(localized: "24 h")
+        case .week: String(localized: "7 d")
+        case .month: String(localized: "30 d")
         }
     }
 

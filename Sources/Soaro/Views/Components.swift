@@ -77,7 +77,7 @@ struct Sparkline: View {
 }
 
 struct StatCard: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let value: String
     var valueSize: CGFloat = 24
@@ -127,9 +127,10 @@ struct StatCard: View {
 }
 
 struct SectionHeader: View {
-    let title: String
+    let title: LocalizedStringKey
     var body: some View {
-        Text(title.uppercased())
+        Text(title)
+            .textCase(.uppercase)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)
             .padding(.top, 4)
@@ -137,11 +138,11 @@ struct SectionHeader: View {
 }
 
 struct KeyValueRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
     var color: Color? = nil
 
-    init(_ label: String, _ value: String, color: Color? = nil) {
+    init(_ label: LocalizedStringKey, _ value: String, color: Color? = nil) {
         self.label = label
         self.value = value
         self.color = color
@@ -192,7 +193,7 @@ struct CoreBars: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Charge par cœur")
+        .accessibilityLabel("Load per core")
         .accessibilityValue(cpu.perCore.map { Format.percent($0) }.joined(separator: ", "))
     }
 }
@@ -205,7 +206,7 @@ extension CPUStats {
 }
 
 struct EmptyHint: View {
-    let text: String
+    let text: LocalizedStringKey
     var systemImage = "info.circle"
     var body: some View {
         Label(text, systemImage: systemImage)
@@ -274,10 +275,10 @@ struct AdviceRow: View {
                     if let action = advice.action, let label = advice.actionLabel {
                         Button(label) { onAction(action) }.controlSize(.small)
                     }
-                    Button("Ignorer", action: onDismiss)
+                    Button("Dismiss", action: onDismiss)
                         .controlSize(.small)
                         .buttonStyle(.borderless)
-                        .help("Ne plus afficher ce conseil")
+                        .help("Do not show this tip again")
                 }
                 .padding(.top, 2)
             }
@@ -305,7 +306,7 @@ struct ProcessRow: View {
                 .buttonStyle(.borderless)
                 .opacity(group.canQuit ? 1 : 0)
                 .disabled(!group.canQuit)
-                .help("Quitter \(group.name)")
+                .help("Quit \(group.name)")
         }
         .font(.caption.monospacedDigit())
         .padding(.vertical, 3)
@@ -336,13 +337,13 @@ struct CleanupRow: View {
             if busy {
                 ProgressView().controlSize(.small)
             } else {
-                Text(size.map(Format.fileBytes) ?? "—")
+                Text(size.map { Format.fileBytes($0) } ?? "—")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .help(size == nil && kind == .trash
-                          ? "macOS protège la corbeille : sa taille n'est pas lisible sans « Accès complet au disque », mais Soaro peut la vider."
+                          ? "macOS protects the Trash: its size cannot be read without “Full Disk Access”, but Soaro can still empty it."
                           : "")
-                Button("Nettoyer", action: onClean)
+                Button("Clean", action: onClean)
                     .controlSize(.small)
                     .disabled(kind != .trash && (size ?? 0) == 0)
             }

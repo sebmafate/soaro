@@ -51,7 +51,7 @@ enum CleanupService {
         if kind == .trash { return emptyTrash() }
 
         guard let items = items(for: kind) else {
-            return CleanupResult(freed: 0, failures: 0, error: "Dossier inaccessible")
+            return CleanupResult(freed: 0, failures: 0, error: String(localized: "Folder not accessible"))
         }
         var freed: UInt64 = 0
         var failures = 0
@@ -85,7 +85,7 @@ enum CleanupService {
         }
         guard task.terminationStatus == 0 else {
             let message = String(decoding: err.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-            return CleanupResult(freed: 0, failures: 0, error: message.isEmpty ? "Le Finder a refusé la commande" : message)
+            return CleanupResult(freed: 0, failures: 0, error: message.isEmpty ? String(localized: "Finder refused the command") : message)
         }
         return CleanupResult(freed: before, failures: 0, error: nil)
     }

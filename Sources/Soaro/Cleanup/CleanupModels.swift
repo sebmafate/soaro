@@ -59,15 +59,15 @@ final class LargeFilesModel: ObservableObject {
         let items = selectedFiles
         guard !items.isEmpty else { return }
         guard AppState.confirm(
-            title: "Mettre \(items.count) fichier(s) à la corbeille ?",
-            message: "\(Format.fileBytes(selectedSize)) seront libérés une fois la corbeille vidée. Vous pouvez encore les récupérer depuis la corbeille.",
-            button: "Mettre à la corbeille"
+            title: String(localized: "Move the selected files to the Trash? (\(items.count))"),
+            message: String(localized: "\(Format.fileBytes(selectedSize)) will be freed once the Trash is emptied. You can still recover them from the Trash."),
+            button: String(localized: "Move to Trash")
         ) else { return }
         let result = LargeFileScanner.trash(items)
         let gone = Set(items.map(\.id))
         files.removeAll { gone.contains($0.id) }
         selected = []
-        notify(result.failures == 0 ? "\(Format.fileBytes(result.freed)) mis à la corbeille" : "\(result.failures) fichier(s) n'ont pas pu être déplacés")
+        notify(result.failures == 0 ? String(localized: "\(Format.fileBytes(result.freed)) moved to the Trash") : String(localized: "Files that could not be moved: \(result.failures)"))
     }
 }
 
@@ -118,9 +118,9 @@ final class DevArtifactsModel: ObservableObject {
         let items = selectedArtifacts
         guard !items.isEmpty else { return }
         guard AppState.confirm(
-            title: "Supprimer \(items.count) dossier(s) régénérable(s) ?",
-            message: "\(Format.fileBytes(selectedSize)) seront libérés. Vos sources ne sont pas touchées : il suffira de relancer « npm install », « swift build »… pour les recréer.",
-            button: "Supprimer"
+            title: String(localized: "Delete the selected rebuildable folders? (\(items.count))"),
+            message: String(localized: "\(Format.fileBytes(selectedSize)) will be freed. Your sources are not touched: just run “npm install”, “swift build”… to rebuild them."),
+            button: String(localized: "Delete")
         ) else { return }
 
         Task { [weak self] in
@@ -133,8 +133,8 @@ final class DevArtifactsModel: ObservableObject {
             self.selected.subtract(gone)
             let freed = removed.reduce(UInt64(0)) { $0 + $1.size }
             self.notify(removed.count == items.count
-                ? "\(Format.fileBytes(freed)) libérés"
-                : "\(items.count - removed.count) dossier(s) n'ont pas pu être supprimés")
+                ? String(localized: "\(Format.fileBytes(freed)) freed")
+                : String(localized: "Folders that could not be deleted: \(items.count - removed.count)"))
         }
     }
 }
@@ -210,23 +210,23 @@ final class UninstallerModel: ObservableObject {
     func uninstall() {
         guard let app = current else { return }
         if AppUninstaller.isRunning(app) {
-            notify("« \(app.name) » est ouverte : quittez-la d'abord.")
+            notify(String(localized: "“\(app.name)” is open: quit it first."))
             return
         }
         let items = selectedLeftovers
         guard AppState.confirm(
-            title: "Désinstaller « \(app.name) » ?",
-            message: "L'application et \(items.count) élément(s) associé(s) seront mis à la corbeille (\(Format.fileBytes(totalToFree))). Vous pourrez les récupérer tant que la corbeille n'est pas vidée.",
-            button: "Désinstaller", critical: true
+            title: String(localized: "Uninstall “\(app.name)”?"),
+            message: String(localized: "The app and its related items (\(items.count)) will be moved to the Trash (\(Format.fileBytes(totalToFree))). You can recover them until the Trash is emptied."),
+            button: String(localized: "Uninstall"), critical: true
         ) else { return }
 
         let result = AppUninstaller.uninstall(app, leftovers: items)
         if result.failures.isEmpty {
             apps.removeAll { $0.id == app.id }
             deselect()
-            notify("« \(app.name) » désinstallée · \(Format.fileBytes(result.freed)) libérés")
+            notify(String(localized: "“\(app.name)” uninstalled · \(Format.fileBytes(result.freed)) freed"))
         } else {
-            notify("Échec partiel : \(result.failures.prefix(2).joined(separator: ", "))")
+            notify(String(localized: "Partly failed: \(result.failures.prefix(2).joined(separator: ", "))"))
         }
     }
 }
@@ -273,21 +273,21 @@ final class StartupModel: ObservableObject {
                     self.agents[index].isDisabled = !enabled
                 }
             } else {
-                self.notify("Impossible de modifier « \(agent.displayName) »")
+                self.notify(String(localized: "Could not change “\(agent.displayName)”"))
             }
         }
     }
 
     func remove(_ item: LoginItem) {
         guard AppState.confirm(
-            title: "Retirer « \(item.name) » des éléments d'ouverture ?",
-            message: "L'application ne se lancera plus à l'ouverture de session. Elle n'est pas supprimée.",
-            button: "Retirer"
+            title: String(localized: "Remove “\(item.name)” from the login items?"),
+            message: String(localized: "The app will no longer open at login. It is not deleted."),
+            button: String(localized: "Remove")
         ) else { return }
         Task { [weak self] in
             let ok = await Task.detached(priority: .userInitiated) { StartupItemsService.removeLoginItem(item) }.value
             guard let self else { return }
-            if ok { self.loginItems?.removeAll { $0.id == item.id } } else { self.notify("Impossible de retirer « \(item.name) »") }
+            if ok { self.loginItems?.removeAll { $0.id == item.id } } else { self.notify(String(localized: "Could not remove “\(item.name)”")) }
         }
     }
 

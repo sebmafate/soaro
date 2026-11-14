@@ -70,9 +70,9 @@ enum AdviceEngine {
         if let b = input.battery, let limit = facts.chargeLimit, limit < 100, b.isPluggedIn, !b.isCharging, b.percent <= Double(limit) + 1 {
             result.append(Advice(
                 id: "battery.chargeLimit", systemImage: "battery.75percent",
-                title: "Charge limitée à \(limit) % par macOS",
-                detail: "Ce n'est pas une panne : la recharge optimisée plafonne la charge (et laisse la batterie redescendre jusque-là) pour ralentir son usure quand le Mac reste branché. Pour repartir à 100 %, par exemple avant un déplacement, modifiez-le dans les réglages Batterie.",
-                action: .openSettings(SettingsPane.battery), actionLabel: "Réglages Batterie"
+                title: String(localized: "Charge limited to \(limit) % by macOS"),
+                detail: String(localized: "This is not a fault: optimized charging caps the charge (and lets the battery drop to that level) to slow its wear while the Mac stays plugged in. To go back to 100 %, for example before a trip, change it in Battery settings."),
+                action: .openSettings(SettingsPane.battery), actionLabel: String(localized: "Battery Settings")
             ))
         }
 
@@ -80,9 +80,9 @@ enum AdviceEngine {
         if let b = input.battery, !b.isPluggedIn, b.percent <= 30, !facts.lowPowerMode {
             result.append(Advice(
                 id: "battery.lowPowerMode", systemImage: "leaf",
-                title: "Activer le mode économie d'énergie",
-                detail: "Il reste \(Int(b.percent)) % de batterie. Ce mode réduit la luminosité et l'activité en arrière-plan pour gagner de l'autonomie.",
-                action: .openSettings(SettingsPane.battery), actionLabel: "Réglages Batterie"
+                title: String(localized: "Turn on Low Power Mode"),
+                detail: String(localized: "\(Int(b.percent)) % battery left. This mode lowers brightness and background activity to extend battery life."),
+                action: .openSettings(SettingsPane.battery), actionLabel: String(localized: "Battery Settings")
             ))
         }
 
@@ -92,9 +92,9 @@ enum AdviceEngine {
             let names = Array(Set(blockers.map(\.name))).sorted().prefix(3).joined(separator: ", ")
             result.append(Advice(
                 id: "sleep.blocked", systemImage: "moon.zzz",
-                title: blockers.count == 1 ? "\(first.name) empêche la mise en veille" : "Des apps empêchent la mise en veille",
-                detail: "\(names) : veille bloquée depuis \(Format.minutes(first.seconds / 60)). Le Mac ne s'endort pas tout seul, ce qui consomme de l'énergie et vide la batterie s'il n'est pas branché. Fermez l'app si ce n'est pas voulu.",
-                action: .openActivityMonitor, actionLabel: "Moniteur d'activité"
+                title: blockers.count == 1 ? String(localized: "\(first.name) is preventing sleep") : String(localized: "Some apps are preventing sleep"),
+                detail: String(localized: "\(names): sleep blocked for \(Format.minutes(first.seconds / 60)). The Mac does not fall asleep by itself, which uses energy and drains the battery when unplugged. Close the app if this is not intended."),
+                action: .openActivityMonitor, actionLabel: String(localized: "Activity Monitor")
             ))
         }
 
@@ -102,9 +102,9 @@ enum AdviceEngine {
         if facts.enabledAgentCount >= agentThreshold {
             result.append(Advice(
                 id: "startup.agents", systemImage: "power.circle",
-                title: "\(facts.enabledAgentCount) programmes se lancent à l'ouverture de session",
-                detail: "Chacun allonge le démarrage et occupe de la mémoire en permanence. Beaucoup sont des mises à jour automatiques d'applications que vous n'utilisez peut-être plus.",
-                action: .showStartupItems, actionLabel: "Voir la liste"
+                title: String(localized: "Programs launching at login: \(facts.enabledAgentCount)"),
+                detail: String(localized: "Each one slows down startup and keeps using memory. Many are automatic updaters for apps you may no longer use."),
+                action: .showStartupItems, actionLabel: String(localized: "Show the list")
             ))
         }
 
@@ -113,8 +113,8 @@ enum AdviceEngine {
         if spotlightCPU >= spotlightCPUThreshold {
             result.append(Advice(
                 id: "spotlight.indexing", systemImage: "magnifyingglass",
-                title: "Spotlight indexe vos fichiers",
-                detail: "L'indexation utilise environ \(Int(spotlightCPU)) % de processeur. C'est normal après une mise à jour ou l'ajout de nombreux fichiers, et cela s'arrête tout seul : inutile d'intervenir.",
+                title: String(localized: "Spotlight is indexing your files"),
+                detail: String(localized: "Indexing uses about \(Int(spotlightCPU)) % of the processor. This is normal after an update or when many files are added, and it stops by itself: no action needed."),
                 action: nil, actionLabel: nil
             ))
         }
@@ -124,16 +124,16 @@ enum AdviceEngine {
             if !facts.autoEmptyTrash {
                 result.append(Advice(
                     id: "storage.autoTrash", systemImage: "trash",
-                    title: "Vider la corbeille automatiquement",
-                    detail: "Il reste \(Format.percent(disk.availableFraction)) d'espace libre. macOS peut supprimer seul les éléments restés plus de 30 jours dans la corbeille (Finder › Réglages › Options avancées).",
-                    action: .openSettings(SettingsPane.storage), actionLabel: "Réglages Stockage"
+                    title: String(localized: "Empty the Trash automatically"),
+                    detail: String(localized: "\(Format.percent(disk.availableFraction)) of free space left. macOS can delete items that stayed in the Trash for more than 30 days (Finder › Settings › Advanced)."),
+                    action: .openSettings(SettingsPane.storage), actionLabel: String(localized: "Storage Settings")
                 ))
             } else {
                 result.append(Advice(
                     id: "storage.optimize", systemImage: "internaldrive",
-                    title: "Optimiser le stockage",
-                    detail: "Il reste \(Format.percent(disk.availableFraction)) d'espace libre. Les réglages Stockage proposent de déplacer des fichiers vers iCloud et de retirer les films déjà regardés.",
-                    action: .openSettings(SettingsPane.storage), actionLabel: "Réglages Stockage"
+                    title: String(localized: "Optimize storage"),
+                    detail: String(localized: "\(Format.percent(disk.availableFraction)) of free space left. Storage settings offer to move files to iCloud and remove movies you have already watched."),
+                    action: .openSettings(SettingsPane.storage), actionLabel: String(localized: "Storage Settings")
                 ))
             }
         }
@@ -142,9 +142,9 @@ enum AdviceEngine {
         if let pending = facts.pendingUpdateVersion, isVersion(pending, newerThan: input.osVersion) {
             result.append(Advice(
                 id: "update.pending.\(pending)", systemImage: "arrow.down.circle",
-                title: "macOS \(pending) est disponible",
-                detail: "Les mises à jour corrigent des failles de sécurité et des problèmes de performance. Vous utilisez macOS \(input.osVersion).",
-                action: .openSettings(SettingsPane.softwareUpdate), actionLabel: "Mise à jour de logiciels"
+                title: String(localized: "macOS \(pending) is available"),
+                detail: String(localized: "Updates fix security flaws and performance problems. You are running macOS \(input.osVersion)."),
+                action: .openSettings(SettingsPane.softwareUpdate), actionLabel: String(localized: "Software Update")
             ))
         }
 
@@ -152,17 +152,17 @@ enum AdviceEngine {
         if !facts.timeMachineConfigured {
             result.append(Advice(
                 id: "backup.none", systemImage: "externaldrive.badge.timemachine",
-                title: "Aucune sauvegarde Time Machine",
-                detail: "Sans sauvegarde, une panne de disque ou une suppression par erreur est définitive. Un disque externe suffit ; à faire surtout avant un gros nettoyage.",
-                action: .openSettings(SettingsPane.timeMachine), actionLabel: "Réglages Time Machine"
+                title: String(localized: "No Time Machine backup"),
+                detail: String(localized: "Without a backup, a disk failure or an accidental deletion is permanent. An external drive is enough; especially worth doing before a big cleanup."),
+                action: .openSettings(SettingsPane.timeMachine), actionLabel: String(localized: "Time Machine Settings")
             ))
         } else if let last = facts.lastBackup, input.now.timeIntervalSince(last) > backupMaxAge {
             let days = Int(input.now.timeIntervalSince(last) / 86_400)
             result.append(Advice(
                 id: "backup.old", systemImage: "externaldrive.badge.timemachine",
-                title: "Dernière sauvegarde il y a \(days) jours",
-                detail: "Branchez votre disque Time Machine pour mettre la sauvegarde à jour.",
-                action: .openSettings(SettingsPane.timeMachine), actionLabel: "Réglages Time Machine"
+                title: String(localized: "Last backup \(days) days ago"),
+                detail: String(localized: "Connect your Time Machine drive to update the backup."),
+                action: .openSettings(SettingsPane.timeMachine), actionLabel: String(localized: "Time Machine Settings")
             ))
         }
 

@@ -18,8 +18,8 @@ enum PublicIPError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unreachable: "Service injoignable (hors ligne ?)"
-        case .invalidResponse: "Réponse du service inexploitable"
+        case .unreachable: String(localized: "Service unreachable (offline?)")
+        case .invalidResponse: String(localized: "The service response could not be used")
         }
     }
 }
