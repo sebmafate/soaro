@@ -35,7 +35,7 @@ If `swift package resolve` hangs on the Sparkle download, use `--disable-keychai
    git push github main --tags
    gh release create v1.1.0 build/release/Soaro-1.1.0.dmg --title "Soaro 1.1.0" --notes-file <notes>
    ```
-8. **Publish the appcast.** Copy `build/release/appcast.xml` to the website folder and deploy the site. Do this **after** step 7.
+8. **Publish the appcast.** Copy `build/release/appcast.xml` to `site/appcast.xml`, commit and push: Cloudflare Pages deploys the site (see [website.md](website.md)). Do this **after** step 7.
 9. **Test the update** from the previous version with "Check for updates...".
 
 ## What the script does

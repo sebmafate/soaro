@@ -50,7 +50,7 @@ The app is signed with a Developer ID and notarized by Apple. It updates itself 
 - Soaro runs **locally**. Your history stays in `~/Library/Application Support/Soaro` and is kept for 30 days.
 - Two options are **off by default**: the latency test (a small ping to `1.1.1.1`) and the public IP and country lookup. The lookup asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. VPN detection is fully local.
 - The update check downloads a public file from soaro.app once a day. It sends no personal data.
-- There is no account, no analytics and no tracking.
+- There is no account, no analytics and no tracking in the app. The website soaro.app counts visits with [Umami](https://umami.is), without cookies.
 
 ## Safety
 
@@ -75,7 +75,9 @@ I prefer to be clear about what Soaro cannot do:
 
 ## Languages
 
-English, French, German, Spanish, Italian, Brazilian Portuguese, Japanese, Simplified Chinese and Korean. Soaro follows the language of your Mac.
+🇬🇧 English · 🇫🇷 Français · 🇩🇪 Deutsch · 🇪🇸 Español · 🇮🇹 Italiano · 🇧🇷 Português (Brasil) · 🇯🇵 日本語 · 🇨🇳 简体中文 · 🇰🇷 한국어
+
+Soaro follows the language of your Mac.
 
 ## Build from source
 
@@ -98,4 +100,4 @@ Soaro is free and open source. If it saves you time, you can support its develop
 
 ## License
 
-[GPL-3.0](LICENSE). Copyright © 2026 Sébastien Ferrand.
+[GPL-3.0](LICENSE). Copyright © 2026 [Sébastien Ferrand](https://sferrand.fr).

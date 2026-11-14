@@ -18,6 +18,7 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `CleanupService.swift`, `Cleanup/*` | Caches, large files, inactive projects, uninstaller, login items |
 | `LegacyMigration.swift` | Imports data from the former names of the app (history, preferences) |
 | `AppState.swift` | Timing (3 s; sensors and battery every 9 s when the panel is closed), history, actions, notifications |
+| `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots, see [website.md](website.md) |
 | `Updater.swift` | Sparkle integration. It stays inactive in a development build (see [updates.md](updates.md)) |
 | `Views/MainWindow.swift`, `MachineInfo.swift` | Standalone window (AppKit, created on demand, destroyed on close) and the "This Mac" screen |
 | `Views/MenuBarWidgets.swift` | Compact menu bar label, drawn in a template image |
@@ -43,7 +44,7 @@ Soaro --advice                      # print the settings read and the tips that 
 Soaro --snapshot <folder> [--dark] [--tools] [--window]   # render each tab to PNG (fake history, in memory)
 ```
 
-For development, these environment variables are available: `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` and `SOARO_SCROLL` choose what it shows, and `SOARO_DEBUG` adds traces.
+For development, these environment variables are available: `SOARO_DEMO=1` runs the app on made-up data, `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` chooses what it shows (`overview`, `performance`, `battery`, `network`, `history`, `cleanup`, `machine`, `settings`, or a cleanup tool such as `cleanup:largeFiles`), `SOARO_SCROLL` scrolls it, and `SOARO_DEBUG` adds traces.
 
 ## Permissions asked by macOS
 
