@@ -1,0 +1,25 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://stats.sferrand.fr; connect-src 'self' https://stats.sferrand.fr; img-src 'self' data:; style-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+
+/screenshots/*
+  Cache-Control: public, max-age=86400
+
+/*.png
+  Cache-Control: public, max-age=86400
+
+/favicon.ico
+  Cache-Control: public, max-age=86400
+
+/site.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+
+/.well-known/security.txt
+  Content-Type: text/plain; charset=utf-8
+
+/appcast.xml
+  Cache-Control: public, max-age=300
+  Content-Type: application/xml; charset=utf-8

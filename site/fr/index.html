@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soaro : moniteur et nettoyeur Mac dans la barre de menus</title>
+  <meta name="description" content="Soaro est une app Mac gratuite et open source. Elle surveille CPU, GPU, mémoire, disque, réseau et batterie depuis la barre de menus. Aucun pistage.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Sébastien Ferrand">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f9fb">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d151c">
+  <link rel="canonical" href="https://soaro.app/fr/">
+  <link rel="alternate" hreflang="en" href="https://soaro.app/">
+  <link rel="alternate" hreflang="fr" href="https://soaro.app/fr/">
+  <link rel="alternate" hreflang="x-default" href="https://soaro.app/">
+
+  <link rel="icon" href="../favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/svg+xml" href="../icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="manifest" href="../site.webmanifest">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Soaro">
+  <meta property="og:title" content="Soaro : un Mac plus léger">
+  <meta property="og:description" content="Une app gratuite et open source dans la barre de menus, qui surveille votre Mac et aide à le garder rapide et propre.">
+  <meta property="og:url" content="https://soaro.app/fr/">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:image" content="https://soaro.app/og-fr.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="La fenêtre de Soaro avec les jauges CPU, mémoire, GPU, disque, réseau et batterie, à côté du titre « Un Mac plus léger. »">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Soaro : un Mac plus léger">
+  <meta name="twitter:description" content="Une app gratuite et open source dans la barre de menus, qui surveille votre Mac et aide à le garder rapide et propre.">
+  <meta name="twitter:image" content="https://soaro.app/og-fr.png">
+  <meta name="twitter:image:alt" content="La fenêtre de Soaro avec les jauges CPU, mémoire, GPU, disque, réseau et batterie, à côté du titre « Un Mac plus léger. »">
+
+  <link rel="stylesheet" href="../style.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://soaro.app/#website",
+      "url": "https://soaro.app/",
+      "name": "Soaro",
+      "inLanguage": [
+        "en",
+        "fr"
+      ],
+      "publisher": {
+        "@id": "https://soaro.app/#author"
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://soaro.app/#author",
+      "name": "Sébastien Ferrand",
+      "url": "https://sferrand.fr",
+      "sameAs": [
+        "https://sferrand.fr",
+        "https://github.com/sebmafate"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://soaro.app/fr/#app",
+      "name": "Soaro",
+      "url": "https://soaro.app/fr/",
+      "description": "Soaro est une app Mac gratuite et open source. Elle surveille CPU, GPU, mémoire, disque, réseau et batterie depuis la barre de menus. Aucun pistage.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "macOS 14 or later",
+      "softwareRequirements": "Apple silicon Mac",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "url": "https://github.com/sebmafate/soaro/releases/latest"
+      },
+      "downloadUrl": "https://github.com/sebmafate/soaro/releases/latest",
+      "installUrl": "https://github.com/sebmafate/soaro/releases/latest",
+      "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "codeRepository": "https://github.com/sebmafate/soaro",
+      "image": "https://soaro.app/icon-512.png",
+      "screenshot": [
+        "https://soaro.app/og-fr.png",
+        "https://soaro.app/screenshots/fr-performance.webp",
+        "https://soaro.app/screenshots/fr-battery.webp",
+        "https://soaro.app/screenshots/fr-network.webp"
+      ],
+      "featureList": [
+        "Surveillance en temps réel du CPU, du GPU, de la mémoire, du disque, du réseau et de la batterie",
+        "Charge par cœur, températures, ventilateurs et consommation",
+        "Santé de la batterie, cycles et impact énergétique par app",
+        "Détection du VPN et trafic réseau par app",
+        "Historique sur 30 jours",
+        "Nettoyage des caches, des gros fichiers, des projets de dev inactifs et des apps",
+        "Recommandations et conseils de réglage, sans jamais modifier un réglage",
+        "Neuf langues, aucun pistage"
+      ],
+      "inLanguage": [
+        "en",
+        "fr",
+        "de",
+        "es",
+        "it",
+        "pt-BR",
+        "ja",
+        "zh-Hans",
+        "ko"
+      ],
+      "author": {
+        "@id": "https://soaro.app/#author"
+      },
+      "isPartOf": {
+        "@id": "https://soaro.app/#website"
+      }
+    }
+  ]
+}
+  </script>
+  <script defer src="https://stats.sferrand.fr/script.js" data-website-id="93d33848-dae3-495a-8455-1bc2f042047a" data-domains="soaro.app" data-do-not-track="true"></script>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../icon.svg" alt="" width="28" height="28">Soaro</a>
+    <nav aria-label="Principal">
+      <a class="hide-sm" href="#features">Fonctions</a>
+      <a class="hide-sm" href="#privacy">Vie privée</a>
+      <a class="hide-sm" href="#limits">Limites</a>
+      <a href="#download">Télécharger</a>
+      <a class="coffee hide-sm" href="https://buymeacoffee.com/sebmafate">Offrez-moi un café</a>
+      <div class="langsel" role="group" aria-label="Langue">
+        <a href="./" hreflang="fr" lang="fr" aria-current="page" title="Français"><img src="../flags/fr.svg" alt="Français" width="26" height="26"></a>
+        <a href="../" hreflang="en" lang="en" title="English"><img src="../flags/gb.svg" alt="English" width="26" height="26"></a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap hero">
+    <img class="logo" src="../icon.svg" alt="Icône de Soaro" width="88" height="88">
+    <h1>Un Mac plus léger.</h1>
+    <p class="lead">Soaro vit dans la barre de menus. Elle surveille CPU, GPU, mémoire, disque, réseau et batterie, et vous dit quoi faire quand quelque chose ne va pas.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Télécharger pour macOS</a>
+      <a class="btn" href="https://github.com/sebmafate/soaro">Voir sur GitHub</a>
+      <a class="btn" href="https://buymeacoffee.com/sebmafate">Offrez-moi un café</a>
+    </div>
+    <p class="meta">Gratuite et open source (GPL-3.0) · macOS 14 ou plus récent · Apple silicon</p>
+    <img class="shot" src="../screenshots/fr-overview-946.webp" srcset="../screenshots/fr-overview-946.webp 946w, ../screenshots/fr-overview.webp 1892w" sizes="(min-width: 900px) 860px, calc(100vw - 40px)" decoding="async" width="946" height="782" alt="La fenêtre de Soaro : six jauges pour CPU, mémoire, GPU, disque, réseau et batterie, puis des recommandations" fetchpriority="high">
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Ce que vous voyez</h2>
+      <p class="intro">Ouvrez le panneau depuis la barre de menus pour un coup d'œil, ou gardez la fenêtre complète sur le bureau. Tout est mesuré sur votre Mac, en temps réel.</p>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Dans la barre de menus</h3>
+          <p>Choisissez ce que vous voulez voir, à côté de l'horloge.</p>
+          <ul>
+            <li>Une valeur passe à l'<strong>orange</strong>, au <strong>rouge</strong>, puis à l'<strong>écarlate</strong> quand elle se dégrade</li>
+            <li>Vous choisissez les seuils</li>
+            <li>Survolez l'icône pour voir pourquoi une valeur est colorée</li>
+          </ul>
+        </div>
+        <img class="shot" src="../screenshots/fr-settings-946.webp" srcset="../screenshots/fr-settings-946.webp 946w, ../screenshots/fr-settings.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Réglages : choix des valeurs affichées dans la barre de menus et seuils de couleur">
+      </div>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Performances</h3>
+          <p>Les détails que le Moniteur d'activité répartit sur plusieurs fenêtres.</p>
+          <ul>
+            <li>Charge <strong>par cœur</strong>, cœurs d'efficacité et de performance séparés</li>
+            <li>Pression mémoire, swap et mémoire compressée</li>
+            <li>Débit et état SMART du disque</li>
+            <li>Températures, ventilateurs et consommation</li>
+          </ul>
+        </div>
+        <img class="shot" src="../screenshots/fr-performance-946.webp" srcset="../screenshots/fr-performance-946.webp 946w, ../screenshots/fr-performance.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Onglet Performances avec une barre par cœur de processeur et le détail de la mémoire">
+      </div>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Batterie</h3>
+          <p>Votre batterie est-elle encore en forme ? Quelle app la vide ?</p>
+          <ul>
+            <li><strong>Santé</strong> et <strong>nombre de cycles</strong></li>
+            <li>Puissance de charge et consommation du Mac, en watts</li>
+            <li><strong>Impact énergétique par app</strong></li>
+          </ul>
+        </div>
+        <img class="shot" src="../screenshots/fr-battery-946.webp" srcset="../screenshots/fr-battery-946.webp 946w, ../screenshots/fr-battery.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Onglet Batterie avec le niveau de charge, la santé et l'impact énergétique par app">
+      </div>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Réseau</h3>
+          <p>Débit, volume, et qui utilise votre connexion.</p>
+          <ul>
+            <li><strong>Trafic par app</strong></li>
+            <li><strong>Détection du VPN</strong>, faite en local</li>
+            <li>Qualité du Wi-Fi et latence</li>
+            <li>IP publique et pays, si vous l'activez</li>
+          </ul>
+        </div>
+        <img class="shot" src="../screenshots/fr-network-946.webp" srcset="../screenshots/fr-network-946.webp 946w, ../screenshots/fr-network.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Onglet Réseau avec les débits, l'état du VPN et le trafic par app">
+      </div>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Historique</h3>
+          <p>Quelque chose a ramé cette nuit ? Regardez la dernière heure, le dernier jour, la dernière semaine ou le dernier mois. L'historique reste sur votre Mac, pendant 30 jours.</p>
+        </div>
+        <img class="shot" src="../screenshots/fr-history-946.webp" srcset="../screenshots/fr-history-946.webp 946w, ../screenshots/fr-history.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Onglet Historique avec un graphique du CPU sur 24 heures">
+      </div>
+
+      <div class="feature">
+        <div class="text">
+          <h3>Nettoyage</h3>
+          <p>Quatre outils, pensés pour ceux qui fabriquent des choses.</p>
+          <ul>
+            <li><strong>Gros fichiers</strong></li>
+            <li><strong>Projets inactifs</strong> : <code>node_modules</code>, <code>.build</code>, <code>target</code>, <code>Pods</code></li>
+            <li><strong>Désinstalleur d'apps</strong>, avec les restes</li>
+            <li><strong>Éléments de démarrage</strong></li>
+          </ul>
+        </div>
+        <img class="shot" src="../screenshots/fr-cleanup-946.webp" srcset="../screenshots/fr-cleanup-946.webp 946w, ../screenshots/fr-cleanup.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Onglet Nettoyage avec les caches et les quatre outils">
+      </div>
+
+      <div class="tools">
+        <figure><img class="shot" src="../screenshots/fr-cleanup-largeFiles-946.webp" srcset="../screenshots/fr-cleanup-largeFiles-946.webp 946w, ../screenshots/fr-cleanup-largeFiles.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Outil Gros fichiers"><figcaption>Gros fichiers</figcaption></figure>
+        <figure><img class="shot" src="../screenshots/fr-cleanup-devProjects-946.webp" srcset="../screenshots/fr-cleanup-devProjects-946.webp 946w, ../screenshots/fr-cleanup-devProjects.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Outil Projets inactifs"><figcaption>Projets inactifs</figcaption></figure>
+        <figure><img class="shot" src="../screenshots/fr-cleanup-uninstaller-946.webp" srcset="../screenshots/fr-cleanup-uninstaller-946.webp 946w, ../screenshots/fr-cleanup-uninstaller.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Désinstalleur d'apps"><figcaption>Désinstalleur d'apps</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap">
+      <h2>Elle propose. Vous décidez.</h2>
+      <p class="intro">Soaro prévient en cas de disque presque plein, de mémoire sous pression, de fuite mémoire probable, de Mac qui chauffe ou de batterie usée. Elle ne notifie que les problèmes critiques.</p>
+      <div class="cards">
+        <div class="card">
+          <h3>Conseils de réglage</h3>
+          <p>Soaro lit quelques réglages de macOS et vous dit ce qui pourrait aider : mode économie d'énergie, app qui bloque la veille, trop de programmes au démarrage, stockage, mises à jour, sauvegarde.</p>
+        </div>
+        <div class="card">
+          <h3>Pas de surprise</h3>
+          <p>Soaro <strong>ne modifie jamais un réglage</strong>. Le bouton ouvre le bon panneau de Réglages Système, et vous décidez.</p>
+        </div>
+        <div class="card">
+          <h3>Légère</h3>
+          <p>Environ 20-35 Mo de mémoire et 1-2 % d'un cœur au repos. Quand le panneau est fermé, l'interface ne coûte rien.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <h2>Vie privée</h2>
+      <p class="intro">Soaro travaille sur votre Mac et garde vos données chez vous.</p>
+      <div class="cards">
+        <div class="card">
+          <h3>Local par défaut</h3>
+          <ul>
+            <li>L'historique reste dans <code>~/Library/Application Support/Soaro</code></li>
+            <li>L'app n'a ni compte, ni statistiques, ni pistage</li>
+            <li>Le code est public : vous pouvez le vérifier</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Deux options facultatives</h3>
+          <ul>
+            <li>Test de latence : un petit ping vers 1.1.1.1</li>
+            <li>IP publique et pays : un service tiers voit votre IP publique</li>
+            <li>Les deux sont <strong>désactivées</strong> tant que vous ne les activez pas</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Mises à jour</h3>
+          <p>Une fois par jour, Soaro télécharge un petit fichier public pour savoir si une nouvelle version existe. Elle n'envoie aucune donnée personnelle. Vous pouvez désactiver cette vérification.</p>
+        </div>
+        <div class="card">
+          <h3>Ce site</h3>
+          <p>Ce site compte les visites avec <a href="https://umami.is">Umami</a>, un outil open source. Il ne dépose aucun cookie, ne vous suit pas d'un site à l'autre et respecte le réglage « Ne pas me suivre ». L'application, elle, n'envoie rien de tel.</p>
+        </div>
+      </div>
+      <h3 class="mt">Le nettoyage est prudent</h3>
+      <ul>
+        <li>Tout est confirmé avant d'être supprimé.</li>
+        <li>Soaro ne touche qu'à votre dossier personnel, et des tests vérifient cette règle.</li>
+        <li>Les gros fichiers et les apps désinstallées vont à la corbeille : vous pouvez les récupérer.</li>
+        <li>Un dossier de projet n'est proposé que si son fichier de projet est à côté. Un dossier <code>build</code> ou <code>dist</code> n'est jamais proposé.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="limits" class="alt">
+    <div class="wrap">
+      <h2>Limites</h2>
+      <p class="intro">Je préfère être clair sur ce que Soaro ne sait pas faire.</p>
+      <ul>
+        <li><strong>Apple silicon uniquement.</strong> Les Mac Intel ne sont pas pris en charge.</li>
+        <li>Les températures, ventilateurs et la consommation passent par des <strong>interfaces privées d'Apple</strong>. Une nouvelle version de macOS peut les casser. Si une lecture échoue, la section disparaît.</li>
+        <li>Soaro n'est <strong>pas sur le Mac App Store</strong> : elle a besoin d'accéder à vos fichiers pour les nettoyer, ce que le bac à sable de l'App Store n'autorise pas.</li>
+        <li>Certaines infos demandent une autorisation : la taille de la corbeille veut l'accès complet au disque, le nom du Wi-Fi veut la localisation.</li>
+        <li>La plupart des traductions ont été faites avec l'aide d'une IA et doivent être relues par des locuteurs natifs. <a href="https://github.com/sebmafate/soaro/blob/main/CONTRIBUTING.md#translations">Vous pouvez aider</a>.</li>
+      </ul>
+      <h3 class="mt">Langues</h3>
+      <ul class="langs">
+        <li><img class="flag" src="../flags/gb.svg" alt="" width="20" height="15" loading="lazy">English</li>
+        <li><img class="flag" src="../flags/fr.svg" alt="" width="20" height="15" loading="lazy">Français</li>
+        <li><img class="flag" src="../flags/de.svg" alt="" width="20" height="15" loading="lazy">Deutsch</li>
+        <li><img class="flag" src="../flags/es.svg" alt="" width="20" height="15" loading="lazy">Español</li>
+        <li><img class="flag" src="../flags/it.svg" alt="" width="20" height="15" loading="lazy">Italiano</li>
+        <li><img class="flag" src="../flags/br.svg" alt="" width="20" height="15" loading="lazy">Português (Brasil)</li>
+        <li><img class="flag" src="../flags/jp.svg" alt="" width="20" height="15" loading="lazy">日本語</li>
+        <li><img class="flag" src="../flags/cn.svg" alt="" width="20" height="15" loading="lazy">简体中文</li>
+        <li><img class="flag" src="../flags/kr.svg" alt="" width="20" height="15" loading="lazy">한국어</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <div class="wrap">
+      <h2>Télécharger</h2>
+      <p class="intro center-intro">Soaro est signée avec un Developer ID et notarisée par Apple. Elle se met à jour toute seule.</p>
+      <div class="narrow">
+        <ol class="steps">
+          <li><span>Téléchargez le fichier <code>.dmg</code>.</span></li>
+          <li><span>Ouvrez-le et glissez <strong>Soaro</strong> dans <strong>Applications</strong>.</span></li>
+          <li><span>Lancez Soaro. Elle apparaît dans la barre de menus.</span></li>
+        </ol>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Télécharger pour macOS</a>
+        <a class="btn" href="https://github.com/sebmafate/soaro">Code source</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt">
+    <div class="wrap centered">
+      <h2>Soutenir le projet</h2>
+      <p class="intro center-intro">Soaro est gratuite et open source. Si elle vous fait gagner du temps, vous pouvez la soutenir. C'est facultatif, et ça m'aide à continuer.</p>
+      <a class="btn" href="https://buymeacoffee.com/sebmafate">Offrez-moi un café</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>© 2026 <a href="https://sferrand.fr" rel="author">Sébastien Ferrand</a> · <a href="https://github.com/sebmafate/soaro/blob/main/LICENSE">GPL-3.0</a></span>
+    <nav aria-label="Bas de page">
+      <a href="https://github.com/sebmafate/soaro">GitHub</a>
+      <a href="https://github.com/sebmafate/soaro/blob/main/CHANGELOG.md">Historique des versions</a>
+      <a href="https://github.com/sebmafate/soaro/issues">Signaler un problème</a>
+      <a href="https://buymeacoffee.com/sebmafate">Offrez-moi un café</a>
+      <a href="https://github.com/sebmafate/soaro/blob/main/SECURITY.md">Sécurité</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,5 @@
+/fr            /fr/        301
+/index.html    /           301
+/fr/index.html /fr/        301
+/download      https://github.com/sebmafate/soaro/releases/latest  302
+/github        https://github.com/sebmafate/soaro                  302
