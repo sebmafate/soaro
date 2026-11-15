@@ -44,6 +44,11 @@ if [ -d "$RES_BUNDLE" ]; then
     LANGS="$LANGS $(basename "$lproj" .lproj)"
   done
 fi
+# A release without translations is a bug (an old toolchain does not compile the String Catalogs): stop.
+if [ "$IDENTITY" != "-" ] && [ "$(echo "$LANGS" | tr ' ' '\n' | sort -u | wc -l)" -lt 2 ]; then
+  echo "No translation was compiled (swift: $(swift --version 2>&1 | head -1)). Use Xcode 26 or later." >&2
+  exit 1
+fi
 LOCALIZATIONS_XML=""
 for l in $(echo "$LANGS" | tr ' ' '\n' | sort -u); do LOCALIZATIONS_XML="$LOCALIZATIONS_XML<string>$l</string>"; done
 

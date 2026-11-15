@@ -22,7 +22,9 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-15
+    # macOS 26 runner = Xcode 26 / Swift 6.2+: needed for Liquid Glass (`#if compiler(>=6.2)` in GlassStyle.swift)
+    # and for SwiftPM to compile the String Catalogs into translations. Xcode 16 silently ships neither.
+    runs-on: macos-26
     timeout-minutes: 60
     # A manual run is a dry run: it builds and uploads the DMG as a workflow artifact, nothing is published.
     env:
@@ -42,6 +44,15 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           if [ "$PUBLISH" = "true" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
             echo "::error::Tag $GITHUB_REF_NAME does not match the VERSION file (v$VERSION)"
+            exit 1
+          fi
+
+      - name: Check the toolchain
+        run: |
+          swift --version
+          V="$(swift --version 2>&1 | sed -n 's/.*Swift version \([0-9][0-9.]*\).*/\1/p' | head -1)"
+          if [ "$(printf '%s\n6.2\n' "$V" | sort -V | head -1)" != "6.2" ]; then
+            echo "::error::Swift $V is too old: Liquid Glass and translations need Swift 6.2 or later"
             exit 1
           fi
 
