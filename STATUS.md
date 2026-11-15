@@ -14,7 +14,7 @@ The developer cleanup (iOS simulators, Android emulators, NuGet; Docker later) i
 
 1. **The author:** check the simulator classification on 5 devices, check the Android list against Android Studio, decide on simulator runtimes (31.5 GB, outside the home folder; reopens ADR 0006 and 0009 if included).
 2. **Test B for Docker** (the author starts Docker Desktop; nothing destructive without his confirmation). Fixes the status of ADR 0010.
-3. `DESIGN.md` Part 1 (UX) is written (2026-11-15): NuGet is a row in Developer; one tool "Simulators and emulators" covers iOS and Android. Next: `/trellis:ui` (small: the tool reuses existing components), `/trellis:test-strategy`, then `/trellis:slice` and `/trellis:deliver`.
+3. `DESIGN.md` Part 1 (UX) is written (2026-11-15): NuGet is a row in Developer; one tool "Simulators and emulators" covers iOS and Android. `DESIGN.md` Part 2 (UI) is written too (2026-11-15): no new component; an accessibility lot goes into the shared `SelectionRow` and `ActionBar`. Decided: an accessibility slice comes before the tool (Cancel as default button, toast fade and VoiceOver announcement, a darker "supporting text" color across the app, shared selection row and action bar; see `DESIGN.md` Open points). Next: `/trellis:test-strategy` (accessibility and contrast checks belong in it), then `/trellis:slice` and `/trellis:deliver`.
 
 Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
