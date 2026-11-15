@@ -8,7 +8,7 @@ Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) th
 
 | File | What it is | Rule |
 | --- | --- | --- |
-| `SPEC.md` | What and why | Not written yet (adoption level `standard`); create it with `/trellis:incubate` when the next feature is specified |
+| `SPEC.md` | What and why | Covers the developer cleanup feature only (written 2026-11-15); requirement IDs R1 to R19 are stable, do not renumber |
 | `ARCHITECTURE.md` | How: components, flows, decisions index | Update when reality changes |
 | `docs/architecture.md` | File-by-file reference, CLI modes, macOS permissions, previous names | Detailed reference; `ARCHITECTURE.md` is the design view |
 | `docs/adr/` | One decision per file | Never edit an accepted ADR; supersede it |

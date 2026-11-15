@@ -10,7 +10,7 @@
 
 ## Next action
 
-Extend the developer cache cleanup (Docker / OrbStack, Xcode simulators, SwiftPM and NuGet caches, old `node_modules`). Specify it first (`/trellis:incubate`), then slice it. Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
+The developer cleanup (iOS simulators, Android emulators, NuGet, SwiftPM; Docker later) is specified in `SPEC.md` (2026-11-15, version 0.2, status validated for the Must scope). Next: the author checks the simulator classification on 5 devices and the Android list against Android Studio and decides on simulator runtimes (31.5 GB, outside the home folder), then `/trellis:architect` (a new ADR completing ADR 0006 for actions that are not file deletion), then Test B for Docker. Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
 ## Where we are
 
