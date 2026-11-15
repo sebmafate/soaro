@@ -33,16 +33,26 @@ SPARKLE_FRAMEWORK="$(find .build/artifacts -type d -name Sparkle.framework -path
 cp -R "$SPARKLE_FRAMEWORK" "$APP/Contents/Frameworks/"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Soaro"
 
-# Translations: SwiftPM compiles the String Catalogs into <language>.lproj folders inside its resource bundle.
-# They are copied to the root of the app resources, where macOS looks for them.
-RES_BUNDLE="$BIN_DIR/Soaro_Soaro.bundle/Contents/Resources"
+# Translations: the String Catalogs are compiled into <language>.lproj folders (Localizable.strings, InfoPlist.strings)
+# at the root of the app resources, where macOS looks for them. SwiftPM only does this itself with the newest
+# toolchain (it merely copies the catalogs with Xcode 26), so we call Xcode's own compiler, which gives the same
+# result everywhere.
+LPROJ_OUT="build/lproj"
+rm -rf "$LPROJ_OUT"
+mkdir -p "$LPROJ_OUT"
+for catalog in Sources/Soaro/Resources/*.xcstrings; do
+  xcrun xcstringstool compile "$catalog" --output-directory "$LPROJ_OUT"
+done
 LANGS="en"
-if [ -d "$RES_BUNDLE" ]; then
-  for lproj in "$RES_BUNDLE"/*.lproj; do
-    [ -d "$lproj" ] || continue
-    cp -R "$lproj" "$APP/Contents/Resources/"
-    LANGS="$LANGS $(basename "$lproj" .lproj)"
-  done
+for lproj in "$LPROJ_OUT"/*.lproj; do
+  [ -d "$lproj" ] || continue
+  cp -R "$lproj" "$APP/Contents/Resources/"
+  LANGS="$LANGS $(basename "$lproj" .lproj)"
+done
+# A release without translations is a bug (the String Catalogs were not compiled): stop.
+if [ "$IDENTITY" != "-" ] && [ "$(echo "$LANGS" | tr ' ' '\n' | sort -u | wc -l)" -lt 2 ]; then
+  echo "No translation was compiled (swift: $(swift --version 2>&1 | head -1)). Check xcrun xcstringstool." >&2
+  exit 1
 fi
 LOCALIZATIONS_XML=""
 for l in $(echo "$LANGS" | tr ' ' '\n' | sort -u); do LOCALIZATIONS_XML="$LOCALIZATIONS_XML<string>$l</string>"; done
