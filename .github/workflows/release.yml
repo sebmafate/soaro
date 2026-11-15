@@ -1,0 +1,109 @@
+name: Release
+
+# Builds, signs and notarizes the DMG, then publishes the GitHub release with the DMG and the Sparkle appcast.
+# Procedure and secrets: docs/ci-release.md
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      notarize:
+        description: "Send the DMG to Apple (slower). Turn off for a quick signing test"
+        type: boolean
+        default: true
+
+# One release at a time, and never cancel one that is running.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    # A manual run is a dry run: it builds and uploads the DMG as a workflow artifact, nothing is published.
+    env:
+      PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') && 'true' || 'false' }}
+      NOTARIZE: ${{ github.event_name == 'push' && 'true' || inputs.notarize }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The build number is the commit count (scripts/build-app.sh): a shallow clone would give 1
+          # and Sparkle would never see the update as newer.
+          fetch-depth: 0
+
+      - name: Read the version
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [ "$PUBLISH" = "true" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the VERSION file (v$VERSION)"
+            exit 1
+          fi
+
+      - name: Check the release notes
+        run: scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/notes.md"
+
+      - name: Test
+        run: swift test
+
+      - name: Import the signing certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/release.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          printf '%s' "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          # Lets codesign use the key without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          EXISTING=()
+          while IFS= read -r k; do EXISTING+=("$(echo "$k" | tr -d '" ')"); done < <(security list-keychains -d user)
+          security list-keychains -d user -s "$KEYCHAIN" "${EXISTING[@]}"
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Build, sign, notarize, make the DMG and the appcast
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          export RELEASE_NOTES_FILE="$RUNNER_TEMP/notes.md"
+          if [ "$NOTARIZE" = "true" ]; then
+            scripts/release.sh --notarize
+          else
+            scripts/release.sh
+          fi
+
+      - name: Upload the files as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: soaro-${{ env.VERSION }}
+          path: |
+            build/release/Soaro-${{ env.VERSION }}.dmg
+            build/release/appcast.xml
+          if-no-files-found: error
+
+      # The DMG and the appcast go up in the same release, so the feed never points to a missing file.
+      - name: Publish the GitHub release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE=""
+          case "$VERSION" in *-*) PRERELEASE="--prerelease" ;; esac
+          # The appcast is a release asset: soaro.app/appcast.xml redirects to the latest release's copy
+          # (site/_redirects), so nothing has to be pushed to the protected main branch.
+          gh release create "v$VERSION" "build/release/Soaro-$VERSION.dmg" "build/release/appcast.xml" \
+            --title "Soaro $VERSION" --notes-file "$RUNNER_TEMP/notes.md" $PRERELEASE
