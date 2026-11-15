@@ -8,12 +8,13 @@ Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) th
 
 | File | What it is | Rule |
 | --- | --- | --- |
-| `SPEC.md` | What and why | Not written yet (adoption level `standard`); create it with `/trellis:incubate` when the next feature is specified |
+| `SPEC.md` | What and why | Covers the developer cleanup feature only (written 2026-11-15); requirement IDs R1 to R19 are stable, do not renumber |
 | `ARCHITECTURE.md` | How: components, flows, decisions index | Update when reality changes |
+| `DESIGN.md` | UX and UI of the developer cleanup (journeys J1 to J6, screens S1 to S4) | Parts 1 (UX) and 2 (UI) written 2026-11-15 |
 | `docs/architecture.md` | File-by-file reference, CLI modes, macOS permissions, previous names | Detailed reference; `ARCHITECTURE.md` is the design view |
 | `docs/adr/` | One decision per file | Never edit an accepted ADR; supersede it |
 | `TESTING.md` | Test levels, baseline, definition of done | Follow it for every change |
-| `PLAN.md` | Slices | Not written yet |
+| `PLAN.md` | Slices (SL1 to SL14, SP1) of the developer cleanup, in execution order; days spent against the 14-day time box | Written 2026-11-15; next: SL1 |
 | `STATUS.md` | Current phase, next action | Keep current after each change |
 | `CHANGELOG.md` | User-facing changes (Keep a Changelog) | One entry per release; the release notes are read from it |
 | `docs/releasing.md`, `docs/ci-release.md`, `docs/updates.md`, `docs/website.md` | Release (manual and GitHub Actions), Sparkle, website | Source of truth for release steps |

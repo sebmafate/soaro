@@ -1,0 +1,271 @@
+# Soaro developer cleanup: design
+
+| | |
+| --- | --- |
+| Status | draft (Part 1, UX, and Part 2, UI, done) |
+| Version | 0.1 |
+| Date | 2026-11-15 |
+| Based on | `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 |
+| Interface language | English first, then the eight other languages of the app (R12) |
+
+This design covers only the developer cleanup. It reuses the existing Cleanup tab: a list (System, Developer, Tools), a tool opens with a "Cleanup" back button, tools show a selection list and an action bar.
+
+# Part 1: UX
+
+## Users and context
+
+| User | Job to be done | Context | Frequency |
+| --- | --- | --- | --- |
+| The author (.NET, Swift and cloud developer) | Free the space that development takes, knowing what is deleted | On the Mac, in the Soaro window or the menu bar panel, a few minutes, full attention (a chosen chore) | About once a month (success criterion S1) |
+| Another Mac developer using Soaro | The same, or ignore the section | Same | Rare |
+
+## UX goals
+
+1. **Few actions:** from opening the tool to a confirmed removal of the pre-selected devices, at most 3 actions (open the tool, Delete, confirm).
+2. **Every row says why:** no device is pre-selected without a readable reason.
+3. **Nothing is deleted without a confirmation** that names the target, its size and what is lost (R8).
+4. **The result is honest:** the space really freed is shown, not the announced one (R7).
+5. **A missing or failing tool breaks nothing:** the entry hides, or says what could not be read, with no empty screen and no technical message (R6).
+
+## Journeys
+
+| ID | Journey | Trigger | Steps | Outcome | Main failure path | Requirements |
+| --- | --- | --- | --- | --- | --- | --- |
+| J1 | Discovery (first run) | Opens the Cleanup tab after the update | 1. Sees the **NuGet packages** row (Developer) and the **Simulators and emulators** row (Tools) | New tools visible with no setup. On a Mac without Xcode simulators, Android SDK or NuGet folder, nothing new appears | Tool not found: the row is simply not shown | R6, R18 |
+| J2 | Clean NuGet | Wants the 13 GB | 1. Clean on the row. 2. Confirm | "13 GB freed" (space really freed) | Folder not accessible: existing short message | R1, R7, R8, R13 |
+| J3 | **Clean simulators and emulators** (critical moment) | Disk filling up, or the monthly chore | 1. Open the tool (the scan starts by itself). 2. Review the list (pre-selected rows are checked). 3. Delete. 4. Confirm | Chosen devices leave the list; the space really freed is shown | A device is running (not selectable, explained); the tool is too slow; partial removal | R3 to R9, R16 to R18 |
+| J4 | Adjust what is pre-selected | The 60-day limit does not fit | 1. Change "Inactive for more than". 2. Pre-selection is recomputed. 3. Continue as J3 | Selection follows the new limit | Nothing at that limit: "Nothing to suggest" banner | R3, R16 |
+| J5 | Android system images (Should) | A removed AVD leaves an unused image | 1. In the same tool, group "Android system images". 2. Check an unused image. 3. Delete. 4. Confirm, with the download-again warning | Image removed | Image still used: not selectable, names the AVD | R19 |
+| J6 | Docker (Should, after Test B) | Engine running | Separate tool, designed only if Test B passes | not designed | Engine stopped: section hidden or "engine stopped" | R10, R11 |
+
+## Information structure
+
+- **Names (one per thing):** the tool is **Simulators and emulators**; an item is a **device** (groups "iOS Simulators" and "Android emulators"); the reason is **inactive for N d** or **older copy**; a checked row is **pre-selected**; the limit is **Inactive for more than N days**; an Android image is a **system image** (iOS runtimes are out of scope, so the word "runtime" is not used).
+- **Relations:** a platform group contains devices; an Android device depends on a system image; an image used by a device cannot be removed before that device.
+- **Navigation:** the existing one. The Cleanup list opens a tool; "Cleanup" goes back. Two levels, no new depth.
+- **Placement decision (2026-11-15):** NuGet is one row in **Developer**; one tool **Simulators and emulators** in **Tools** covers iOS and Android, and later the Android system images as a group; Docker would be a separate tool.
+
+## Screens
+
+| ID | Screen | Purpose | Entry points | Primary action | States covered | Requirements |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1 | Cleanup list (existing, changed) | Adds the NuGet row and the tool row | Cleanup tab | Clean (NuGet); open the tool | first use (new rows); tool absent (rows hidden); busy (spinner); error (short message) | R1, R6, R13 |
+| S2 | Simulators and emulators (new) | Choose and delete devices | Row in S1, or an advice | Delete (action bar) | scanning; no device; nothing pre-selected; device running; platform unreadable; deleting; partial failure; result | R3 to R9, R16 to R18 |
+| S3 | Confirmation (existing alert) | Last guard before deleting | Delete in S2, Clean in S1 | Confirm or cancel | one variant per kind of target | R8 |
+| S2b | "Android system images" group, inside S2 (Should) | Remove an unused image | S2 | Delete | image in use (not selectable); download-again warning | R19 |
+| S4 | Docker (Should, after Test B) | not designed | S1 | not designed | not designed | R10, R11 |
+
+### Wireframes
+
+**S1 (the two new rows)**
+
+```
+ DEVELOPER   Xcode DerivedData · npm · Gradle · Cargo · ...
+             NuGet packages                          13 GB  [Clean]
+ TOOLS       Large files                                      >
+             Inactive projects                                >
+             Simulators and emulators                         >
+             Uninstall apps                                   >
+             Startup items                                    >
+```
+
+**S2, with data from the author's Mac (test A)**
+
+```
++--------------------------------------------------------------------+
+| < Cleanup                 Simulators and emulators                 |
+|--------------------------------------------------------------------|
+| Devices: 12 · 31.4 GB   Inactive for more than [60 days v] [Scan again] |
+|--------------------------------------------------------------------|
+| IOS SIMULATORS                                                     |
+| (x) iPhone 16 · iOS 26.2                                   4.6 GB  |
+|     inactive for 66 d                                              |
+| (x) iPad Pro 13-inch (M4) · iOS 26.2                       4.0 GB  |
+|     inactive for 65 d · older copy                                 |
+| (x) iPhone 17 Pro Max · iOS 26.2                           2.2 GB  |
+|     inactive for 115 d · older copy                                |
+| ( ) iPhone 17 Pro · iOS 26.2                               2.0 GB  |
+|     inactive for 10 d                                              |
+|                                                                    |
+| ANDROID EMULATORS                                                  |
+| ( ) Pixel_9a · API 36                                      11 GB   |
+|     inactive for 54 d                                              |
+| (x) ap34 · API 34                                         1.6 GB   |
+|     inactive for 23 d                                              |
+|                                                                    |
+| 26 small devices (0.5 GB) not shown.                               |
+| Devices inactive for more than 60 days, and older copies of the    |
+| same model, are pre-selected. A removed device takes its apps,     |
+| data and snapshots with it; create a new one from Xcode or         |
+| Android Studio.                                                    |
+|--------------------------------------------------------------------|
+| Selected: 7 · 18.3 GB                                  [ Delete ]  |
++--------------------------------------------------------------------+
+```
+
+Each group is sorted by size, largest first. Devices under 100 MB are not listed and are counted in the footer. The row example for ap34 is illustrative.
+
+**S2 states**
+
+```
+Scanning         (spinner)  Looking for simulators and emulators…
+No device        (ok)       No simulator or emulator found.
+Nothing checked  banner     Nothing to suggest at 60 days. Pick devices yourself, or lower the limit.
+Device running   ( - ) iPhone 15 · iOS 26.2     3.1 GB    not selectable
+                       Running · quit it first
+Platform unread  ANDROID EMULATORS
+                       Could not read the Android emulators.   (the iOS group stays usable)
+Deleting         action bar disabled with a spinner; the list updates at the end
+```
+
+**S3**
+
+```
++--------------------------------------------------+
+| Delete the selected devices? (7)                 |
+|                                                  |
+| 18.3 GB will be freed. The devices, the apps and |
+| data on them, and their snapshots will be        |
+| deleted. You can create new devices from Xcode   |
+| or Android Studio.                               |
+|                                                  |
+|                       [ Cancel ]  [ Delete ]     |
++--------------------------------------------------+
+```
+
+## Interface text
+
+Tone: short, concrete, no marketing; same style as the app ("Your sources are not touched", "Folders that could not be deleted: 2"). An error says what happened and what to do. A destructive action says what is lost.
+
+| Where | Text |
+| --- | --- |
+| NuGet row (S1) | **NuGet packages**: "Downloaded packages, downloaded again when needed" |
+| Tool row (S1) | **Simulators and emulators**: "iOS Simulators and Android emulators" |
+| Footer of S2 | "26 small devices (0.5 GB) not shown." then "Devices inactive for more than 60 days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio." |
+| Confirmation (S3) | Title "Delete the selected devices? (7)"; message "18.3 GB will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."; button "Delete" |
+| After removal | "18.3 GB freed" (space really freed) |
+| Partial removal | "Devices that could not be removed: 2" |
+| Tool too slow | "Xcode’s simulator service did not answer. Try again in a moment." |
+| Device started meanwhile | "“iPhone 15” is running: quit it first." |
+| Nothing pre-selected | "Nothing to suggest at 60 days. Pick devices yourself, or lower the limit." |
+| System images (Should) | Group "ANDROID SYSTEM IMAGES"; row "API 26 · 3.2 GB, used by ap26" (not selectable); confirmation line "This image will have to be downloaded again (3.2 GB) to create a device with it." |
+
+## Walk-through
+
+- **First-time user (J1, J3):** opens Cleanup, sees the two new entries, opens the tool, waits for the scan, reads reasons, presses Delete, confirms. 3 actions after opening: goal 1 met. Reasons are on every pre-selected row (goal 2). The confirmation names size and loss (goal 3).
+- **Returning user:** the list stays in memory during the session (as today); the action re-checks that a device is not running right before removing it (ADR 0009), and says so if one started meanwhile.
+- **Friction found and handled:** the vocabulary ("suggested" became "pre-selected", "idle" became "inactive") to match the app; the biggest device that is not pre-selected (Pixel_9a, 54 d) stays visible because groups are sorted by size.
+- **Friction accepted:** the tool row shows no size; the first scan waits for the real sizes (R7).
+
+## Open questions (UX)
+
+- If measuring real sizes takes more than about 10 seconds, show rows first and refine sizes as they arrive (as the uninstaller does).
+- Should the "Inactive for more than" limit be remembered between sessions? Default: no, like the size limit of "Large files".
+- Layout of Docker (S4) and of the Android system images group (S2b) is to finish after Test B and after the Must scope.
+- Behaviour in the narrow menu bar panel: long device names are truncated on one line (to check in `ui`).
+
+# Part 2: UI
+
+Small on purpose: every screen of Part 1 is built from components that already exist in the app. No new custom component, no new palette. This part records the roles the app already uses, the contrast measured for them, and the small changes agreed on 2026-11-15 (the "accessibility lot") that go into shared components.
+
+## Platform and conventions
+
+- **Platform:** macOS 14+, SwiftUI with some AppKit (ADR 0001).
+- **Containers:** the menu bar panel (fixed 430 x 640 pt, flat cards) and the standalone window (860 x 680 pt, minimum 700 x 520, glass cards: Liquid Glass on macOS 26, translucent material on 14 and 15).
+- **Conventions that apply:** a tool opens in place with a "Cleanup" back button; selection lists use the plain list style; confirmations are native alerts (`AppState.confirm`); results are a toast; progress is a small spinner; everything follows the system appearance (light, dark), accent colour and Increase Contrast setting.
+
+## Identity
+
+Native, calm, readable. The navy and teal of the icon (#16395C, #1F8F8C) stay in the icon and the website; the interface uses the system accent colour. No identity work is needed for this feature.
+
+## Tokens
+
+### Color
+
+All roles are the system's semantic colors, so both themes come from the system. Ratios are computed (`WCAG` relative luminance) against reference backgrounds, white and #1E1E1E. The real backgrounds are translucent materials that change with the desktop, so the ratios are approximate.
+
+| Role | Light | Dark | Contrast of text on the background | Use |
+| --- | --- | --- | --- | --- |
+| background | system window or material | system window or material | n/a | screens |
+| surface | card (flat in the panel, glass in the window) | same | n/a | cards |
+| text-primary | system label (85 %) | system label (85 %) | 15.1 : 1 light, 12.3 : 1 dark | names, reasons, messages, anything the user needs |
+| text-secondary | system secondary label | system secondary label | **3.95 : 1 light**, 5.9 : 1 dark | supporting detail and units only; below AA for small text in light mode |
+| text-tertiary | system tertiary label | system tertiary label | **1.84 : 1 light**, 2.27 : 1 dark | decoration only; never information |
+| text-supporting (new) | text-primary at 56 % opacity | text-primary at 56 % opacity | about 4.95 : 1 light, 6.1 : 1 dark (70 % with Increase Contrast: 8.45 : 1 and 8.78 : 1) | supporting text everywhere in the app: units, sub-lines, footers, group headers. Replaces text-secondary for text |
+| accent | system accent (blue by default) | same | checkmark 4.02 : 1 light, 4.57 : 1 dark (UI component, needs 3) | selected check, links, default buttons |
+| danger-fill | #D32F2F | #D32F2F | white label **4.98 : 1**; fill against background 4.98 : 1 light, 3.35 : 1 dark | the destructive button (replaces the system red, 3.55 : 1 light and 3.41 : 1 dark with a white label) |
+| danger-fill, Increase Contrast | #B71C1C | #B71C1C | white label 6.57 : 1 | used when the system asks for more contrast |
+
+Rules (decided 2026-11-15): essential information is text-primary; supporting text is text-supporting, everywhere in the app; text-secondary stays only for icons and decoration, where 3 : 1 is enough; text-tertiary is never used for information (the two existing text uses move to text-supporting; chevrons stay tertiary). The empty selection circle uses text-secondary (3.95 : 1 and 5.9 : 1, above the 3 : 1 needed for a component).
+
+### Typography, spacing, shape, motion
+
+| Token | Value | Notes |
+| --- | --- | --- |
+| tool title | `.headline` | as the other tools |
+| row name | `.callout` | one line, truncated at the end, full name in a tooltip (`.help`) |
+| reason line | `.caption`, text-primary | agreed change: the other tools use `.caption2` and secondary |
+| size | `.caption` with monospaced digits, text-supporting | right-aligned, never truncated |
+| group header | `SectionHeader` (existing), now `.caption` in text-supporting | changed in the accessibility slice |
+| footer note | `.caption2`, text-supporting | supporting only; the essential parts of it are also in the confirmation |
+| spacing | 14 pt screen padding; 10 pt card padding; 4 pt row padding; 12 pt between blocks | as in the code |
+| shape | flat card radius 10; glass card radius 16 (continuous) | existing `cardBackground` |
+| motion | none added | the spinner is the only motion; see rule on reduced motion |
+
+## Components
+
+| Component | Native or existing | Variants | States |
+| --- | --- | --- | --- |
+| Tool row in the Tools list (S1) | existing button row | none | default, hover, pressed, focus |
+| `CleanupRow` (NuGet, S1) | existing | none | default, busy (spinner), size unknown ("—"), disabled when size is 0 |
+| `SelectionRow` | existing, made shared (it is `private` today) | **new: unavailable** (running device, image in use) with a `minus.circle` icon and a text reason | default, selected, unavailable, focus (system focus ring), pressed |
+| `ActionBar` | existing, made shared | destructive (danger-fill); **new: busy** (spinner beside the summary) | default, disabled (nothing selected), busy |
+| `SectionHeader` | existing | none | default |
+| `EmptyHint` | existing | `info.circle` for information; `exclamationmark.triangle` for "could not read" | default |
+| Limit menu "Inactive for more than" | native `Picker` (menu), as the size limit of Large files | 30, 60, 90, 180 days | default, focus |
+| Scanning state | native `ProgressView` with a caption | none | loading |
+| Confirmation (S3) | native `NSAlert` through `AppState.confirm` | destructive: `critical: true` | default |
+| Toast | existing | none | visible 4 s |
+
+Every screen of Part 1 uses only these. There is no custom component. The two extensions (unavailable row, busy bar) are small variants of existing components.
+
+## Accessibility rules
+
+- **Target size:** at least 24 x 24 pt for every control (WCAG 2.2, criterion 2.5.8). Checked on 2026-11-15: the Apple HIG gives no minimum for macOS controls (its general 44 x 44 pt rule is for touch), so WCAG 2.2 is the project's rule. The selection check, about 22 pt today, grows to 24 pt in the shared `SelectionRow`.
+- **Text scaling:** use text styles only; add no fixed font size. Whether macOS offers system-wide text scaling to third-party apps stays unconfirmed: the only source found is a community forum reply saying Dynamic Type is not available to third-party apps on macOS. To test by hand on a recent macOS (System Settings, Accessibility, Display, Text size: is Soaro listed?).
+- **Screen reader:** one element per row. The label contains the device name, the platform and system, the size and the reason, then "selected" or "not selected" as its value. An unavailable row reads "running, not selectable". The shared selection button no longer says only "Selected"; it names the device. Results (the toast) are also announced, because the toast disappears after 4 seconds.
+- **Keyboard and focus:** every row and button is reachable with Full Keyboard Access; Space toggles a focused row; focus order follows reading order (limit menu, rows top to bottom, Scan again, Delete).
+- **Confirmation default (decided 2026-11-15):** the default button of a confirmation is never the one that deletes. Cancel is the default button, so pressing Return never deletes. The rule applies to every confirmation of `AppState.confirm`, not only to those marked `critical`: all five existing callers (cleanup, Trash, inactive projects, uninstall, login items) remove something, and so will the new ones. Today the first button, which is the destructive one, is the default, so Return deletes; this changes the existing alerts too. The `critical` flag keeps controlling only the alert style.
+- **Reduced motion:** the tool adds no animation. The existing toast slides in with a 0.2 s transition regardless of the setting; it should drop the slide when Reduce Motion is on.
+- **Color is never the only signal:** selected is a filled check against an empty circle; unavailable is an icon and a text; an unreadable platform is an icon and a text; the destructive button says "Delete".
+- **Increase Contrast:** the system colors adapt by themselves; danger-fill switches to its darker value.
+- **Localisation:** nine languages (en, fr, de, es, it, pt-BR, ja, zh-Hans, ko), none right-to-left, so mirrored layout is out of scope. Long translations truncate the device name and never the size or the unit.
+
+## Adaptive layout
+
+- **Panel (430 pt wide):** a device row is the checkbox, the name and the reason on two lines, and the size. The name truncates; the size does not. The limit menu and "Scan again" share the header line and may wrap onto a second line in a long translation.
+- **Window (700 pt wide or more):** the same layout with more room; no extra columns.
+- No other sizes or devices are in scope.
+
+## Verification of this part
+
+- Every screen S1 to S3 uses only the components and tokens above (S4 Docker and S2b images are not designed yet).
+- Contrast is recorded for each text and background pairing in both themes (approximate, against reference backgrounds).
+- No custom component, so nothing to justify beyond the two small variants.
+
+## Open points (UI)
+
+- **Accessibility slice (decided 2026-11-15), to plan before the tool itself:** (1) Cancel as the default button in `AppState.confirm`, with a test; (2) toasts: plain fade with Reduce Motion and a VoiceOver announcement in `AppState.showToast`; (3) the text-supporting color replaces `.secondary` for text across the app (69 uses in 11 files), including `SectionHeader` and the two informative `.tertiary` texts (`CleanupToolViews.swift:87`, `NetworkTab.swift:106`); (4) shared `SelectionRow` and `ActionBar`. One `CHANGELOG` entry. The only visible change is a slightly darker grey for supporting text.
+- Still to test by hand, not fixable by code: text scaling on a recent macOS (is Soaro listed in the Text size settings?); real contrast on the glass and material backgrounds, with Reduce Transparency and Increase Contrast on.
+- Cancel as the default button is decided and applies to all five existing confirmations. For delivery: build the alert (buttons and default) separately from showing it, so a unit test can check that the default is Cancel.
+- The toast slide transition and VoiceOver announcements apply to every toast, not only the new tool.
+- Real contrast on the glass and material backgrounds is not measured; the ratios above use plain references.
+
+## Change log
+
+| Date | Change |
+| --- | --- |
+| 2026-11-15 | Part 1 (UX) written |
+| 2026-11-15 | Decision by the author: an accessibility slice before the tool, with the text-supporting color applied across the app (not only in the new tool) |
+| 2026-11-15 | Decision by the author: a delete button is never the default button of a confirmation; Cancel is the default for all confirmations |
+| 2026-11-15 | Part 2 (UI) written: roles and contrast, the accessibility lot (shared `SelectionRow` and `ActionBar`, reason line in primary text at `.caption`, danger-fill #D32F2F), accessibility rules |
