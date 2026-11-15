@@ -10,6 +10,7 @@ Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) th
 | --- | --- | --- |
 | `SPEC.md` | What and why | Covers the developer cleanup feature only (written 2026-11-15); requirement IDs R1 to R19 are stable, do not renumber |
 | `ARCHITECTURE.md` | How: components, flows, decisions index | Update when reality changes |
+| `DESIGN.md` | UX and UI of the developer cleanup (journeys J1 to J6, screens S1 to S4) | Part 1 (UX) written 2026-11-15; Part 2 (UI) to do |
 | `docs/architecture.md` | File-by-file reference, CLI modes, macOS permissions, previous names | Detailed reference; `ARCHITECTURE.md` is the design view |
 | `docs/adr/` | One decision per file | Never edit an accepted ADR; supersede it |
 | `TESTING.md` | Test levels, baseline, definition of done | Follow it for every change |

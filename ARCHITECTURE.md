@@ -80,7 +80,7 @@ One `AppState` object (main actor) owns a 3-second timer. Each tick asks the sam
 | `AndroidEmulatorScanner`, Android image scanner (planned) | Reads `~/.android/avd` (`.ini`, `config.ini`), detects a running AVD from the process list (`-avd <name>`), removes the `.ini` and `.avd` pair, links system images to their AVDs | FileManager, process list |
 | `DeviceSuggestions` (planned, pure) | Shared by iOS and Android: pre-selects devices idle beyond the threshold (default 60 days) and older duplicates of the same model and runtime | Models only |
 | Docker cleaner (proposed, ADR 0010) | Lists usage and prunes the build cache and untagged images through the `docker` command; measures the host space returned | CommandRunner, ToolLocator |
-| `Views/*`, `MainWindow` | Tabbed panel and standalone window (AppKit window, created on demand). The cleanup tool models are `StateObject`s of `CleanupTab`, not part of `AppState`; two new routes are planned in `CleanupRoute` | AppState |
+| `Views/*`, `MainWindow` | Tabbed panel and standalone window (AppKit window, created on demand). The cleanup tool models are `StateObject`s of `CleanupTab`, not part of `AppState`; one new route is planned in `CleanupRoute` for the tool "Simulators and emulators" (iOS and Android in one list, `DESIGN.md`), and a second one for Docker only if Test B passes | AppState |
 | `Updater` | Sparkle, inactive without `SUFeedURL` and `SUPublicEDKey` | Sparkle |
 | `LegacyMigration` | Imports history and preferences from former app names | UserDefaults, files |
 | `DemoData`, `Snapshot`, `Diagnostics` | Demo mode, PNG snapshots, read-only CLI output | AppState |
