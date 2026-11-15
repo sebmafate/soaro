@@ -2,13 +2,13 @@
 
 | | |
 | --- | --- |
-| Status | validated for the Must scope (simulators, NuGet, SwiftPM); the Docker part waits for a test (see Kill criteria) |
-| Version | 0.2 (Android emulators added) |
+| Status | validated for the Must scope (simulators, Android emulators, NuGet); the Docker part waits for a test (see Kill criteria) |
+| Version | 0.3 (R2 covered by the existing cleaner) |
 | Date | 2026-11-15 |
 
 ## Summary
 
-Extend the Cleanup view of Soaro so it can free what development piles up on a Mac: Xcode simulators, Android emulators, the NuGet and SwiftPM caches, and later Docker. It is for the author first (a .NET, Swift and cloud developer whose disk fills up a little more each month) and for other Mac developers who use Soaro and may ignore it.
+Extend the Cleanup view of Soaro so it can free what development piles up on a Mac: Xcode simulators, Android emulators, the NuGet cache, and later Docker. It is for the author first (a .NET, Swift and cloud developer whose disk fills up a little more each month) and for other Mac developers who use Soaro and may ignore it.
 
 ## Problem
 
@@ -22,7 +22,7 @@ The author does not clean developer data today. The disk gets fuller over time, 
 | Simulator runtimes (outside the home folder) | 31.5 GB, 4 runtimes |
 | Android virtual devices (`~/.android/avd`, 6 AVD) | 16 GB (one of them, Pixel_9a, is 11 GB) |
 | Android system images (`~/Library/Android/sdk/system-images`, 6 versions) | 18 GB |
-| SwiftPM cache | almost empty |
+| SwiftPM cache | almost empty (52 KB), and already covered by the "App caches" cleaner |
 
 The disk is 926 GB with 102 GB free (12 %). The pain is moderate and slow, not an emergency. The irritant is not knowing what is big and what is safe to delete, mostly for Docker and simulators.
 
@@ -43,7 +43,6 @@ Motivation, stated honestly: a real personal need, and the pleasure of building 
 **In (first usable version)**
 
 - NuGet package cache.
-- SwiftPM caches.
 - Xcode simulator devices, with the information needed to decide.
 - Android virtual devices (AVD), with the same kind of information.
 
@@ -67,7 +66,7 @@ Motivation, stated honestly: a real personal need, and the pleasure of building 
 | ID | Requirement (what, not how) | Priority | How to verify |
 | --- | --- | --- | --- |
 | R1 | The Cleanup view shows the NuGet package cache with its reclaimable size, and lets the user clean it after confirmation. | Must | Unit test on a fake folder tree; manual run on the author's Mac (13 GB) |
-| R2 | Same for the SwiftPM caches. | Must | Same as R1 |
+| R2 | The SwiftPM cache is cleaned. Already met by the existing "App caches" cleaner, which includes `~/Library/Caches/org.swift.swiftpm`. The configuration folder `~/Library/org.swift.swiftpm` is never touched. | Covered by existing | Unit test: the "App caches" cleaner includes the SwiftPM cache folder and never the configuration folder |
 | R3 | The Cleanup view lists every simulator device with its real size on disk, last-used date, runtime and availability. It suggests (pre-selects) devices idle for more than a threshold (default 60 days, adjustable) and older duplicates of the same model and runtime, keeping the most recently used. The other devices stay visible and unselected. | Must | Unit tests on fixture data from `simctl`; the author checks the classification on a sample of 5 devices |
 | R4 | A simulator is removed in the way Apple supports, so the simulator system stays consistent, never by deleting its folder by hand. The confirmation says what is lost (the data of test apps). | Must | Unit test with a fake command runner; manual removal of one disposable device |
 | R5 | A running (booted) simulator is never suggested or removed. | Must | Unit test with a booted fixture |
@@ -75,14 +74,14 @@ Motivation, stated honestly: a real personal need, and the pleasure of building 
 | R7 | The size shown is the space that will really be freed, and after a cleanup the app reports the amount actually freed. | Must | Compare with `df` and `du` on the author's Mac, within 10 % |
 | R8 | Every deletion is confirmed first, with the size and the target named. Nothing is deleted without that step. | Must | Unit tests on the confirmation model; review of the call paths |
 | R9 | The new cleaners add no network call and send no data. | Must | Review: no new network code; test in demo mode |
-| R10 | Docker: when the engine is running, show what uses space (images, build cache, containers, volumes). Clean only the build cache and unused images. Never touch volumes or anything a running container uses. | Should | Unit tests with fake command output; real test on the author's Docker Desktop (the spike) |
+| R10 | Docker: when the engine is running, show what uses space (images, build cache, containers, volumes). Clean the build cache and untagged images (pre-selected); other unused images are listed but not pre-selected. Never touch volumes or anything a running container uses. | Should | Unit tests with fake command output; real test on the author's Docker Desktop (the spike) |
 | R11 | After a Docker cleanup, the app reports honestly how much space came back on the Mac, even if the disk image did not shrink. | Should | The spike (Test B), then a test on measured numbers |
 | R12 | New texts are translated in the nine languages of the app. | Should | Translation catalogs complete (existing validation); review by the author |
 | R13 | New cleaners are never part of the "quick clean" (as dependency caches are not today). | Should | Unit test on `includedInQuickClean` |
 | R14 | The recommendations point to these cleaners when the disk is low and they are large. | Could | Unit test on the recommendation engine |
 | R15 | OrbStack support. The author has no OrbStack, so it cannot be verified. | Could | Not verifiable on the author's Mac; needs a tester |
 | R16 | The Cleanup view lists every Android virtual device with its real size on disk, an approximate last-used date, its system image and whether it is running. It suggests (pre-selects) devices idle for more than the same adjustable threshold as simulators (R3); the others stay visible and unselected. | Must | Unit tests on fixture AVD folders; the author checks the list against Android Studio on his Mac (6 AVD) |
-| R17 | A virtual device is removed in the way the Android tools support, so its configuration and files go together, never by deleting only its folder. A running emulator is never suggested or removed. The confirmation says what is lost (the device and its snapshots). | Must | Unit tests with a fake command runner and a running-emulator fixture; manual removal of one disposable AVD |
+| R17 | A virtual device is removed with its registration, so its configuration and its files go together, never by deleting only its folder. A running emulator is never suggested or removed. The confirmation says what is lost (the device and its snapshots). | Must | Unit tests with a fake command runner and a running-emulator fixture; manual removal of one disposable AVD |
 | R18 | Soaro finds the Android SDK itself (environment variables, then the default location), because its tools are usually not in the PATH. With no SDK, nothing Android appears (R6). | Must | Unit tests: variable set, default path, no SDK; real run on the author's Mac, where the tools are not in the PATH |
 | R19 | The Cleanup view lists Android system images with their size and which virtual device uses them. An image is suggested only if no device uses it, and the confirmation says it must be downloaded again (size shown) to recreate a device. | Should | Unit tests on image-to-device matching; manual check on the author's 6 images |
 
@@ -147,4 +146,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 | 2026-11-15 | Simulator threshold adjustable, default 60 days. | Test A: 83 % classified at 60 days, 29 % at 90 |
 | 2026-11-15 | Simulator runtimes left as a non-goal for now, listed as an open question. | Outside the home folder; the author has not decided |
 | 2026-11-15 | Android added (version 0.2): virtual devices Must (R16 to R18), system images Should (R19). | Author's request; measured 34 GB on his Mac, all inside the home folder. Same need and mechanism as iOS simulators; images are Should because removing one means a multi-GB download to recreate a device |
+| 2026-11-15 | R2 marked "Covered by existing" (version 0.3); the SwiftPM cache is not a separate cleaner. | Architecture review: `CleanupService.items` already deletes everything in `~/Library/Caches` except `com.apple.*`; the cache is 52 KB on the author's Mac; the neighbouring folder holds configuration |
+| 2026-11-15 | R17 reworded (no ID change): "removed with its registration" instead of "in the way the Android tools support". | ADR 0009: `avdmanager` needs Java, which an app started from the Finder does not have; the AVD is removed as its `.ini` and `.avd` pair |
+| 2026-11-15 | R10 reworded (no ID change): untagged images pre-selected, other unused images listed but not pre-selected. Soaro never runs Docker's reclaim container. | ADR 0010: deleting a tagged image means downloading it again; the reclaim container pulls an image and runs privileged, against R9 |
 | 2026-11-15 | Must budget raised from 10 to 14 working days; fallback is iOS simulators plus Android devices. | The Must scope grew by one kind of target; keeping 10 would make the overrun criterion almost certain |

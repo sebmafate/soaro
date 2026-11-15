@@ -5,10 +5,10 @@
 
 | | |
 | --- | --- |
-| Status | draft (reconstructed) |
-| Version | 0.1 |
+| Status | draft (reconstructed, extended on 2026-11-15 for the developer cleanup of `SPEC.md` v0.3) |
+| Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (v1.0.1). No `SPEC.md` yet |
+| Based on | the code at `e4520dd` (v1.0.1) and `SPEC.md` v0.3 (developer cleanup only). Parts marked "planned" are decisions, not code |
 
 The file-by-file reference, the command-line modes, the macOS permissions and the previous names are in [`docs/architecture.md`](docs/architecture.md). This document is the design view and does not repeat them.
 
@@ -26,6 +26,8 @@ Outside the app: the website `soaro.app` (it serves the update feed through a re
 4. **Honesty about fragile data**: a failed sensor read hides the section. **[H]** `docs/architecture.md`.
 5. **Testable without a real Mac**: pure functions for analysis and explicit locale in formatting. **[H]** `docs/architecture.md`.
 
+For the developer cleanup (`SPEC.md`), the ranking agreed on 2026-11-15 is: 1 safety of deletion, 2 honesty about fragile data (external tools can be missing, fail or change their output), 3 testable without the real tool, 4 privacy, 5 cheap when idle. The time box (14 working days for the Must scope) acts as a sixth driver: copy the existing patterns before inventing a framework.
+
 ## Overview
 
 ```mermaid
@@ -41,6 +43,9 @@ flowchart LR
   RE[RecommendationEngine, Advice, LeakDetector: pure]
   UI[Views: menu bar panel and standalone window]
   CL[CleanupService and Cleanup/*]
+  DC["Developer cleaners (planned): SimulatorScanner, AndroidEmulatorScanner, Docker (proposed)"]
+  CR["CommandRunner and ToolLocator (planned)"]
+  EXT[("External tools: xcrun simctl, docker")]
   UP[Updater: Sparkle]
   SS --> AS
   IO --> AS
@@ -51,6 +56,9 @@ flowchart LR
   RE --> UI
   AS --> UI
   UI --> CL
+  UI --> DC
+  DC --> CR
+  CR --> EXT
   UP -. appcast .-> W[(soaro.app, GitHub Releases)]
 ```
 
@@ -66,7 +74,13 @@ One `AppState` object (main actor) owns a 3-second timer. Each tick asks the sam
 | `HistoryStore` | SQLite, aggregation by time slices, 30-day retention | `sqlite3` |
 | `RecommendationEngine`, `Advice`, `LeakDetector` | Pure analysis: measurements in, recommendations and tips out | Models only |
 | `CleanupService`, `Cleanup/*` | Scanners (caches, large files, dev artifacts, uninstaller leftovers, login items) and the deletion rules | FileManager, Finder (Apple Events) |
-| `Views/*`, `MainWindow` | Tabbed panel and standalone window (AppKit window, created on demand) | AppState |
+| `CommandRunner` (planned, ADR 0009) | Runs one external program: absolute path, no shell, time limit that kills the process, bounded output, protocol with a fake for tests. Only new code uses it; the four existing copies of a `Process` helper stay | Foundation `Process` |
+| `ToolLocator` (planned, ADR 0009) | Finds `xcrun`, the Android SDK (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, then `~/Library/Android/sdk`) and later `docker` from candidate paths, never the PATH | FileManager |
+| `SimulatorScanner` (planned) | Reads `simctl list devices -j`, builds the virtual devices, removes one through `simctl delete`, refuses a `Booted` device | CommandRunner, ToolLocator |
+| `AndroidEmulatorScanner`, Android image scanner (planned) | Reads `~/.android/avd` (`.ini`, `config.ini`), detects a running AVD from the process list (`-avd <name>`), removes the `.ini` and `.avd` pair, links system images to their AVDs | FileManager, process list |
+| `DeviceSuggestions` (planned, pure) | Shared by iOS and Android: pre-selects devices idle beyond the threshold (default 60 days) and older duplicates of the same model and runtime | Models only |
+| Docker cleaner (proposed, ADR 0010) | Lists usage and prunes the build cache and untagged images through the `docker` command; measures the host space returned | CommandRunner, ToolLocator |
+| `Views/*`, `MainWindow` | Tabbed panel and standalone window (AppKit window, created on demand). The cleanup tool models are `StateObject`s of `CleanupTab`, not part of `AppState`; two new routes are planned in `CleanupRoute` | AppState |
 | `Updater` | Sparkle, inactive without `SUFeedURL` and `SUPublicEDKey` | Sparkle |
 | `LegacyMigration` | Imports history and preferences from former app names | UserDefaults, files |
 | `DemoData`, `Snapshot`, `Diagnostics` | Demo mode, PNG snapshots, read-only CLI output | AppState |
@@ -84,6 +98,7 @@ All **[H]**, from `docs/architecture.md` and the sources.
 
 1. **Measure and show** (every 3 s): timer, then `tick()`: snapshot, curves, aggregation, recommendations, views update. Battery every 9 s and sensors every 9 s when the panel is closed (every 3 s when visible). **[H]** `AppState.tick`.
 2. **Clean up**: scan (every 30 min and on demand), then the user chooses, then a confirmation, then `isSafeToDelete` per path, then delete (caches, rebuildable folders) or move to the Trash (large files, uninstalled apps), then a rescan. The Trash is emptied through Finder with `osascript`. **[H]** `CleanupService.swift`, `AppUninstaller.swift`, `DevArtifactScanner.swift`.
+2b. **Clean up a target owned by a tool** (planned, ADR 0009): the user opens the tool view, a scan runs in a detached task (never in the 3-second tick), the pure suggestion function pre-selects, then a confirmation naming the target, its size and what is lost, then a check that the target is not running, then the action (`simctl delete`, or the AVD pair), then a rescan and the space really freed. A failed step stops that target; there is no fallback to deleting files. Demo mode returns fake data and runs nothing.
 3. **Update**: Sparkle reads `soaro.app/appcast.xml`, which redirects to the latest GitHub release; it downloads the DMG and checks its EdDSA signature against the public key in `Info.plist`. **[H]** `docs/updates.md`, `site/_redirects`.
 4. **Release**: tag `vX.Y.Z`, then `release.yml` on `macos-26`: tests, import certificate, `scripts/release.sh --notarize`, then the GitHub release with the DMG and the appcast. **[H]** `.github/workflows/release.yml`.
 
@@ -92,7 +107,7 @@ All **[H]**, from `docs/architecture.md` and the sources.
 - **Security and privacy**: not sandboxed; deletion confined to the home folder; two optional network features off by default; Sparkle verifies update signatures; secrets only in GitHub Actions secrets. **[H]**
 - **Errors and recovery**: sensor failures hide the section; a failed delete counts as a failure and continues; a missing history database leaves history disabled (`history?`). **[M]**
 - **Observability**: `SOARO_DEBUG` traces, `--diagnostics`. No telemetry. **[H]**
-- **Testing**: Swift Testing, 135 tests, mostly pure functions and parsers (see `TESTING.md`). **[H]**
+- **Testing**: Swift Testing, 135 tests, mostly pure functions and parsers (see `TESTING.md`). **[H]** For the developer cleanup: a fake `CommandRunner` and real outputs from the author's Mac (`simctl list devices -j`, AVD `config.ini`), anonymized and written inline in the tests, so `Package.swift` does not change. Every new model has a demo-mode branch. (planned)
 - **Build and release**: SwiftPM binary assembled by `scripts/build-app.sh` (Info.plist written by the script, Sparkle embedded, translations compiled with `xcstringstool`). **[H]**
 - **Cost to run**: GitHub Actions minutes on a public repository (free), Cloudflare Pages (free tier), one Apple Developer account. **[M]**
 
@@ -108,8 +123,19 @@ All **[H]**, from `docs/architecture.md` and the sources.
 | [0006](docs/adr/0006-cleanup-safety-model.md) | Confirmed, home-folder-only deletion; Trash when recoverable | accepted (reconstructed) |
 | [0007](docs/adr/0007-privacy-by-default.md) | Nothing leaves the Mac by default | accepted (reconstructed) |
 | [0008](docs/adr/0008-release-built-on-github-actions-xcode-26.md) | Release built by GitHub Actions on Xcode 26 | accepted (reconstructed) |
+| [0009](docs/adr/0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract (completes 0006) | accepted |
+| [0010](docs/adr/0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | proposed (pending Test B) |
 
-Smaller choices (notes, no ADR):
+Smaller choices (notes, no ADR), developer cleanup, decided 2026-11-15:
+
+- **NuGet** is a new `CleanupKind` (`nugetCache`, `~/.nuget/packages`), like DerivedData or npm: shown only if it exists, excluded from the quick clean (R13). `NUGET_PACKAGES` is not visible to an app started from the Finder, so a moved folder is not found. Other NuGet folders (HTTP cache) are to check when implementing.
+- **SwiftPM** needs no new cleaner: the "App caches" kind already covers `~/Library/Caches/org.swift.swiftpm`. Never touch `~/Library/org.swift.swiftpm` (configuration).
+- **Simulators and AVD** follow the pattern of "Large files": a scanner (pure parsing plus a scan function), an `ObservableObject` model owned by `CleanupTab`, a view, a new `CleanupRoute`. A detached task with cancellation, as the others. Sizes come from `CleanupService.allocatedSize` on the device folder, not from `dataPathSize` (about 7 GB apart on the author's Mac, R7).
+- **Scans** run when the tool view opens, never in the 3-second tick. Only the cheap size of the NuGet folder joins the periodic cleanup scan.
+- **Tests**: see "Testing" above.
+- **Not decided here**: the layout on screen (for the `ux` skill) and the exact `docker` commands (after Test B).
+
+Earlier smaller choices:
 
 - Swift 5 language mode inside a Swift 6 tools package, so strict concurrency is off. Reason unknown, to confirm. **[H]** `Package.swift`.
 - The app Info.plist is written by `build-app.sh`, not by Xcode. **[H]**
@@ -118,22 +144,49 @@ Smaller choices (notes, no ADR):
 
 ## Traceability
 
-No `SPEC.md` exists yet, so requirement IDs are not assigned. The features map to components as in the tables of the README; `PLAN.md` and `SPEC.md` are for the next feature.
+`SPEC.md` covers only the developer cleanup; the features that already exist have no requirement IDs (see the README tables). Mapping for R1 to R19:
 
-Components with no requirement: all, pending the spec.
+| Requirement | Priority | Component | Decision |
+| --- | --- | --- | --- |
+| R1 NuGet cache | Must | `CleanupService` (new `nugetCache` kind), Cleanup view | note |
+| R2 SwiftPM cache | Covered | existing `caches` kind | note |
+| R3 iOS simulator list and suggestions | Must | `SimulatorScanner`, `DeviceSuggestions`, Cleanup view | 0009 |
+| R4 supported removal | Must | `SimulatorScanner`, `CommandRunner` | 0009 |
+| R5 never a running device | Must | `SimulatorScanner` (state `Booted`) | 0009 |
+| R6 absent or failing tool never breaks the view | Must | `ToolLocator`, `CommandRunner`, scanners | 0009, 0005 |
+| R7 real size and freed space | Must | `CleanupService.allocatedSize`, rescan after action | 0009 |
+| R8 confirmation | Must | tool models, `AppState.confirm` | 0006, 0009 |
+| R9 no network | Must | local executables only; no network code | 0007, 0009, 0010 |
+| R10 Docker prune | Should | Docker cleaner | 0010 (proposed) |
+| R11 honest space returned | Should | Docker cleaner (free space before and after) | 0010 (proposed) |
+| R12 translations | Should | `Localizable.xcstrings` (existing process) | none |
+| R13 no quick clean | Should | `CleanupKind.includedInQuickClean` | note |
+| R14 recommendations | Could | `RecommendationEngine` | none |
+| R15 OrbStack | Could | `ToolLocator` candidate path | 0010 |
+| R16 Android device list and suggestions | Must | `AndroidEmulatorScanner`, `DeviceSuggestions` | 0009 |
+| R17 AVD removal with its registration | Must | `AndroidEmulatorScanner` (pair removal, running check) | 0009 |
+| R18 find the Android SDK | Must | `ToolLocator` | 0009 |
+| R19 Android system images | Should | Android image scanner | 0009 |
+
+Components with no requirement of their own: `CommandRunner` (serves R4, R6, R17 and Docker) and `DeviceSuggestions` (serves R3 and R16). Every Must requirement maps to at least one component.
 
 ## Risks and spikes
 
 | # | Risk or unknown | Spike or mitigation | Status |
 | --- | --- | --- | --- |
 | 1 | HID and SMC readings break on a new macOS | Failed read hides the section (ADR 0005); test the app on each macOS beta | open |
-| 2 | Docker, OrbStack and simulator cleanup is more dangerous than file caches (shared volumes, running containers) | Spike before the next feature: which paths are safe to touch, and how to detect a running engine | open (feature not specified) |
+| 2 | Docker, OrbStack and simulator cleanup is more dangerous than file caches (shared volumes, running containers) | Contract of ADR 0009 for simulators and Android; Docker waits for Test B (ADR 0010) | simulators and Android: decided; Docker: open until Test B |
+| 5 | An Android AVD removed as its `.ini` and `.avd` pair may leave something that `avdmanager delete` would have removed | Create a disposable AVD, remove it both ways, compare what is left (first Android task) | open |
+| 6 | A running emulator is detected from the process list (`-avd <name>`), untested with a real emulator | Test with a real running emulator and a fixture | open |
+| 7 | Docker Desktop may not give disk space back to the Mac after a prune | Test B (at least half of the announced space comes back, else drop Docker) | open |
+| 8 | An Xcode, Android or Docker update changes the output of the tools, and a cleaner silently disappears | Defensive reading (R6, ADR 0005); one test per cleaner on a recorded real output | open |
 | 3 | Sparkle's window may stay behind other windows for an app without Dock icon | Test during the 1.0.0 to 1.0.1 update | open (`docs/updates.md`) |
 | 4 | Strict concurrency never enabled | Try Swift 6 mode in a branch and count the errors | open |
 
 ## Deferred and open
 
-- Not decided yet: how developer caches beyond file folders are cleaned (see risk 2); who reviews the translations.
+- Not decided yet: who reviews the translations; the exact Docker commands (after Test B); the screen layout of the new tools; which file date is the best "last used" signal for an Android AVD (spec open question); the default 60-day threshold, to confirm with the author on 5 simulators.
+- Deliberately out of scope for the developer cleanup: simulator runtimes (31.5 GB on the author's Mac, outside the home folder). Reopen ADR 0006 and ADR 0009 together if the author decides to include them.
 - Deliberately out of scope: Intel Macs, the Mac App Store (README "Limits").
 - Rationale unknown, to confirm: Swift 5 language mode; the choice of an AppKit window.
 
@@ -142,3 +195,4 @@ Components with no requirement: all, pending the spec.
 | Date | Change | ADR |
 | --- | --- | --- |
 | 2026-11-15 | Reconstructed from the code at `e4520dd` | 0001-0008 |
+| 2026-11-15 | Developer cleanup designed from `SPEC.md` v0.3: contract for tool-owned cleanup actions, proposed Docker decision, notes for NuGet, SwiftPM, simulators, Android and tests | 0009, 0010 (proposed) |

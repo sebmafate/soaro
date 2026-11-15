@@ -4,13 +4,19 @@
 
 | | |
 | --- | --- |
-| Phase | maintenance (released), preparing the next feature |
+| Phase | architecture of the developer cleanup done (2026-11-15); the released app is in maintenance |
 | Last updated | 2026-11-15 |
 | Version | 1.0.1 (tag `v1.0.1`, build 15) |
 
 ## Next action
 
-The developer cleanup (iOS simulators, Android emulators, NuGet, SwiftPM; Docker later) is specified in `SPEC.md` (2026-11-15, version 0.2, status validated for the Must scope). Next: the author checks the simulator classification on 5 devices and the Android list against Android Studio and decides on simulator runtimes (31.5 GB, outside the home folder), then `/trellis:architect` (a new ADR completing ADR 0006 for actions that are not file deletion), then Test B for Docker. Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
+The developer cleanup (iOS simulators, Android emulators, NuGet; Docker later) is specified in `SPEC.md` (version 0.3) and designed in `ARCHITECTURE.md` (version 0.2) with ADR 0009 (accepted: contract for tool-owned cleanup actions) and ADR 0010 (proposed: Docker, pending Test B). Next, in this order:
+
+1. **The author:** check the simulator classification on 5 devices, check the Android list against Android Studio, decide on simulator runtimes (31.5 GB, outside the home folder; reopens ADR 0006 and 0009 if included).
+2. **Test B for Docker** (the author starts Docker Desktop; nothing destructive without his confirmation). Fixes the status of ADR 0010.
+3. `/trellis:ux` (layout of the new tools), `/trellis:test-strategy`, then `/trellis:slice` and `/trellis:deliver`.
+
+Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
 ## Where we are
 
