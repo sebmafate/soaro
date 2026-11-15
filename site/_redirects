@@ -3,3 +3,4 @@
 /fr/index.html /fr/        301
 /download      https://github.com/sebmafate/soaro/releases/latest  302
 /github        https://github.com/sebmafate/soaro                  302
+/appcast.xml  https://github.com/sebmafate/soaro/releases/latest/download/appcast.xml  302

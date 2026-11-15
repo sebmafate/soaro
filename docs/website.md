@@ -16,7 +16,7 @@ The website is plain HTML and CSS in the `site/` folder. There is no build step,
 | `site/.well-known/security.txt` | How to report a vulnerability. Renew its `Expires` date every year |
 | `site/_headers`, `site/_redirects` | Security headers, cache rules and redirections (Cloudflare Pages). `/download` and `/github` are short links |
 | `site/robots.txt`, `site/sitemap.xml` | Search engines. The sitemap links the two languages and has a `lastmod` date |
-| `site/appcast.xml` | The Sparkle update feed. It is added at each release, see [releasing.md](releasing.md) |
+| `/appcast.xml` | Not a file: `_redirects` sends it to the `appcast.xml` of the latest GitHub release (the Sparkle update feed), see [releasing.md](releasing.md) |
 
 The Content Security Policy in `_headers` blocks inline styles and scripts. Keep styles in `style.css`.
 

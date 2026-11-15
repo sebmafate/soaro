@@ -1,6 +1,6 @@
 # Releasing
 
-This is the procedure to publish a new version. Only the maintainer can do it, because it needs the Apple certificate and the Sparkle private key.
+This is the **manual** procedure to publish a new version, from the maintainer's Mac (it needs the Apple certificate and the Sparkle private key). The same steps run automatically on GitHub when a tag is pushed: see [ci-release.md](ci-release.md).
 
 ## One-time setup
 
@@ -35,7 +35,7 @@ If `swift package resolve` hangs on the Sparkle download, use `--disable-keychai
    git push github main --tags
    gh release create v1.1.0 build/release/Soaro-1.1.0.dmg --title "Soaro 1.1.0" --notes-file <notes>
    ```
-8. **Publish the appcast.** Copy `build/release/appcast.xml` to `site/appcast.xml`, commit and push: Cloudflare Pages deploys the site (see [website.md](website.md)). Do this **after** step 7.
+8. **Publish the appcast.** Add it to the same release: `gh release upload v1.1.0 build/release/appcast.xml`. `soaro.app/appcast.xml` redirects to the latest release's copy (see [website.md](website.md)).
 9. **Test the update** from the previous version with "Check for updates...".
 
 ## What the script does
@@ -52,4 +52,4 @@ If `swift package resolve` hangs on the Sparkle download, use `--disable-keychai
 - **`errSecInternalComponent` while signing.** The keychain is locked or `codesign` was denied access to the key. Unlock the keychain, or approve the access prompt.
 - **Notarization is "Invalid".** Read the log. The usual causes are a component that is not signed with the hardened runtime, or a missing secure timestamp.
 - **Users do not see the update.** Check that the appcast is reachable, that its version number (`sparkle:version`) is higher than the installed build number, and that the DMG URL answers.
-- **Pulling a bad release.** Remove its entry from the appcast and deploy. Existing users who already updated stay on it: publish a fixed, higher version.
+- **Pulling a bad release.** Edit the appcast of the latest release (or release a fixed version): remove the bad entry and upload it again with `gh release upload --clobber`. Existing users who already updated stay on it: publish a fixed, higher version.

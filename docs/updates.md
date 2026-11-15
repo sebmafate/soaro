@@ -15,7 +15,7 @@ Sparkle is a framework **inside** the app (`Soaro.app/Contents/Frameworks/Sparkl
 5. **Sparkle checks the download.** The update must have a valid signature made with **my private key**. The matching public key is inside the installed app. If the check fails, nothing is installed.
 6. **Sparkle installs it.** It quits Soaro, replaces the app, and opens the new version.
 
-So, to publish an update, I do three things: build a new signed DMG, upload it to GitHub Releases, and add one entry to the appcast.
+So, to publish an update, I do three things: build a new signed DMG, upload it to GitHub Releases, and attach the appcast to that release.
 
 ## Two different signatures
 
@@ -65,9 +65,9 @@ The full procedure is in [releasing.md](releasing.md). In short:
 1. Change the number in `VERSION` and write the changes in `CHANGELOG.md`.
 2. Run `scripts/release.sh --notarize`. It builds, signs, makes the DMG, sends it to Apple for notarization, and generates the appcast.
 3. Create the GitHub release `vX.Y.Z` and upload the DMG.
-4. Put `build/release/appcast.xml` on the website (`soaro.app/appcast.xml`).
+4. Attach `build/release/appcast.xml` to the same release. `soaro.app/appcast.xml` redirects to it.
 
-Order matters: upload the DMG **before** you publish the appcast. Otherwise users are offered an update that does not exist yet.
+Upload the DMG and the appcast together (or the DMG first): otherwise users are offered an update that does not exist yet. [ci-release.md](ci-release.md) does all of this on GitHub.
 
 ## Version numbers
 

@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-15
+
+First public version: monitoring of CPU, GPU, memory, disk, network and battery, 30-day history, recommendations and tips, cleanup tools, menu bar panel and standalone window.
+
 ### Added
 
 - The app is translated into French, German, Spanish, Italian, Brazilian Portuguese, Japanese, Simplified Chinese and Korean, in addition to English.
@@ -16,7 +20,3 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The app is now named **Soaro** (it was "Accalmie", and "MyCleaner" before). The identifier is `app.soaro`. History and preferences are imported automatically.
 - Numbers, sizes, rates and durations follow the language and region of the Mac.
 - `Soaro --diagnostics` prints in English.
-
-## [1.0.0] - not released yet
-
-First public version: monitoring of CPU, GPU, memory, disk, network and battery, 30-day history, recommendations and tips, cleanup tools, menu bar panel and standalone window.
