@@ -50,16 +50,18 @@ struct LargeFilesView: View {
             } else {
                 List {
                     ForEach(model.files) { file in
-                        SelectionRow(name: file.name, isOn: model.selected.contains(file.id), toggle: { model.toggle(file) }) {
+                        SelectionRow(name: file.name,
+                                     isOn: model.selected.contains(file.id),
+                                     details: [fileSubtitle(file), Format.fileBytes(file.size)],
+                                     revealAction: { revealInFinder(file.url) },
+                                     toggle: { model.toggle(file) }) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
-                                Text("\(file.folder) · modified \(relativeDate(file.modified))")
+                                Text(verbatim: fileSubtitle(file))
                                     .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
                             }
                             Spacer()
                             Text(Format.fileBytes(file.size)).font(.caption.monospacedDigit())
-                            Button { revealInFinder(file.url) } label: { Image(systemName: "magnifyingglass.circle") }
-                                .buttonStyle(.borderless).help("Show in Finder")
                         }
                     }
                 }
@@ -71,6 +73,11 @@ struct LargeFilesView: View {
             }
         }
         .onAppear { if !model.hasScanned && !model.isScanning { model.scan() } }
+    }
+
+    /// Même texte que l'affichage (clé de catalogue existante), repris dans le libellé VoiceOver de la ligne.
+    private func fileSubtitle(_ file: LargeFile) -> String {
+        String(localized: "\(file.folder) · modified \(relativeDate(file.modified))")
     }
 
     private var intro: some View {
@@ -109,7 +116,11 @@ struct DevProjectsView: View {
                 List {
                     Section {
                         ForEach(model.artifacts) { item in
-                            SelectionRow(name: item.projectName, isOn: model.selected.contains(item.id), toggle: { model.toggle(item) }) {
+                            SelectionRow(name: item.projectName,
+                                         isOn: model.selected.contains(item.id),
+                                         details: [item.kind.label, item.projectPath, activityText(item), Format.fileBytes(item.size)],
+                                         revealAction: { revealInFinder(item.url) },
+                                         toggle: { model.toggle(item) }) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     HStack(spacing: 6) {
                                         Text(item.projectName).font(.callout).lineLimit(1)
@@ -123,8 +134,6 @@ struct DevProjectsView: View {
                                 }
                                 Spacer()
                                 Text(Format.fileBytes(item.size)).font(.caption.monospacedDigit())
-                                Button { revealInFinder(item.url) } label: { Image(systemName: "magnifyingglass.circle") }
-                                    .buttonStyle(.borderless).help("Show in Finder")
                             }
                         }
                     } footer: {
@@ -231,7 +240,8 @@ struct UninstallerView: View {
                             Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(model.leftovers) { item in
-                            SelectionRow(name: item.displayPath, isOn: !model.excluded.contains(item.id), toggle: {
+                            SelectionRow(name: item.displayPath, isOn: !model.excluded.contains(item.id),
+                                         details: [Format.fileBytes(item.size)], toggle: {
                                 if model.excluded.contains(item.id) { model.excluded.remove(item.id) } else { model.excluded.insert(item.id) }
                             }) {
                                 Text(item.displayPath).font(.caption).lineLimit(1).truncationMode(.middle)

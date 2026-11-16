@@ -34,6 +34,14 @@ enum Diagnostics {
         exit(0)
     }
 
+    /// Scan des simulateurs de `--scan`, avec la MÊME porte que l'application : détection sans rien lancer, et `xcrun` n'est transmis
+    /// que si le `simctl` actif est sur le disque. Sinon « tool not found » et rien n'est lancé.
+    static func simulatorScan(runner: CommandRunner, home: URL, fileSystem: ToolFileSystem = DiskToolFileSystem(),
+                              locate: ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) }) -> SimulatorScan {
+        let detection = SimulatorToolDetector.detect(home: home, fileSystem: fileSystem)
+        return SimulatorScanner.scan(runner: runner, xcrunPath: ToolLocator.simulatorXcrunPath(detection: detection, locate: locate), home: home)
+    }
+
     /// `Soaro --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.
     static func scan() -> Never {
         func timed<T>(_ label: String, _ block: () -> T) -> T {
@@ -70,12 +78,11 @@ enum Diagnostics {
         }
 
         // Simulateurs iOS : lecture seule (`xcrun simctl list devices -j`), puis tailles allouées sur disque.
-        // C'est ici, et nulle part ailleurs, que le vrai lanceur de commandes est construit.
+        // Le vrai lanceur de commandes n'est construit qu'ici et dans `CleanupTab` (jamais ailleurs).
         let simulatorStart = Date()
-        let simulatorScan = SimulatorScanner.scan(runner: RealCommandRunner(),
-                                                  xcrunPath: ToolLocator.firstExecutable(in: ToolLocator.simulatorCandidates))
-        let suggestions = DeviceSuggestions.suggest(simulatorScan.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
-        for line in SimulatorReport.lines(scan: simulatorScan, suggestions: suggestions, locale: .current,
+        let simulators = Self.simulatorScan(runner: RealCommandRunner(), home: URL(fileURLWithPath: NSHomeDirectory()))
+        let suggestions = DeviceSuggestions.suggest(simulators.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
+        for line in SimulatorReport.lines(scan: simulators, suggestions: suggestions, locale: .current,
                                           limitDays: DeviceSuggestions.defaultLimitDays) { print(line) }
         print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(simulatorStart)))
 

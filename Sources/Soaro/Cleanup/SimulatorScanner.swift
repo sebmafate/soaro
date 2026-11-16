@@ -124,6 +124,17 @@ struct SimulatorScan: Equatable {
     }
 }
 
+/// Résultat de la lecture de la liste : l'état, et les appareils SANS taille.
+struct SimulatorListing: Equatable {
+    let status: SimulatorScan.Status
+    let devices: [SimulatorDevice]
+
+    init(status: SimulatorScan.Status, devices: [SimulatorDevice] = []) {
+        self.status = status
+        self.devices = devices
+    }
+}
+
 extension SimulatorScanner {
     /// Arguments de la commande : `xcrun simctl list devices -j` (liste seule, jamais de modification).
     static let listArguments = ["simctl", "list", "devices", "-j"]
@@ -131,6 +142,40 @@ extension SimulatorScanner {
     static let listTimeLimit: TimeInterval = 60
     /// Borne de la sortie : 8 Mio (A8).
     static let outputLimit = 8 * 1024 * 1024
+
+    /// Lecture seule de la liste, SANS tailles : une commande, synchrone. Mêmes états que `scan`.
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0006) : un test ne lance jamais le vrai outil par mégarde.
+    ///   - xcrunPath: chemin absolu de `xcrun` ; `nil` quand l'outil est absent (rien n'est alors lancé).
+    static func list(runner: CommandRunner, xcrunPath: String?) -> SimulatorListing {
+        guard let xcrunPath else { return SimulatorListing(status: .toolNotFound) }
+
+        let outcome = runner.run(executable: xcrunPath, arguments: listArguments, timeLimit: listTimeLimit, outputLimit: outputLimit)
+        let output: CommandOutput
+        switch outcome {
+        case .failedToLaunch: return SimulatorListing(status: .toolNotFound)
+        case .refused: return SimulatorListing(status: .commandFailed(exitCode: nil))
+        case .timedOut: return SimulatorListing(status: .timedOut)
+        case .completed(let value): output = value
+        }
+        // La sortie d'erreur n'est ni analysée ni conservée (elle peut contenir des chemins personnels).
+        // Une sortie tronquée est toujours « illisible », quel que soit le code : le lanceur a tué le processus (signal 9),
+        // ce n'est pas un échec de la commande.
+        if output.truncated { return SimulatorListing(status: .outputNotReadable) }
+        // Fin par un signal sans que le lanceur y soit pour rien (plantage) : pas de code de sortie à montrer.
+        if output.termination == .signaled { return SimulatorListing(status: .commandFailed(exitCode: nil)) }
+        if output.exitCode != 0 { return SimulatorListing(status: .commandFailed(exitCode: output.exitCode)) }
+        guard let devices = parse(output.stdout) else { return SimulatorListing(status: .outputNotReadable) }
+        return SimulatorListing(status: .ok, devices: devices)
+    }
+
+    /// Dossier d'un appareil : `<home>/Library/Developer/CoreSimulator/Devices/<udid>`, et seulement pour un UDID valide
+    /// (forme UUID) : il ne peut donc pas sortir du dossier des appareils. `nil` sinon.
+    static func deviceFolder(udid: String, home: URL) -> URL? {
+        guard isValidUDID(udid) else { return nil }
+        return home.appendingPathComponent("Library/Developer/CoreSimulator/Devices", isDirectory: true)
+            .appendingPathComponent(udid, isDirectory: true)
+    }
 
     /// Liste les simulateurs et mesure leur dossier. LECTURE SEULE, synchrone, une seule commande.
     /// - Parameters:
@@ -142,32 +187,15 @@ extension SimulatorScanner {
                      xcrunPath: String?,
                      home: URL = URL(fileURLWithPath: NSHomeDirectory()),
                      isCancelled: () -> Bool = { false }) -> SimulatorScan {
-        guard let xcrunPath else { return SimulatorScan(status: .toolNotFound) }
+        let listing = list(runner: runner, xcrunPath: xcrunPath)
+        guard listing.status == .ok else { return SimulatorScan(status: listing.status) }
 
-        let outcome = runner.run(executable: xcrunPath, arguments: listArguments, timeLimit: listTimeLimit, outputLimit: outputLimit)
-        let output: CommandOutput
-        switch outcome {
-        case .failedToLaunch: return SimulatorScan(status: .toolNotFound)
-        case .refused: return SimulatorScan(status: .commandFailed(exitCode: nil))
-        case .timedOut: return SimulatorScan(status: .timedOut)
-        case .completed(let value): output = value
-        }
-        // La sortie d'erreur n'est ni analysée ni conservée (elle peut contenir des chemins personnels).
-        // Une sortie tronquée est toujours « illisible », quel que soit le code : le lanceur a tué le processus (signal 9),
-        // ce n'est pas un échec de la commande.
-        if output.truncated { return SimulatorScan(status: .outputNotReadable) }
-        // Fin par un signal sans que le lanceur y soit pour rien (plantage) : pas de code de sortie à montrer.
-        if output.termination == .signaled { return SimulatorScan(status: .commandFailed(exitCode: nil)) }
-        if output.exitCode != 0 { return SimulatorScan(status: .commandFailed(exitCode: output.exitCode)) }
-        guard let devices = parse(output.stdout) else { return SimulatorScan(status: .outputNotReadable) }
-
-        let root = home.appendingPathComponent("Library/Developer/CoreSimulator/Devices", isDirectory: true)
         var sized: [SizedSimulator] = []
-        for device in devices {
+        for device in listing.devices {
             if isCancelled() { return SimulatorScan(status: .ok, devices: sized, cancelled: true) }
-            // L'UDID a été validé par `parse` (forme UUID) : il ne peut pas sortir du dossier des appareils.
-            let folder = root.appendingPathComponent(device.udid, isDirectory: true)
-            sized.append(SizedSimulator(device: device, size: CleanupService.allocatedSize(of: folder)))
+            // `parse` a validé l'UDID : `deviceFolder` ne peut pas rendre `nil` ici.
+            let size = deviceFolder(udid: device.udid, home: home).map { CleanupService.allocatedSize(of: $0) } ?? 0
+            sized.append(SizedSimulator(device: device, size: size))
         }
         return SimulatorScan(status: .ok, devices: sized)
     }

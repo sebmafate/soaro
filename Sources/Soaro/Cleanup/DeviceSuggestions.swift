@@ -24,6 +24,9 @@ enum DeviceSuggestions {
         /// État différent de `Shutdown` (Booted, Booting, Shutting Down, inconnu).
         let isRunning: Bool
         let isPreSelected: Bool
+        /// Pour une « ancienne copie » : l'appareil gardé du groupe (le premier du classement : le plus récent, même petit,
+        /// non listé ou en cours d'exécution). `nil` sinon.
+        let keptDevice: SizedSimulator?
     }
 
     struct Result: Equatable {
@@ -36,6 +39,9 @@ enum DeviceSuggestions {
         let limitDays: Int
     }
 
+    /// Jours entiers entre une date et `now`, jamais négatif (une date future vaut 0). Partagé avec le texte des lignes.
+    static func wholeDays(from date: Date, to now: Date) -> Int { max(0, Int(now.timeIntervalSince(date) / 86_400)) }
+
     /// - Parameters:
     ///   - devices: tous les appareils avec leur taille (les petits servent aussi à repérer les copies).
     ///   - now: instant de référence (explicite : pas d'horloge ici).
@@ -44,7 +50,7 @@ enum DeviceSuggestions {
         let limit = max(0, limitDays)
 
         func isRunning(_ d: SizedSimulator) -> Bool { d.device.state != "Shutdown" }
-        func wholeDays(since date: Date) -> Int { max(0, Int(now.timeIntervalSince(date) / 86_400)) }
+        func wholeDays(since date: Date) -> Int { Self.wholeDays(from: date, to: now) }
         /// Un appareil en cours d'exécution compte comme utilisé maintenant ; sinon sa dernière utilisation (peut manquer).
         func effectiveUse(_ d: SizedSimulator) -> Date? { isRunning(d) ? now : d.device.lastUsed }
         func groupKey(_ d: SizedSimulator) -> String {
@@ -53,7 +59,7 @@ enum DeviceSuggestions {
 
         // Anciennes copies : on regroupe TOUS les appareils (petits compris) ; le gardé est le plus récent
         // (égalité : plus gros, puis plus petit UDID).
-        var olderCopies = Set<String>()
+        var olderCopies: [String: SizedSimulator] = [:]   // UDID de la copie → appareil gardé
         for (_, members) in Dictionary(grouping: devices, by: groupKey) {
             let dated = members.filter { effectiveUse($0) != nil }
             let ranked = dated.sorted { a, b in
@@ -62,7 +68,8 @@ enum DeviceSuggestions {
                 if a.size != b.size { return a.size > b.size }
                 return a.device.udid < b.device.udid
             }
-            for copy in ranked.dropFirst() where !isRunning(copy) { olderCopies.insert(copy.device.udid) }
+            guard let kept = ranked.first else { continue }
+            for copy in ranked.dropFirst() where !isRunning(copy) { olderCopies[copy.device.udid] = kept }
         }
 
         var rows: [Row] = []
@@ -77,9 +84,10 @@ enum DeviceSuggestions {
             let days = d.device.lastUsed.map(wholeDays)
             let running = isRunning(d)
             let inactive = !running && (days.map { $0 > limit } ?? false)
-            let older = olderCopies.contains(d.device.udid)
+            let kept = olderCopies[d.device.udid]
+            let older = kept != nil
             rows.append(Row(device: d, daysSinceLastUse: days, isInactive: inactive, isOlderCopy: older,
-                            isRunning: running, isPreSelected: !running && (inactive || older)))
+                            isRunning: running, isPreSelected: !running && (inactive || older), keptDevice: kept))
         }
         rows.sort { a, b in
             if a.device.size != b.device.size { return a.device.size > b.device.size }

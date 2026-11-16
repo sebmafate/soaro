@@ -19,4 +19,12 @@ enum ToolLocator {
         }
         return nil
     }
+
+    /// Porte du lanceur pour les simulateurs : `/usr/bin/xcrun` n'est donné QUE si `simctl` est sur le disque
+    /// (détection sans lancement) ET si `xcrun` lui-même est présent. Sinon `nil` : rien n'est lancé.
+    static func simulatorXcrunPath(detection: SimulatorToolDetection,
+                                   locate: ([String]) -> String? = { firstExecutable(in: $0) }) -> String? {
+        guard detection.simctlPath != nil else { return nil }
+        return locate(simulatorCandidates)
+    }
 }

@@ -1513,6 +1513,58 @@
         }
       }
     },
+    "%lld days": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Tage"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld días"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld jours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld giorni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 日"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld일"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dias"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 天"
+          }
+        }
+      }
+    },
     "%lld performance · %lld efficiency": {
       "localizations": {
         "de": {
@@ -1561,6 +1613,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld 个性能核心 · %lld 个能效核心"
+          }
+        }
+      }
+    },
+    "%lld small devices (%@) not shown.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kleine Geräte (%@) werden nicht angezeigt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivos pequeños (%@) no se muestran."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld petits appareils (%@) non affichés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivi piccoli (%@) non mostrati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 台の小さなデバイス（%@）は表示されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작은 기기 %lld개(%@)는 표시되지 않습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivos pequenos (%@) não exibidos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未显示 %lld 个小型设备（%@）。"
           }
         }
       }
@@ -5310,6 +5414,58 @@
         }
       }
     },
+    "Could not read the iOS Simulators.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die iOS-Simulatoren konnten nicht gelesen werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer los simuladores de iOS."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire les simulateurs iOS."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere i simulatori iOS."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS シミュレータを読み取れませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 시뮬레이터를 읽을 수 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler os simuladores do iOS."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 iOS 模拟器。"
+          }
+        }
+      }
+    },
     "Could not remove “%@”": {
       "localizations": {
         "de": {
@@ -5930,6 +6086,110 @@
           "stringUnit": {
             "state": "translated",
             "value": "开发者"
+          }
+        }
+      }
+    },
+    "Devices inactive for more than %lld days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geräte, die seit mehr als %lld Tagen inaktiv sind, und ältere Kopien desselben Modells sind vorausgewählt. Ein entferntes Gerät nimmt seine Apps, Daten und Schnappschüsse mit; ein neues legen Sie in Xcode oder Android Studio an."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se preseleccionan los dispositivos inactivos desde hace más de %lld días y las copias anteriores del mismo modelo. Un dispositivo eliminado se lleva sus apps, datos e instantáneas; crea uno nuevo desde Xcode o Android Studio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les appareils inactifs depuis plus de %lld jours, et les anciennes copies d'un même modèle, sont présélectionnés. Un appareil supprimé emporte ses apps, ses données et ses instantanés ; créez-en un nouveau depuis Xcode ou Android Studio."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sono preselezionati i dispositivi inattivi da più di %lld giorni e le copie meno recenti dello stesso modello. Un dispositivo rimosso porta via app, dati e istantanee; creane uno nuovo da Xcode o Android Studio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 日を超えて使われていないデバイスと、同じモデルの古いコピーがあらかじめ選択されています。削除したデバイスは、アプリ、データ、スナップショットも一緒に消えます。新しいデバイスは Xcode または Android Studio から作成してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld일 넘게 사용하지 않은 기기와 같은 모델의 이전 복사본이 미리 선택됩니다. 삭제한 기기는 앱, 데이터, 스냅샷도 함께 사라집니다. 새 기기는 Xcode나 Android Studio에서 만드세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos inativos há mais de %lld dias e cópias mais antigas do mesmo modelo vêm pré-selecionados. Um dispositivo removido leva consigo seus apps, dados e snapshots; crie um novo pelo Xcode ou Android Studio."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "闲置超过 %lld 天的设备，以及同一型号的旧副本，会被预先选中。移除设备会连同其中的 App、数据和快照一起删除；请在 Xcode 或 Android Studio 中新建设备。"
+          }
+        }
+      }
+    },
+    "Devices: %lld · %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geräte: %lld · %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos: %lld · %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appareils : %lld · %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivi: %lld · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイス：%lld · %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기: %lld개 · %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos: %lld · %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设备：%lld · %@"
           }
         }
       }
@@ -8586,6 +8846,58 @@
         }
       }
     },
+    "Inactive for more than": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inaktiv seit mehr als"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactivos desde hace más de"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactifs depuis plus de"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inattivi da più di"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の期間を超えて未使用："
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 기간 넘게 사용 안 함:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inativos há mais de"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "闲置超过"
+          }
+        }
+      }
+    },
     "Inactive projects": {
       "localizations": {
         "de": {
@@ -9626,6 +9938,58 @@
         }
       }
     },
+    "Looking for simulators and emulators…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche nach Simulatoren und Emulatoren…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando simuladores y emuladores…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche des simulateurs et émulateurs…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca di simulatori ed emulatori…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シミュレータとエミュレータを検索中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시뮬레이터와 에뮬레이터 찾는 중…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procurando simuladores e emuladores…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在查找模拟器和仿真器…"
+          }
+        }
+      }
+    },
     "Looking up the public IP…": {
       "localizations": {
         "de": {
@@ -9934,6 +10298,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "测量"
+          }
+        }
+      }
+    },
+    "Measuring sizes…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größen werden gemessen…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Midiendo tamaños…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesure des tailles…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Misurazione delle dimensioni…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズを測定中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "크기 측정 중…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Medindo tamanhos…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在测量大小…"
           }
         }
       }
@@ -11238,6 +11654,58 @@
         }
       }
     },
+    "No simulator or emulator found.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Simulator und kein Emulator gefunden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró ningún simulador ni emulador."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun simulateur ni émulateur trouvé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun simulatore o emulatore trovato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シミュレータもエミュレータも見つかりません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시뮬레이터나 에뮬레이터를 찾을 수 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum simulador ou emulador encontrado."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到任何模拟器或仿真器。"
+          }
+        }
+      }
+    },
     "No third-party launch agents.": {
       "localizations": {
         "de": {
@@ -11754,6 +12222,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "一切正常：您的 Mac 状态良好。"
+          }
+        }
+      }
+    },
+    "Nothing to suggest at %lld days. Pick devices yourself, or lower the limit.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei %lld Tagen gibt es nichts vorzuschlagen. Wählen Sie Geräte selbst aus oder senken Sie das Limit."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada que sugerir a %lld días. Elige los dispositivos tú mismo o reduce el límite."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien à suggérer à %lld jours. Choisissez les appareils vous-même, ou réduisez la limite."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun suggerimento a %lld giorni. Scegli i dispositivi tu stesso o abbassa il limite."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 日では提案できるものがありません。デバイスを自分で選ぶか、日数を減らしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld일 기준으로 제안할 항목이 없습니다. 기기를 직접 선택하거나 기준 일수를 줄이세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada a sugerir com %lld dias. Escolha os dispositivos você mesmo ou diminua o limite."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 %lld 天没有可建议的项目。请自行选择设备，或调低天数限制。"
           }
         }
       }
@@ -14618,6 +15138,58 @@
         }
       }
     },
+    "Running · quit it first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft · zuerst beenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En ejecución · ciérralo primero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours d'exécution · quittez-le d'abord"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In esecuzione · chiudilo prima"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中 · 先に終了してください"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중 · 먼저 종료하세요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em execução · feche-o primeiro"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行 · 请先退出"
+          }
+        }
+      }
+    },
     "SMART status": {
       "localizations": {
         "de": {
@@ -15862,6 +16434,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "模拟器缓存，不影响您的虚拟设备"
+          }
+        }
+      }
+    },
+    "Simulators and emulators": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulatoren und Emulatoren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores y emuladores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulateurs et émulateurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulatori ed emulatori"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シミュレータとエミュレータ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시뮬레이터 및 에뮬레이터"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores e emuladores"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "模拟器和仿真器"
           }
         }
       }
@@ -18674,6 +19298,58 @@
         }
       }
     },
+    "Unknown system": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekanntes System"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema desconocido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Système inconnu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema sconosciuto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不明なシステム"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없는 시스템"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema desconhecido"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知系统"
+          }
+        }
+      }
+    },
     "Update available: macOS %@": {
       "localizations": {
         "de": {
@@ -19558,6 +20234,58 @@
         }
       }
     },
+    "Xcode’s simulator service did not answer. Try again in a moment.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Simulator-Dienst von Xcode antwortet nicht. Versuchen Sie es in einem Moment erneut."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servicio de simuladores de Xcode no respondió. Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le service de simulateurs d'Xcode n'a pas répondu. Réessayez dans un instant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il servizio simulatori di Xcode non ha risposto. Riprova tra un momento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode のシミュレータサービスが応答しませんでした。しばらくしてからもう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode의 시뮬레이터 서비스가 응답하지 않았습니다. 잠시 후 다시 시도하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O serviço de simuladores do Xcode não respondeu. Tente de novo em instantes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode 的模拟器服务没有响应。请稍后再试。"
+          }
+        }
+      }
+    },
     "Your Internet traffic goes through the %@ tunnel.": {
       "localizations": {
         "de": {
@@ -19918,6 +20646,110 @@
           "stringUnit": {
             "state": "translated",
             "value": "iOS 模拟器缓存"
+          }
+        }
+      }
+    },
+    "iOS Simulators": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS-Simulatoren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores de iOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulateurs iOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulatori iOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS シミュレータ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 시뮬레이터"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores iOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 模拟器"
+          }
+        }
+      }
+    },
+    "iOS Simulators and Android emulators": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS-Simulatoren und Android-Emulatoren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores de iOS y emuladores de Android"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulateurs iOS et émulateurs Android"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simulatori iOS ed emulatori Android"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS シミュレータと Android エミュレータ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 시뮬레이터 및 Android 에뮬레이터"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simuladores iOS e emuladores Android"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 模拟器和 Android 仿真器"
           }
         }
       }
@@ -20334,6 +21166,214 @@
           "stringUnit": {
             "state": "translated",
             "value": "npm 缓存"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, used %lld d ago": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, vor %lld T. genutzt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», usada hace %lld d"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », utilisée il y a %lld j"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», usata %lld g fa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、%lld 日前に使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, %lld일 전에 사용"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, usada há %lld d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，%lld 天前使用"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, used today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, heute genutzt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», usada hoy"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », utilisée aujourd'hui"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», usata oggi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、今日使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, 오늘 사용"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, usada hoje"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，今天使用"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, which is running": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, das gerade läuft"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», que se está ejecutando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », qui est en cours d'exécution"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», in esecuzione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、実行中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, 실행 중"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, que está em execução"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，正在运行"
+          }
+        }
+      }
+    },
+    "unavailable: system not installed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht verfügbar: System nicht installiert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no disponible: sistema no instalado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "indisponible : système non installé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "non disponibile: sistema non installato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "利用不可：システムが未インストール"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용할 수 없음: 시스템이 설치되지 않음"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "indisponível: sistema não instalado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可用：系统未安装"
           }
         }
       }

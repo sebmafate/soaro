@@ -1,13 +1,14 @@
 import SwiftUI
 
 enum CleanupRoute: String, Identifiable {
-    case largeFiles, devProjects, uninstaller, startup
+    case largeFiles, devProjects, simulators, uninstaller, startup
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .largeFiles: String(localized: "Large files")
         case .devProjects: String(localized: "Inactive projects")
+        case .simulators: String(localized: "Simulators and emulators")
         case .uninstaller: String(localized: "Uninstall apps")
         case .startup: String(localized: "Startup items")
         }
@@ -17,6 +18,7 @@ enum CleanupRoute: String, Identifiable {
         switch self {
         case .largeFiles: String(localized: "Find what takes up the most space")
         case .devProjects: String(localized: "node_modules, .build, target… from old projects")
+        case .simulators: String(localized: "iOS Simulators and Android emulators")
         case .uninstaller: String(localized: "Remove an app and its leftovers")
         case .startup: String(localized: "What starts when you log in")
         }
@@ -26,9 +28,18 @@ enum CleanupRoute: String, Identifiable {
         switch self {
         case .largeFiles: "doc.zipper"
         case .devProjects: "shippingbox"
+        case .simulators: "ipad.and.iphone"
         case .uninstaller: "trash.square"
         case .startup: "power.circle"
         }
+    }
+}
+
+extension CleanupRoute {
+    /// Les outils de la liste, dans l'ordre : « Simulators and emulators » entre « Inactive projects » et « Uninstall apps »,
+    /// seulement si l'outil est présent (ou en mode démo).
+    static func toolRoutes(showSimulators: Bool) -> [CleanupRoute] {
+        [.largeFiles, .devProjects] + (showSimulators ? [.simulators] : []) + [.uninstaller, .startup]
     }
 }
 
@@ -41,6 +52,9 @@ struct CleanupTab: View {
     @StateObject private var devProjects: DevArtifactsModel
     @StateObject private var uninstaller: UninstallerModel
     @StateObject private var startup: StartupModel
+    @StateObject private var simulators: SimulatorsModel
+    /// Résultat de la détection de l'outil des simulateurs (sur le disque, rien n'est lancé) ; `nil` tant qu'elle n'a pas eu lieu.
+    @State private var simulatorDetection: SimulatorToolDetection?
 
     init() {
         // `notify` est rebranché sur l'état au premier affichage (voir `body`).
@@ -48,6 +62,8 @@ struct CleanupTab: View {
         _devProjects = StateObject(wrappedValue: DevArtifactsModel(notify: { _ in }))
         _uninstaller = StateObject(wrappedValue: UninstallerModel(notify: { _ in }))
         _startup = StateObject(wrappedValue: StartupModel(notify: { _ in }))
+        // Seul endroit de l'application où le vrai lanceur de commandes est construit (avec `Diagnostics.scan`).
+        _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), notify: { _ in }))
     }
 
     var body: some View {
@@ -83,7 +99,7 @@ struct CleanupTab: View {
                 developerSection
                 SectionHeader(title: "Tools")
                 VStack(spacing: 6) {
-                    ForEach([CleanupRoute.largeFiles, .devProjects, .uninstaller, .startup]) { item in
+                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, demo: DemoMode.isEnabled))) { item in
                         Button { open(item) } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: item.systemImage).font(.title3).frame(width: 26).foregroundStyle(Color.accentColor)
@@ -103,6 +119,15 @@ struct CleanupTab: View {
                 }
             }
             .padding(14)
+        }
+        // Détection à l'apparition de la liste (jamais dans `body`, jamais dans le tick) : quelques lectures du disque, hors acteur principal.
+        .task {
+            // Mode démo : la rangée est toujours visible, rien n'est lu sur le disque.
+            guard !DemoMode.isEnabled else { return }
+            let found = await Task.detached(priority: .utility) {
+                SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory()))
+            }.value
+            simulatorDetection = found
         }
     }
 
@@ -148,6 +173,7 @@ struct CleanupTab: View {
         devProjects.setNotify(notify)
         uninstaller.setNotify(notify)
         startup.setNotify(notify)
+        simulators.setNotify(notify)
         self.route = route
     }
 
@@ -155,7 +181,7 @@ struct CleanupTab: View {
         VStack(spacing: 0) {
             HStack {
                 Button {
-                    largeFiles.cancel(); devProjects.cancel(); uninstaller.cancel()
+                    largeFiles.cancel(); devProjects.cancel(); uninstaller.cancel(); simulators.cancel()
                     self.route = nil
                 } label: {
                     Label("Cleanup", systemImage: "chevron.left")
@@ -171,6 +197,7 @@ struct CleanupTab: View {
             switch route {
             case .largeFiles: LargeFilesView(model: largeFiles)
             case .devProjects: DevProjectsView(model: devProjects)
+            case .simulators: SimulatorsView(model: simulators)
             case .uninstaller: UninstallerView(model: uninstaller)
             case .startup: StartupItemsView(model: startup)
             }

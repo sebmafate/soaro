@@ -10,7 +10,7 @@ enum SimulatorReport {
 
         switch scan.status {
         case .toolNotFound:
-            out.append("xcrun not found")
+            out.append("simulator tool not found")
             return out
         case .commandFailed(let code):
             out.append(code.map { "command failed (exit code \($0))" } ?? "command failed")
@@ -39,7 +39,11 @@ enum SimulatorReport {
             if row.isPreSelected {
                 var reasons: [String] = []
                 if row.isInactive, let days = row.daysSinceLastUse { reasons.append("inactive for \(days) d") }
-                if row.isOlderCopy { reasons.append("older copy") }
+                // Même appareil gardé que le texte de l'écran (`SimulatorPresentation`) ; ici avec le système et l'UDID.
+                if row.isOlderCopy {
+                    reasons.append(row.keptDevice.map { "older copy of \($0.device.name) (\($0.device.runtimeName), \($0.device.udid))" }
+                                   ?? "older copy")
+                }
                 parts.append("pre-selected (\(reasons.joined(separator: ", ")))")
             }
             if row.isRunning { parts.append("running") }
