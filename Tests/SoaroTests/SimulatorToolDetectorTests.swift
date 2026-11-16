@@ -50,6 +50,29 @@ private final class FakeToolFileSystem: ToolFileSystem {
         #expect(runner.calls.isEmpty)
     }
 
+    @Test func diagnosticsRunsNothingWhenNoSimctlIsOnDisk() {
+        // `Soaro --scan` suit la même porte : sans simctl actif, aucun appel, même si `xcrun` existe.
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/Library/Developer/CommandLineTools"
+        fs.executables.insert(xcodeSimctl)
+        let runner = FakeCommandRunner()
+        let scan = Diagnostics.simulatorScan(runner: runner, home: home, fileSystem: fs, locate: { _ in "/usr/bin/xcrun" })
+        #expect(scan.status == .toolNotFound)
+        #expect(runner.calls.isEmpty)
+        #expect(runner.unscriptedCalls.isEmpty)
+    }
+
+    @Test func diagnosticsRunsTheCommandWhenTheActiveSimctlExists() {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/Applications/Xcode.app/Contents/Developer"
+        fs.executables.insert(xcodeSimctl)
+        let runner = FakeCommandRunner()
+        runner.script(.finished(stdout: "{\"devices\": {}}"), executable: "/usr/bin/xcrun", arguments: SimulatorScanner.listArguments)
+        let scan = Diagnostics.simulatorScan(runner: runner, home: home, fileSystem: fs, locate: { _ in "/usr/bin/xcrun" })
+        #expect(scan.status == .ok)
+        #expect(runner.calls.count == 1)
+    }
+
     @Test func devicesFolderThatIsAFileDoesNotCount() {
         let fs = FakeToolFileSystem()
         fs.plainFiles.insert(devicesPath)
@@ -109,14 +132,69 @@ private final class FakeToolFileSystem: ToolFileSystem {
 
     @Test func aDirectoryOrANonExecutableCandidateIsSkipped() {
         let fs = FakeToolFileSystem()
-        // Candidat du lien : un dossier ; candidat Xcode.app : un fichier non exécutable.
-        fs.links[link] = "/Applications/Xcode-beta.app/Contents/Developer"
-        fs.directories.insert("/Applications/Xcode-beta.app/Contents/Developer/usr/bin/simctl")
+        // Lien absent : Xcode.app a un fichier non exécutable, Xcode-dir.app un dossier, Xcode-old.app un vrai simctl.
         fs.plainFiles.insert(xcodeSimctl)
-        fs.listings["/Applications"] = ["Xcode-old.app"]
+        fs.directories.insert("/Applications/Xcode-dir.app/Contents/Developer/usr/bin/simctl")
+        fs.listings["/Applications"] = ["Xcode-dir.app", "Xcode-old.app"]
         let last = "/Applications/Xcode-old.app/Contents/Developer/usr/bin/simctl"
         fs.executables.insert(last)
         #expect(detect(fs).simctlPath == last)
+    }
+
+    @Test func aLinkToADirectoryOrANonExecutableSimctlIsAbsentWithoutFallback() {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/Applications/Xcode-beta.app/Contents/Developer"
+        fs.directories.insert("/Applications/Xcode-beta.app/Contents/Developer/usr/bin/simctl")
+        fs.executables.insert(xcodeSimctl)
+        #expect(detect(fs).simctlPath == nil, "le lien est la seule source : pas de repli")
+    }
+
+    // MARK: Le simctl que xcrun lancera vraiment (celui du dossier actif)
+
+    @Test func linkToCommandLineToolsWithXcodeInstalledMeansTheActiveSimctlIsAbsent() {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/Library/Developer/CommandLineTools"
+        fs.directories.insert("/Library/Developer/CommandLineTools")
+        fs.executables.insert(xcodeSimctl)                          // Xcode est installé, mais pas actif
+        fs.listings["/Applications"] = ["Xcode.app", "Xcode-beta.app"]
+        fs.executables.insert("/Applications/Xcode-beta.app/Contents/Developer/usr/bin/simctl")
+        fs.directories.insert(devicesPath)
+        let result = detect(fs)
+        #expect(result.simctlPath == nil)
+        #expect(result.devicesFolderExists)
+        #expect(result.isToolPresent, "la rangée reste visible : le dossier des appareils existe")
+
+        // Le lanceur n'est jamais appelé ; le message neutre s'affichera.
+        let runner = FakeCommandRunner()
+        let xcrun = ToolLocator.simulatorXcrunPath(detection: result, locate: { _ in "/usr/bin/xcrun" })
+        #expect(xcrun == nil)
+        #expect(SimulatorScanner.list(runner: runner, xcrunPath: xcrun).status == .toolNotFound)
+        #expect(runner.calls.isEmpty)
+    }
+
+    @MainActor
+    @Test func cltActiveWithXcodeInstalledShowsTheNeutralMessageAndLaunchesNothing() async {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/Library/Developer/CommandLineTools"
+        fs.executables.insert(xcodeSimctl)
+        fs.directories.insert(devicesPath)
+        let detection = SimulatorToolDetector.detect(home: home, fileSystem: fs)
+        #expect(SimulatorToolDetection.showsToolsRow(detection: detection, demo: false))
+
+        let runner = FakeCommandRunner()
+        let model = SimulatorsModel(runner: runner, detect: { detection }, locateXcrun: { _ in "/usr/bin/xcrun" },
+                                    home: home, demo: false, notify: { _ in })
+        model.scan()
+        await model.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(model.phase == .failed(.couldNotRead))
+        #expect(model.message == "Could not read the iOS Simulators.")
+    }
+
+    @Test func missingLinkAndNoXcodeMeansAbsent() {
+        let fs = FakeToolFileSystem()
+        fs.listings["/Applications"] = ["Safari.app"]
+        #expect(detect(fs).simctlPath == nil)
     }
 
     @Test func relativeLinkDestinationIsResolvedAgainstVarDb() {

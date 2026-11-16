@@ -4,7 +4,7 @@ import Foundation
 struct SimulatorToolDetection: Equatable {
     /// `<home>/Library/Developer/CoreSimulator/Devices` existe et c'est un dossier.
     let devicesFolderExists: Bool
-    /// Premier `simctl` exécutable trouvé sur le disque, `nil` s'il n'y en a pas.
+    /// Le `simctl` du dossier de développeur actif (celui que `xcrun` lancera), `nil` s'il est absent.
     let simctlPath: String?
 
     /// L'outil est « présent » dès qu'un dossier d'appareils ou un `simctl` existe.
@@ -64,19 +64,21 @@ enum SimulatorToolDetector {
                                       simctlPath: simctlPath(fileSystem))
     }
 
-    /// Premier candidat qui est un fichier ordinaire exécutable, dans cet ordre :
-    /// 1. le `simctl` de l'Xcode choisi (destination du lien `xcode_select_link`, relative à `/var/db` si elle l'est) ;
-    /// 2. `/Applications/Xcode.app` ;
-    /// 3. chaque `/Applications/Xcode*.app`, trié par nom.
+    /// Le `simctl` que `/usr/bin/xcrun` lancera VRAIMENT : celui du dossier de développeur actif (`xcrun` suit le dossier actif).
+    /// - Lien `xcode_select_link` présent : SEULE source, `<destination>/usr/bin/simctl` (destination relative résolue contre
+    ///   `/var/db`). Pas de repli : avec les Command Line Tools actifs et Xcode installé, `xcrun simctl` échouerait.
+    /// - Lien absent : le repli de `xcode-select` lui-même, `/Applications/Xcode.app`, puis chaque `/Applications/Xcode*.app`
+    ///   trié par nom.
+    /// Le candidat doit être un fichier ordinaire exécutable. Rien n'est lancé.
     static func simctlPath(_ fileSystem: ToolFileSystem) -> String? {
-        var candidates: [String] = []
         if let destination = fileSystem.symlinkDestination(of: selectLink) {
             let resolved = destination.hasPrefix("/")
                 ? destination
                 : URL(fileURLWithPath: destination, relativeTo: URL(fileURLWithPath: "/var/db", isDirectory: true)).standardized.path
-            candidates.append(resolved + simctlSuffix)
+            let candidate = resolved + simctlSuffix
+            return fileSystem.isExecutableRegularFile(candidate) ? candidate : nil
         }
-        candidates.append("/Applications/Xcode.app/Contents/Developer" + simctlSuffix)
+        var candidates = ["/Applications/Xcode.app/Contents/Developer" + simctlSuffix]
         let others = fileSystem.entries(inDirectory: "/Applications")
             .filter { $0.hasPrefix("Xcode") && $0.hasSuffix(".app") }
             .sorted()
