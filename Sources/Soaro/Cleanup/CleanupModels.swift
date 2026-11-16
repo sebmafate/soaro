@@ -178,7 +178,7 @@ final class DevArtifactsModel: ObservableObject {
 
 @MainActor
 final class UninstallerModel: ObservableObject {
-    @Published private(set) var apps: [InstalledApp] = []
+    @Published private(set) var apps: [InstalledApp]
     @Published private(set) var isLoading = false
     @Published var search = ""
     @Published private(set) var current: InstalledApp?
@@ -188,8 +188,16 @@ final class UninstallerModel: ObservableObject {
 
     private var token: CancelToken?
     private var notify: (String) -> Void
+    private let confirm: ConfirmHandler
 
-    init(notify: @escaping (String) -> Void) { self.notify = notify }
+    /// `apps` et `current` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask,
+         apps: [InstalledApp] = [], current: InstalledApp? = nil) {
+        self.notify = notify
+        self.confirm = confirm
+        self.apps = apps
+        self.current = current
+    }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     var filtered: [InstalledApp] {
@@ -254,10 +262,10 @@ final class UninstallerModel: ObservableObject {
             return
         }
         let items = selectedLeftovers
-        guard AppState.confirm(
-            title: String(localized: "Uninstall “\(app.name)”?"),
-            message: String(localized: "The app and its related items (\(items.count)) will be moved to the Trash (\(Format.fileBytes(totalToFree))). You can recover them until the Trash is emptied."),
-            button: String(localized: "Uninstall"), critical: true
+        guard confirm(
+            String(localized: "Uninstall “\(app.name)”?"),
+            String(localized: "The app and its related items (\(items.count)) will be moved to the Trash (\(Format.fileBytes(totalToFree))). You can recover them until the Trash is emptied."),
+            String(localized: "Uninstall"), true
         ) else { return }
 
         let result = AppUninstaller.uninstall(app, leftovers: items)
@@ -280,8 +288,14 @@ final class StartupModel: ObservableObject {
     @Published private(set) var loginItemsDenied = false
     @Published private(set) var isLoading = false
     private var notify: (String) -> Void
+    private let confirm: ConfirmHandler
 
-    init(notify: @escaping (String) -> Void) { self.notify = notify }
+    /// `loginItems` : état initial (nil en production ; sert aux tests, qui n'interrogent pas System Events).
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, loginItems: [LoginItem]? = nil) {
+        self.notify = notify
+        self.confirm = confirm
+        self.loginItems = loginItems
+    }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     func load() {
@@ -321,10 +335,10 @@ final class StartupModel: ObservableObject {
     }
 
     func remove(_ item: LoginItem) {
-        guard AppState.confirm(
-            title: String(localized: "Remove “\(item.name)” from the login items?"),
-            message: String(localized: "The app will no longer open at login. It is not deleted."),
-            button: String(localized: "Remove")
+        guard confirm(
+            String(localized: "Remove “\(item.name)” from the login items?"),
+            String(localized: "The app will no longer open at login. It is not deleted."),
+            String(localized: "Remove"), false
         ) else { return }
         Task { [weak self] in
             let ok = await Task.detached(priority: .userInitiated) { StartupItemsService.removeLoginItem(item) }.value

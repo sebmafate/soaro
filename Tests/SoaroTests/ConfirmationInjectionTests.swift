@@ -88,4 +88,49 @@ final class CancelRecorder {
             critical: false
         )])
     }
+
+    @Test func cancellingUninstallKeepsTheAppAndState() async throws {
+        let box = try Sandbox(insideHome: true)
+        try box.file("Fake.app/Contents/Info.plist", bytes: 10)
+        let appURL = box.root.appendingPathComponent("Fake.app")
+        let app = InstalledApp(url: appURL, name: "Fake", bundleID: "com.example.app", version: "1.0", size: 5_000_000, lastUsed: nil)
+        let recorder = CancelRecorder()
+        let model = UninstallerModel(notify: recorder.notify, confirm: recorder.confirmation, apps: [app], current: app)
+
+        model.uninstall()
+        for _ in 0..<20 { await Task.yield() }
+
+        #expect(FileManager.default.fileExists(atPath: appURL.path))
+        #expect(box.exists("Fake.app/Contents/Info.plist"))
+        #expect(model.apps == [app])
+        #expect(model.current == app)
+        #expect(recorder.notifications.isEmpty)
+        #expect(recorder.calls == [CancelRecorder.Call(
+            title: String(localized: "Uninstall “Fake”?"),
+            message: String(localized: "The app and its related items (\(0)) will be moved to the Trash (\(Format.fileBytes(5_000_000))). You can recover them until the Trash is emptied."),
+            button: String(localized: "Uninstall"),
+            critical: true
+        )])
+    }
+
+    @Test func cancellingLoginItemRemovalKeepsTheItem() async throws {
+        let item = LoginItem(name: "Example", path: "/nonexistent/Example.app")
+        let recorder = CancelRecorder()
+        let model = StartupModel(notify: recorder.notify, confirm: recorder.confirmation, loginItems: [item])
+
+        model.remove(item)
+        // Limite : la suppression réelle est asynchrone (AppleScript hors du thread principal) ; on laisse
+        // le temps à une tâche éventuelle de s'exécuter, mais ce test pourrait passer à tort si elle tardait.
+        for _ in 0..<20 { await Task.yield() }
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(model.loginItems == [item])
+        #expect(recorder.notifications.isEmpty)
+        #expect(recorder.calls == [CancelRecorder.Call(
+            title: String(localized: "Remove “Example” from the login items?"),
+            message: String(localized: "The app will no longer open at login. It is not deleted."),
+            button: String(localized: "Remove"),
+            critical: false
+        )])
+    }
 }
