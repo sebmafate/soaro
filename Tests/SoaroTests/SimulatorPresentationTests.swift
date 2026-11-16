@@ -168,6 +168,19 @@ import Testing
         #expect(SimulatorPresentation.sizeText(1_200_000_000, locale: locale) == Format.fileBytes(1_200_000_000, locale: locale))
     }
 
+    /// Les deux textes « older copy » (anglais brut de `--scan`, texte de l'écran) viennent du même appareil gardé : ils restent
+    /// d'accord sur le nom, et `--scan` ajoute le système et l'UDID pour le contrôle sur 5 appareils.
+    @Test func theScanReportAndTheScreenNameTheSameKeptDevice() {
+        let r = rows([dev(1, name: "Kept Phone", days: 3, model: phone), dev(2, days: 30, model: phone)])
+        let older = row(2, in: r)
+        let kept = older.keptDevice!
+        let scan = SimulatorScan(status: .ok, devices: r.map(\.device))
+        let suggestions = DeviceSuggestions.suggest(scan.devices, now: now, limitDays: 60)
+        let report = SimulatorReport.lines(scan: scan, suggestions: suggestions, locale: locale, limitDays: 60).joined(separator: "\n")
+        #expect(report.contains("older copy of \(kept.device.name) (\(kept.device.runtimeName), \(kept.device.udid))"))
+        #expect(reason(older).contains("older copy of “\(kept.device.name)”"))
+    }
+
     // MARK: Vocabulaire et catalogue (R12)
 
     private let newKeys = [

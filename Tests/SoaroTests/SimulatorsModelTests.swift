@@ -218,21 +218,35 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
         #expect(runner.calls.count == 1)
     }
 
-    @Test func scanAgainCancelsTheRunningScanAndOnlyTheLastResultIsApplied() async {
-        let first = BlockingRunner(.finished(stdout: Self.listJSON([Self.u1])))
-        let m = model(first)
+    @Test func scanAgainWhileListingIsIgnoredAndRunsOnlyOneCommand() async {
+        let runner = BlockingRunner(.finished(stdout: Self.listJSON([Self.u1])))
+        let m = model(runner)
+        #expect(m.canScanAgain)
         m.scan()
-        await waitUntilRunning(first)
-        let firstTask = m.scanTask
-        // Deuxième scan avec le même lanceur : il attend lui aussi ; on libère les deux.
+        #expect(!m.canScanAgain, "« Scan again » est désactivé pendant le listage")
+        await waitUntilRunning(runner)
+        let task = m.scanTask
+        m.scan()                       // déclenchement répété : ignoré
         m.scan()
-        first.release.signal()
-        await waitUntilRunning(first)
-        first.release.signal()
-        await firstTask?.value
+        #expect(m.scanTask == task)
+        runner.release.signal()
         await m.scanTask?.value
+        #expect(runner.calls.count == 1, "un seul `simctl list`")
         #expect(m.phase == .listed)
         #expect(m.rows.count == 1)
+        #expect(m.canScanAgain)
+    }
+
+    @Test func scanAgainIsAllowedAfterACancelDuringListing() async {
+        let runner = BlockingRunner(.finished(stdout: Self.listJSON([Self.u1])))
+        let m = model(runner)
+        m.scan()
+        await waitUntilRunning(runner)
+        m.cancel()
+        #expect(m.canScanAgain)
+        runner.release.signal()
+        await m.scanTask?.value
+        #expect(m.phase == .notScanned)
     }
 
     @Test func scanAgainAfterAFailureSucceeds() async {

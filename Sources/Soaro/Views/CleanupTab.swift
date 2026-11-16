@@ -122,6 +122,8 @@ struct CleanupTab: View {
         }
         // Détection à l'apparition de la liste (jamais dans `body`, jamais dans le tick) : quelques lectures du disque, hors acteur principal.
         .task {
+            // Mode démo : la rangée est toujours visible, rien n'est lu sur le disque.
+            guard !DemoMode.isEnabled else { return }
             let found = await Task.detached(priority: .utility) {
                 SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory()))
             }.value

@@ -201,6 +201,23 @@ import Testing
         #expect(m.showsNothingToSuggest)
     }
 
+    @Test func bannerStaysHiddenWhileTheSizesAreMeasured() async {
+        // Règle : tant que les tailles arrivent, la pré-sélection est provisoire ; le bandeau n'apparaît qu'à la fin.
+        let specs = [Spec(n: 1, days: 10), Spec(n: 2, days: 20)]
+        let measure = bigMeasure(specs, gated: true)
+        let m = model(runner(specs), measure: measure)
+        m.scan()
+        await measure.started.wait()
+        #expect(m.isMeasuring)
+        #expect(!m.showsNothingToSuggest)
+        measure.release.signal()
+        await measure.started.wait()
+        #expect(!m.showsNothingToSuggest)
+        measure.release.signal()
+        await m.scanTask?.value
+        #expect(m.showsNothingToSuggest)
+    }
+
     @Test func bannerHidesWhenSomethingIsPreSelectedOrNothingIsListed() async {
         let specs = [Spec(n: 1, days: 100)]
         let m = model(runner(specs), measure: bigMeasure(specs))

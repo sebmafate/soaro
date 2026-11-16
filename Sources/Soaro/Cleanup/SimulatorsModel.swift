@@ -84,6 +84,13 @@ final class SimulatorsModel: ObservableObject {
 
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
+    /// Taille gardée par le modèle pour un appareil, `nil` tant qu'elle n'est pas appliquée.
+    func measuredSize(udid: String) -> UInt64? { sizes[udid] }
+    var measuredSizes: [String: UInt64] { sizes }
+
+    /// « Scan again » est inutilisable pendant le listage (une seule commande `simctl list` à la fois).
+    var canScanAgain: Bool { phase != .listing }
+
     /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
     func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
 
@@ -131,8 +138,10 @@ final class SimulatorsModel: ObservableObject {
 
     // MARK: Scan
 
-    /// Lance (ou relance : annule le scan en cours) la lecture de la liste, hors de l'acteur principal.
+    /// Lance la lecture de la liste, hors de l'acteur principal. Pendant le listage un nouveau déclenchement est ignoré
+    /// (jamais deux `simctl list` en même temps) ; pendant la mesure des tailles il annule la mesure et recommence.
     func scan() {
+        guard canScanAgain else { return }
         token?.cancel()
         let token = CancelToken()
         self.token = token

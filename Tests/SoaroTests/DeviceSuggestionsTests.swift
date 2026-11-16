@@ -261,4 +261,10 @@ import Testing
         let r = DeviceSuggestions.suggest([dev(1, days: 100), dev(2, days: 5), dev(3)], now: now, limitDays: 60)
         #expect(r.rows.allSatisfy { $0.keptDevice == nil })
     }
+
+    @Test func wholeDaysIsSharedAndNeverNegative() {
+        #expect(DeviceSuggestions.wholeDays(from: ago(60.99), to: now) == 60)
+        #expect(DeviceSuggestions.wholeDays(from: ago(0), to: now) == 0)
+        #expect(DeviceSuggestions.wholeDays(from: ago(-5), to: now) == 0)
+    }
 }

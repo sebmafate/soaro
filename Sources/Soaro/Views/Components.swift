@@ -206,15 +206,35 @@ extension CPUStats {
 }
 
 struct EmptyHint: View {
-    let text: LocalizedStringKey
-    var systemImage = "info.circle"
-    /// Couleur du texte ; `nil` : `.secondary` comme avant (l'écran des simulateurs fournit le jeton « texte de soutien »).
-    var color: Color? = nil
+    private let content: Text
+    let systemImage: String
+    /// `true` : jeton « texte de soutien » (écran des simulateurs) ; `false` : `.secondary` comme avant.
+    let supporting: Bool
+
+    /// Texte du catalogue (clé littérale).
+    init(text: LocalizedStringKey, systemImage: String = "info.circle", supporting: Bool = false) {
+        self.content = Text(text)
+        self.systemImage = systemImage
+        self.supporting = supporting
+    }
+
+    /// Texte déjà traduit ou calculé : affiché tel quel, jamais lu comme du Markdown ni cherché dans le catalogue.
+    init(verbatim: String, systemImage: String = "info.circle", supporting: Bool = false) {
+        self.content = Text(verbatim: verbatim)
+        self.systemImage = systemImage
+        self.supporting = supporting
+    }
+
     var body: some View {
-        Label(text, systemImage: systemImage)
-            .font(.caption)
-            .foregroundStyle(color.map(AnyShapeStyle.init) ?? AnyShapeStyle(.secondary))
-            .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            if supporting {
+                Label { content } icon: { Image(systemName: systemImage) }.supportingText()
+            } else {
+                Label { content } icon: { Image(systemName: systemImage) }.foregroundStyle(.secondary)
+            }
+        }
+        .font(.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

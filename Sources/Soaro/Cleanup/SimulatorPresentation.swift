@@ -23,6 +23,9 @@ enum SimulatorPresentation {
         row.isRunning ? String(localized: "Running · quit it first") : nil
     }
 
+    /// NB : `SimulatorReport` (anglais brut de `--scan`) a son propre texte « older copy of … » : les deux partent du même
+    /// `row.keptDevice` (un test les garde d'accord, `theScanReportAndTheScreenNameTheSameKeptDevice`).
+    ///
     /// Ligne de raison d'une ligne sélectionnable, morceaux joints par « · » :
     /// jours (« inactive for N d », « active today », « activity unknown »), puis « older copy of “nom”, … »,
     /// puis « unavailable: system not installed ». Vide pour un appareil en cours d'exécution (sa raison est `unavailableReason`).
@@ -49,7 +52,7 @@ enum SimulatorPresentation {
         if kept.device.state != "Shutdown" {
             return String(localized: "older copy of “\(name)”, which is running", locale: locale)
         }
-        let days = kept.device.lastUsed.map { max(0, Int(now.timeIntervalSince($0) / 86_400)) } ?? 0
+        let days = kept.device.lastUsed.map { DeviceSuggestions.wholeDays(from: $0, to: now) } ?? 0
         return days == 0 ? String(localized: "older copy of “\(name)”, used today", locale: locale)
                          : String(localized: "older copy of “\(name)”, used \(days) d ago", locale: locale)
     }

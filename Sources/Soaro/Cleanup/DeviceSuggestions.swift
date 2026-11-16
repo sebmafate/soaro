@@ -39,6 +39,9 @@ enum DeviceSuggestions {
         let limitDays: Int
     }
 
+    /// Jours entiers entre une date et `now`, jamais négatif (une date future vaut 0). Partagé avec le texte des lignes.
+    static func wholeDays(from date: Date, to now: Date) -> Int { max(0, Int(now.timeIntervalSince(date) / 86_400)) }
+
     /// - Parameters:
     ///   - devices: tous les appareils avec leur taille (les petits servent aussi à repérer les copies).
     ///   - now: instant de référence (explicite : pas d'horloge ici).
@@ -47,7 +50,7 @@ enum DeviceSuggestions {
         let limit = max(0, limitDays)
 
         func isRunning(_ d: SizedSimulator) -> Bool { d.device.state != "Shutdown" }
-        func wholeDays(since date: Date) -> Int { max(0, Int(now.timeIntervalSince(date) / 86_400)) }
+        func wholeDays(since date: Date) -> Int { Self.wholeDays(from: date, to: now) }
         /// Un appareil en cours d'exécution compte comme utilisé maintenant ; sinon sa dernière utilisation (peut manquer).
         func effectiveUse(_ d: SizedSimulator) -> Date? { isRunning(d) ? now : d.device.lastUsed }
         func groupKey(_ d: SizedSimulator) -> String {

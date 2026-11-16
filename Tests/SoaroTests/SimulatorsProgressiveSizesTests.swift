@@ -172,7 +172,10 @@ final class ScriptedMeasure: @unchecked Sendable {
         #expect(m.phase == .notScanned)
         #expect(m.rows.isEmpty)
         #expect(!m.isMeasuring)
-        #expect(m.measuredSizeTotal == 0, "la taille arrivée après l'annulation n'est pas appliquée")
+        // On observe l'écriture tardive elle-même : la taille que le modèle garde pour l'appareil (sans le contrôle
+        // d'annulation après la mesure, elle serait écrite alors que la mesure s'est terminée après le Retour).
+        #expect(m.measuredSize(udid: Self.u2) == nil, "la taille arrivée après l'annulation n'est pas appliquée")
+        #expect(m.measuredSizes.isEmpty)
     }
 
     @Test func cancelAfterTwoMeasurementsAppliesNoLaterSize() async {
@@ -186,7 +189,8 @@ final class ScriptedMeasure: @unchecked Sendable {
         measure.release.signal()
         await m.scanTask?.value
         #expect(measure.calls.count == 2)
-        #expect(m.measuredSizeTotal == 0)
+        #expect(m.measuredSize(udid: Self.u3) == nil, "la deuxième taille, arrivée après l'annulation, n'est pas appliquée")
+        #expect(m.measuredSizes.isEmpty)
     }
 
     @Test func scanAgainStopsTheMeasuringOfTheFirstScan() async {

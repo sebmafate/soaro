@@ -39,6 +39,7 @@ enum SimulatorReport {
             if row.isPreSelected {
                 var reasons: [String] = []
                 if row.isInactive, let days = row.daysSinceLastUse { reasons.append("inactive for \(days) d") }
+                // Même appareil gardé que le texte de l'écran (`SimulatorPresentation`) ; ici avec le système et l'UDID.
                 if row.isOlderCopy {
                     reasons.append(row.keptDevice.map { "older copy of \($0.device.name) (\($0.device.runtimeName), \($0.device.udid))" }
                                    ?? "older copy")

@@ -58,6 +58,7 @@ struct SimulatorsView: View {
     private var scanAgain: some View {
         Button("Scan again") { model.scan() }
             .controlSize(.small)
+            .disabled(!model.canScanAgain)
     }
 
     // MARK: Corps
@@ -80,15 +81,8 @@ struct SimulatorsView: View {
     }
 
     private func hint(_ message: String, systemImage: String) -> some View {
-        EmptyHint(text: LocalizedStringKey(message), systemImage: systemImage, color: supportingColor)
+        EmptyHint(verbatim: message, systemImage: systemImage, supporting: true)
             .padding(14).frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.colorSchemeContrast) private var contrast
-
-    private var supportingColor: Color {
-        DesignTokens.supportingTextColor(dark: scheme == .dark, contrastIncreased: contrast == .increased)
     }
 
     @ViewBuilder private var listed: some View {
@@ -116,8 +110,8 @@ struct SimulatorsView: View {
     }
 
     private var hintBanner: some View {
-        EmptyHint(text: LocalizedStringKey(SimulatorPresentation.nothingToSuggest(limitDays: model.limitDays)),
-                  systemImage: "info.circle", color: supportingColor)
+        EmptyHint(verbatim: SimulatorPresentation.nothingToSuggest(limitDays: model.limitDays),
+                  systemImage: "info.circle", supporting: true)
             .padding(.horizontal, 14).padding(.vertical, 8)
     }
 

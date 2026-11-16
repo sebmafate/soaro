@@ -99,6 +99,8 @@ import Testing
             #expect(!text.contains(forbidden), "\(forbidden) ne doit pas apparaître dans SimulatorsView.swift")
         }
         #expect(text.contains("supportingText"))
+        #expect(!text.contains("supportingTextColor"), "le style existant `supportingText()` est réutilisé, pas recalculé")
+        #expect(!text.contains("LocalizedStringKey"), "un texte déjà traduit s'affiche tel quel (jamais lu comme du Markdown)")
         #expect(!text.contains("revealInFinder"), "pas de « Show in Finder » dans le nouvel écran")
     }
 
