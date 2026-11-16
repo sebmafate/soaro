@@ -78,13 +78,26 @@ enum SelectionAccessibility {
     }
 
     /// Libellé = nom de l'élément ; valeur = « Selected » / « Not selected » (clés existantes
-    /// du catalogue). Sans nom (vide ou espaces), l'état seul sert de libellé, sans valeur.
-    static func description(name: String, isOn: Bool) -> Description {
-        let state = isOn ? String(localized: "Selected") : String(localized: "Not selected")
+    /// du catalogue). Ligne indisponible : la valeur est « <raison>, not selectable » (la ligne
+    /// n'est pas sélectionnable, l'état coché n'a pas de sens). Sans nom (vide ou espaces),
+    /// la valeur sert de libellé, sans valeur : pas de libellé vide ni de doublon.
+    static func description(name: String, isOn: Bool, unavailableReason: String? = nil) -> Description {
+        let state: String
+        if let reason = unavailableReason {
+            state = String(localized: "\(reason), not selectable")
+        } else {
+            state = isOn ? String(localized: "Selected") : String(localized: "Not selected")
+        }
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return Description(label: state, value: "")
         }
         return Description(label: name, value: state)
+    }
+
+    /// Une ligne indisponible n'est jamais basculée : `toggle` n'est pas appelé.
+    static func activate(unavailableReason: String?, toggle: () -> Void) {
+        guard unavailableReason == nil else { return }
+        toggle()
     }
 }
 
@@ -92,23 +105,43 @@ struct SelectionRow<Content: View>: View {
     /// Nom de l'élément, lu par VoiceOver sur le bouton de sélection.
     let name: String
     let isOn: Bool
+    /// Variante « indisponible » : icône `minus.circle` au lieu de la coche, raison affichée en
+    /// texte (pleine opacité, jamais estompée), aucune bascule. `nil` = ligne sélectionnable.
+    var unavailableReason: String? = nil
     let toggle: () -> Void
     @ViewBuilder var content: Content
 
     var body: some View {
-        let description = SelectionAccessibility.description(name: name, isOn: isOn)
+        let description = SelectionAccessibility.description(name: name, isOn: isOn, unavailableReason: unavailableReason)
         HStack(alignment: .center, spacing: 8) {
-            Button(action: toggle) {
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isOn ? Color.accentColor : .secondary)
+            if unavailableReason != nil {
+                Image(systemName: "minus.circle")
+                    .foregroundStyle(.secondary)
                     .font(.title3)
                     .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
-                    .contentShape(Rectangle())
+                    .accessibilityLabel(description.label)
+                    .accessibilityValue(description.value)
+            } else {
+                Button { SelectionAccessibility.activate(unavailableReason: unavailableReason, toggle: toggle) } label: {
+                    Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(isOn ? Color.accentColor : .secondary)
+                        .font(.title3)
+                        .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(description.label)
+                .accessibilityValue(description.value)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(description.label)
-            .accessibilityValue(description.value)
-            content
+            if let reason = unavailableReason {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .center, spacing: 8) { content }
+                    // Déjà lue dans la valeur du bouton : masquée pour VoiceOver pour éviter le doublon.
+                    Text(reason).font(.caption).foregroundStyle(.primary).accessibilityHidden(true)
+                }
+            } else {
+                content
+            }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
@@ -116,6 +149,24 @@ struct SelectionRow<Content: View>: View {
 }
 
 // MARK: - Aperçus (Xcode uniquement : aucun écran ne les utilise)
+
+struct SelectionRow_Previews: PreviewProvider {
+    static var previews: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SelectionRow(name: "web-shop", isOn: true, toggle: {}) {
+                Text("web-shop").font(.callout); Spacer(); Text("1,2 GB").font(.caption.monospacedDigit())
+            }
+            SelectionRow(name: "api", isOn: false, toggle: {}) {
+                Text("api").font(.callout); Spacer(); Text("340 MB").font(.caption.monospacedDigit())
+            }
+            SelectionRow(name: "iPhone 15", isOn: false, unavailableReason: "In use by Xcode", toggle: {}) {
+                Text("iPhone 15").font(.callout); Spacer(); Text("4,1 GB").font(.caption.monospacedDigit())
+            }
+        }
+        .padding(14).frame(width: 420)
+        .previewDisplayName("SelectionRow: selected, not selected, unavailable")
+    }
+}
 
 struct ActionBar_Previews: PreviewProvider {
     static var previews: some View {
