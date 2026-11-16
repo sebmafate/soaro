@@ -7,7 +7,7 @@
 | Status | draft |
 | Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 420 tests in 53 suites with SL8), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
+| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 423 tests in 53 suites with SL8), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
 
 ## Goals and risks
 
@@ -150,7 +150,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 ## Definition of done (per slice)
 
-- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 420 tests in 53 suites after SL3, SL7 and SL8)
+- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 423 tests in 53 suites after SL3, SL7 and SL8)
 - [ ] Acceptance criteria verified; the rows of the matrix updated
 - [ ] No test calls a real simulator, Android or Docker tool, and the destructive paths take their runner as a parameter without a default
 - [ ] Fixtures anonymised (no home path, user name, project or bundle name)

@@ -64,6 +64,22 @@ enum SimulatorToolDetector {
                                       simctlPath: simctlPath(fileSystem))
     }
 
+    /// Chemin absolu normalisé d'une destination de lien, par manipulation de CHAÎNES seulement (ni URL, ni FileManager, ni
+    /// NSString : le résultat ne dépend ni de la version de macOS ni du disque). Une destination relative part de `base`.
+    /// Les composants vides et `.` sont ignorés ; `..` retire le composant précédent, sans jamais passer au-dessus de la racine.
+    static func resolvedPath(destination: String, base: String) -> String {
+        var parts: [Substring] = []
+        let start = destination.hasPrefix("/") ? "" : base
+        for component in (start + "/" + destination).split(separator: "/", omittingEmptySubsequences: true) {
+            switch component {
+            case ".": continue
+            case "..": if !parts.isEmpty { parts.removeLast() }
+            default: parts.append(component)
+            }
+        }
+        return "/" + parts.joined(separator: "/")
+    }
+
     /// Le `simctl` que `/usr/bin/xcrun` lancera VRAIMENT : celui du dossier de développeur actif (`xcrun` suit le dossier actif).
     /// - Lien `xcode_select_link` présent : SEULE source, `<destination>/usr/bin/simctl` (destination relative résolue contre
     ///   `/var/db`). Pas de repli : avec les Command Line Tools actifs et Xcode installé, `xcrun simctl` échouerait.
@@ -72,10 +88,8 @@ enum SimulatorToolDetector {
     /// Le candidat doit être un fichier ordinaire exécutable. Rien n'est lancé.
     static func simctlPath(_ fileSystem: ToolFileSystem) -> String? {
         if let destination = fileSystem.symlinkDestination(of: selectLink) {
-            let resolved = destination.hasPrefix("/")
-                ? destination
-                : URL(fileURLWithPath: destination, relativeTo: URL(fileURLWithPath: "/var/db", isDirectory: true)).standardized.path
-            let candidate = resolved + simctlSuffix
+            let resolved = resolvedPath(destination: destination, base: "/var/db")
+            let candidate = (resolved == "/" ? "" : resolved) + simctlSuffix
             return fileSystem.isExecutableRegularFile(candidate) ? candidate : nil
         }
         var candidates = ["/Applications/Xcode.app/Contents/Developer" + simctlSuffix]

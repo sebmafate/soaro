@@ -205,6 +205,42 @@ private final class FakeToolFileSystem: ToolFileSystem {
         #expect(detect(fs).simctlPath == path)
     }
 
+    /// Normalisation PURE (chaînes seulement) : même résultat sur toute version de macOS, sans URL ni système de fichiers.
+    @Test(arguments: [
+        ("../../Applications/Xcode-rel.app/Contents/Developer", "/Applications/Xcode-rel.app/Contents/Developer"),
+        ("./x/../Xcode.app/Contents/Developer", "/var/db/Xcode.app/Contents/Developer"),
+        ("../../Applications/Xcode.app/Contents/Developer/", "/Applications/Xcode.app/Contents/Developer"),
+        ("..//..//Applications//Xcode.app///Contents/Developer", "/Applications/Xcode.app/Contents/Developer"),
+        ("../../../../../Applications/Xcode.app", "/Applications/Xcode.app"),
+        ("../../..", "/"),
+        (".", "/var/db"),
+        ("", "/var/db"),
+        ("a/./b/../c", "/var/db/a/c"),
+        // Destination absolue : normalisée de la même façon, sans accès au disque.
+        ("/Applications/Xcode.app/Contents/Developer", "/Applications/Xcode.app/Contents/Developer"),
+        ("/Applications//Xcode.app/./Contents/../Contents/Developer/", "/Applications/Xcode.app/Contents/Developer"),
+        ("/../../Library/Developer/CommandLineTools", "/Library/Developer/CommandLineTools"),
+        ("/", "/"),
+    ])
+    func linkDestinationIsNormalisedAsPureStrings(destination: String, expected: String) {
+        #expect(SimulatorToolDetector.resolvedPath(destination: destination, base: "/var/db") == expected)
+    }
+
+    @Test func relativeLinkWithDotsAndTrailingSlashStillGivesTheCandidate() {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "./../db/../../Applications//Xcode-rel.app/Contents/Developer/"
+        let path = "/Applications/Xcode-rel.app/Contents/Developer/usr/bin/simctl"
+        fs.executables.insert(path)
+        #expect(detect(fs).simctlPath == path)
+    }
+
+    @Test func aLinkToTheRootDoesNotDoubleTheSlash() {
+        let fs = FakeToolFileSystem()
+        fs.links[link] = "/"
+        fs.executables.insert("/usr/bin/simctl")
+        #expect(detect(fs).simctlPath == "/usr/bin/simctl")
+    }
+
     @Test func gateOpensOnlyWithSimctlAndXcrun() {
         let withSimctl = SimulatorToolDetection(devicesFolderExists: false, simctlPath: "/x/simctl")
         let without = SimulatorToolDetection(devicesFolderExists: true, simctlPath: nil)
