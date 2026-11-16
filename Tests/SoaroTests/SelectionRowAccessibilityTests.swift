@@ -113,4 +113,56 @@ import Testing
             #expect(formatted.contains("In use") && !formatted.contains("%@"), "\(language)")
         }
     }
+
+    // MARK: Un seul élément par ligne : nom + détails (SL8 T9)
+
+    @Test func detailsFollowTheNameInOrderJoinedByCommas() {
+        let d = SelectionAccessibility.description(name: "Phone", details: ["iOS 26.2", "1,2 GB", "inactive for 66 d"], isOn: true)
+        #expect(d.label == "Phone, iOS 26.2, 1,2 GB, inactive for 66 d")
+        #expect(d.value == selected)
+    }
+
+    @Test func emptyAndBlankDetailsAreSkipped() {
+        let d = SelectionAccessibility.description(name: "Phone", details: ["", "iOS 26.2", "  ", "\n", "old"], isOn: false)
+        #expect(d.label == "Phone, iOS 26.2, old")
+        #expect(d.value == notSelected)
+    }
+
+    @Test func noDetailsGivesTheSameDescriptionAsBefore() {
+        #expect(SelectionAccessibility.description(name: "a", details: [], isOn: true)
+                == SelectionAccessibility.description(name: "a", isOn: true))
+        #expect(SelectionAccessibility.description(name: "a", details: ["", " "], isOn: false)
+                == SelectionAccessibility.description(name: "a", isOn: false))
+    }
+
+    @Test func blankNameWithDetailsReadsTheDetailsAndTheState() {
+        let d = SelectionAccessibility.description(name: " ", details: ["1,2 GB"], isOn: true)
+        #expect(d.label == "1,2 GB")
+        #expect(d.value == selected)
+    }
+
+    @Test func blankNameWithoutDetailsStillFallsBackToTheStateAlone() {
+        let d = SelectionAccessibility.description(name: "", details: ["", " "], isOn: true)
+        #expect(d.label == selected)
+        #expect(d.value.isEmpty)
+    }
+
+    @Test func unavailableRowKeepsDetailsInTheLabelAndTheReasonInTheValue() {
+        let d = SelectionAccessibility.description(name: "Phone", details: ["iOS 26.2", "1,2 GB"], isOn: false, unavailableReason: "Busy")
+        #expect(d.label == "Phone, iOS 26.2, 1,2 GB")
+        #expect(d.value == String(localized: "\("Busy"), not selectable"))
+    }
+
+    @Test func detailsAreKeptVerbatim() {
+        let d = SelectionAccessibility.description(name: "n", details: ["100 % %@ “x”"], isOn: true)
+        #expect(d.label == "n, 100 % %@ “x”")
+    }
+
+    // MARK: Action « Show in Finder » (SL8 T9)
+
+    @Test func showInFinderKeyIsTheExistingCatalogKey() throws {
+        let catalog = try TranslationCatalog.loadCatalog(TranslationCatalogTests.localizable)
+        let strings = try #require(catalog["strings"] as? [String: Any])
+        #expect(strings["Show in Finder"] != nil, "l'action VoiceOver réutilise la clé existante")
+    }
 }

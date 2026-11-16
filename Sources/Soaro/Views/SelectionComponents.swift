@@ -77,21 +77,22 @@ enum SelectionAccessibility {
         let value: String
     }
 
-    /// Libellé = nom de l'élément ; valeur = « Selected » / « Not selected » (clés existantes
-    /// du catalogue). Ligne indisponible : la valeur est « <raison>, not selectable » (la ligne
-    /// n'est pas sélectionnable, l'état coché n'a pas de sens). Sans nom (vide ou espaces),
-    /// la valeur sert de libellé, sans valeur : pas de libellé vide ni de doublon.
-    static func description(name: String, isOn: Bool, unavailableReason: String? = nil) -> Description {
+    /// Libellé = nom de l'élément, suivi des détails non vides (dans l'ordre, séparés par « , ») ; valeur = « Selected » /
+    /// « Not selected » (clés existantes du catalogue). Ligne indisponible : la valeur est « <raison>, not selectable »
+    /// (la ligne n'est pas sélectionnable, l'état coché n'a pas de sens). Sans nom (vide ou espaces), les détails servent de
+    /// libellé s'il y en a ; sinon la valeur sert de libellé, sans valeur : pas de libellé vide ni de doublon.
+    static func description(name: String, details: [String] = [], isOn: Bool, unavailableReason: String? = nil) -> Description {
         let state: String
         if let reason = unavailableReason {
             state = String(localized: "\(reason), not selectable")
         } else {
             state = isOn ? String(localized: "Selected") : String(localized: "Not selected")
         }
-        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Description(label: state, value: "")
-        }
-        return Description(label: name, value: state)
+        func isBlank(_ text: String) -> Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        var parts = details.filter { !isBlank($0) }
+        if !isBlank(name) { parts.insert(name, at: 0) }
+        if parts.isEmpty { return Description(label: state, value: "") }
+        return Description(label: parts.joined(separator: ", "), value: state)
     }
 
     /// Seule une raison `nil` donne une ligne sélectionnable : une ligne indisponible n'a pas
@@ -101,26 +102,32 @@ enum SelectionAccessibility {
     }
 }
 
+/// Ligne de sélection : UN SEUL élément pour VoiceOver (nom, détails, valeur « Selected » / « Not selected »),
+/// activé pour basculer. Le texte visible n'est pas lu une seconde fois. Une ligne indisponible ne fait rien.
+/// « Show in Finder » (si `revealAction` est fourni) est un bouton à la souris ET une action nommée de la ligne.
 struct SelectionRow<Content: View>: View {
-    /// Nom de l'élément, lu par VoiceOver sur le bouton de sélection.
+    /// Nom de l'élément, lu par VoiceOver en tête du libellé de la ligne.
     let name: String
     let isOn: Bool
     /// Variante « indisponible » : icône `minus.circle` au lieu de la coche, raison affichée en
     /// texte (pleine opacité, jamais estompée), aucune bascule. `nil` = ligne sélectionnable.
     var unavailableReason: String? = nil
+    /// Morceaux lus après le nom (système, taille, raison…), dans l'ordre ; les vides sont ignorés.
+    var details: [String] = []
+    /// Révélation dans le Finder : bouton visible à droite, et action VoiceOver « Show in Finder ». `nil` : aucune.
+    var revealAction: (() -> Void)? = nil
     let toggle: () -> Void
     @ViewBuilder var content: Content
 
     var body: some View {
-        let description = SelectionAccessibility.description(name: name, isOn: isOn, unavailableReason: unavailableReason)
+        let description = SelectionAccessibility.description(name: name, details: details, isOn: isOn, unavailableReason: unavailableReason)
+        let selectable = SelectionAccessibility.isSelectable(unavailableReason: unavailableReason)
         HStack(alignment: .center, spacing: 8) {
-            if !SelectionAccessibility.isSelectable(unavailableReason: unavailableReason) {
+            if !selectable {
                 Image(systemName: "minus.circle")
                     .foregroundStyle(.secondary)
                     .font(.title3)
                     .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
-                    .accessibilityLabel(description.label)
-                    .accessibilityValue(description.value)
             } else {
                 Button(action: toggle) {
                     Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
@@ -130,21 +137,52 @@ struct SelectionRow<Content: View>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(description.label)
-                .accessibilityValue(description.value)
             }
             if let reason = unavailableReason {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .center, spacing: 8) { content }
-                    // Déjà lue dans la valeur du bouton : masquée pour VoiceOver pour éviter le doublon.
-                    Text(reason).font(.caption).foregroundStyle(.primary).accessibilityHidden(true)
+                    Text(reason).font(.caption).foregroundStyle(.primary)
                 }
             } else {
                 content
             }
+            if let revealAction {
+                Button(action: revealAction) { Image(systemName: "magnifyingglass.circle") }
+                    .buttonStyle(.borderless)
+                    .help("Show in Finder")
+                    .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
+            }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        // Un seul élément : tout le contenu visible (nom, détails, raison) est lu une fois, dans le libellé.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(description.label)
+        .accessibilityValue(description.value)
+        .accessibilityAddTraits(selectable ? .isButton : [])
+        .modifier(RowActions(selectable: selectable, toggle: toggle, revealAction: revealAction))
+    }
+}
+
+/// Actions de la ligne : activation = bascule (ligne sélectionnable seulement), « Show in Finder » en action nommée.
+private struct RowActions: ViewModifier {
+    let selectable: Bool
+    let toggle: () -> Void
+    let revealAction: (() -> Void)?
+
+    @ViewBuilder func body(content: Content) -> some View {
+        switch (selectable, revealAction) {
+        case let (true, reveal?):
+            content
+                .accessibilityAction { toggle() }
+                .accessibilityAction(named: Text("Show in Finder")) { reveal() }
+        case (true, nil):
+            content.accessibilityAction { toggle() }
+        case let (false, reveal?):
+            content.accessibilityAction(named: Text("Show in Finder")) { reveal() }
+        case (false, nil):
+            content
+        }
     }
 }
 
