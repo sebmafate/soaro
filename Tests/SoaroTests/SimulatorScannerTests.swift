@@ -94,6 +94,23 @@ import Testing
         #expect(result.devices.isEmpty, "pas d'analyse partielle")
     }
 
+    @Test func truncatedOutputIsNotReadableWhateverTheExitCode() throws {
+        let box = try Sandbox()
+        // Un processus tué parce que sa sortie dépassait la borne n'a pas de code de sortie ordinaire (9 = SIGKILL observé).
+        for (code, termination) in [(Int32(9), CommandTermination.signaled), (9, .exited), (1, .exited), (0, .signaled)] {
+            let result = scan(fake(.finished(exit: code, stdout: listJSON([u1]), truncated: true, termination: termination)), home: box.root)
+            #expect(result.status == .outputNotReadable, "code \(code), \(termination)")
+            #expect(result.devices.isEmpty)
+        }
+    }
+
+    @Test func aProcessEndedByASignalIsAFailureWithoutAnExitCode() throws {
+        let box = try Sandbox()
+        let result = scan(fake(.finished(exit: 11, stdout: listJSON([u1]), termination: .signaled)), home: box.root)
+        #expect(result.status == .commandFailed(exitCode: nil))
+        #expect(result.devices.isEmpty)
+    }
+
     @Test func emptyDevicesIsOkAndEmpty() throws {
         let box = try Sandbox()
         let result = scan(fake(.finished(stdout: "{\"devices\": {}}")), home: box.root)

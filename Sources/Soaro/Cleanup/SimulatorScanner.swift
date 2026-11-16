@@ -153,8 +153,12 @@ extension SimulatorScanner {
         case .completed(let value): output = value
         }
         // La sortie d'erreur n'est ni analysée ni conservée (elle peut contenir des chemins personnels).
-        if output.exitCode != 0 { return SimulatorScan(status: .commandFailed(exitCode: output.exitCode)) }
+        // Une sortie tronquée est toujours « illisible », quel que soit le code : le lanceur a tué le processus (signal 9),
+        // ce n'est pas un échec de la commande.
         if output.truncated { return SimulatorScan(status: .outputNotReadable) }
+        // Fin par un signal sans que le lanceur y soit pour rien (plantage) : pas de code de sortie à montrer.
+        if output.termination == .signaled { return SimulatorScan(status: .commandFailed(exitCode: nil)) }
+        if output.exitCode != 0 { return SimulatorScan(status: .commandFailed(exitCode: output.exitCode)) }
         guard let devices = parse(output.stdout) else { return SimulatorScan(status: .outputNotReadable) }
 
         let root = home.appendingPathComponent("Library/Developer/CoreSimulator/Devices", isDirectory: true)

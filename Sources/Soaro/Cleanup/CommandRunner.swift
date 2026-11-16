@@ -1,12 +1,31 @@
 import Foundation
 
-/// Sortie d'une commande terminée. `truncated` : la sortie (standard ou d'erreur) a dépassé la borne et a été coupée.
+/// Comment un processus s'est terminé.
+enum CommandTermination: Equatable {
+    /// Sortie ordinaire : `exitCode` est le code de sortie du programme.
+    case exited
+    /// Fin par un signal (tué par le lanceur, ou plantage) : `exitCode` contient alors le NUMÉRO du signal
+    /// (9 pour SIGKILL), pas un code de sortie ordinaire.
+    case signaled
+}
+
+/// Sortie d'une commande terminée. `truncated` : la sortie (standard ou d'erreur) a dépassé la borne et a été coupée
+/// (le processus a alors été tué : `termination` vaut `.signaled`).
 /// La sortie d'erreur ne doit jamais être montrée telle quelle à l'utilisateur.
 struct CommandOutput: Equatable {
     let exitCode: Int32
     let stdout: Data
     let stderr: Data
     let truncated: Bool
+    let termination: CommandTermination
+
+    init(exitCode: Int32, stdout: Data, stderr: Data, truncated: Bool, termination: CommandTermination = .exited) {
+        self.exitCode = exitCode
+        self.stdout = stdout
+        self.stderr = stderr
+        self.truncated = truncated
+        self.termination = termination
+    }
 }
 
 /// Raison pour laquelle un lanceur refuse de démarrer une commande (avant tout lancement).

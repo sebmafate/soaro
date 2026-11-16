@@ -30,6 +30,11 @@ struct RealCommandRunner: CommandRunner {
         return nil
     }
 
+    /// Comment le processus (déjà terminé) a fini : sortie ordinaire, ou signal (alors `terminationStatus` est le numéro du signal).
+    private static func termination(of process: Process) -> CommandTermination {
+        process.terminationReason == .uncaughtSignal ? .signaled : .exited
+    }
+
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
         if let reason = Self.refusal(for: executable) { return .refused(reason) }
 
@@ -82,7 +87,8 @@ struct RealCommandRunner: CommandRunner {
         if out.overflowed || err.overflowed {
             kill()
             out.stop(); err.stop()
-            return .completed(CommandOutput(exitCode: process.terminationStatus, stdout: out.data, stderr: err.data, truncated: true))
+            return .completed(CommandOutput(exitCode: process.terminationStatus, stdout: out.data, stderr: err.data, truncated: true,
+                                            termination: Self.termination(of: process)))
         }
 
         // Le processus est fini : on attend la fin des flux, dans le même délai global.
@@ -91,7 +97,8 @@ struct RealCommandRunner: CommandRunner {
         out.stop(); err.stop()
         if !drained { return .timedOut }
         let truncated = out.overflowed || err.overflowed
-        return .completed(CommandOutput(exitCode: process.terminationStatus, stdout: out.data, stderr: err.data, truncated: truncated))
+        return .completed(CommandOutput(exitCode: process.terminationStatus, stdout: out.data, stderr: err.data, truncated: truncated,
+                                        termination: Self.termination(of: process)))
     }
 }
 

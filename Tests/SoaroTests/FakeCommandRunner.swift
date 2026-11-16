@@ -46,7 +46,9 @@ final class FakeCommandRunner: CommandRunner {
 
 extension CommandOutcome {
     /// Raccourci de test : commande terminée avec un code et un texte de sortie.
-    static func finished(exit code: Int32 = 0, stdout: String = "", stderr: String = "", truncated: Bool = false) -> CommandOutcome {
-        .completed(CommandOutput(exitCode: code, stdout: Data(stdout.utf8), stderr: Data(stderr.utf8), truncated: truncated))
+    static func finished(exit code: Int32 = 0, stdout: String = "", stderr: String = "", truncated: Bool = false,
+                         termination: CommandTermination = .exited) -> CommandOutcome {
+        .completed(CommandOutput(exitCode: code, stdout: Data(stdout.utf8), stderr: Data(stderr.utf8), truncated: truncated,
+                                 termination: termination))
     }
 }

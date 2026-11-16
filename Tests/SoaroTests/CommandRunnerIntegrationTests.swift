@@ -82,10 +82,30 @@ import Testing
 
         guard case .completed(let out) = outcome else { Issue.record("yes aurait dû rendre une sortie coupée, pas \(outcome)"); return }
         #expect(out.truncated)
+        #expect(out.termination == .signaled, "tué par le lanceur : ce n'est pas une sortie ordinaire")
         #expect(out.stdout.count <= cap)
         #expect(out.stdout.count > 0)
         #expect(elapsed < 10)
         if let pid = log.pids.first { #expect(waitUntilGone(pid)) }
+    }
+
+    @Test func aNormalExitIsReportedAsExitedNotSignaled() {
+        let runner = makeRunner()
+        guard case .completed(let out) = runner.run(executable: "/usr/bin/false", arguments: [], timeLimit: 10, outputLimit: 4096) else {
+            Issue.record("false n'a pas terminé"); return
+        }
+        #expect(out.termination == .exited)
+    }
+
+    /// De bout en bout avec le vrai lanceur : `yes` répète ses arguments sans fin (inoffensif). Le scanner reçoit une sortie
+    /// coupée à 8 Mio et un processus tué : l'état doit être « sortie illisible », pas « échec avec le code 9 ».
+    @Test func aRealOverflowReachesTheScannerAsOutputNotReadable() throws {
+        let box = try Sandbox()
+        let start = Date()
+        let result = SimulatorScanner.scan(runner: makeRunner(), xcrunPath: "/usr/bin/yes", home: box.root)
+        #expect(result.status == .outputNotReadable)
+        #expect(result.devices.isEmpty)
+        #expect(Date().timeIntervalSince(start) < 30)
     }
 
     // MARK: Lancement impossible
