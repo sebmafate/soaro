@@ -35,6 +35,12 @@ final class SimulatorsModel: ObservableObject {
     /// Appareils mesurés à moins de 100 Mo : comptés, pas listés.
     @Published private(set) var hiddenSmallCount = 0
     @Published private(set) var hiddenSmallSize: UInt64 = 0
+    /// Limite d'inactivité choisie (menu) : provisoire (`DeviceSuggestions.defaultLimitDays`), JAMAIS mémorisée entre deux sessions.
+    @Published private(set) var limitDays = DeviceSuggestions.defaultLimitDays
+    /// Appareils cochés (UDID).
+    @Published private(set) var selected: Set<String> = []
+    /// Le dernier calcul n'a rien pré-sélectionné.
+    @Published private var nothingPreSelected = true
     /// Tailles déjà mesurées, par UDID.
     @Published private var sizes: [String: UInt64] = [:]
     /// Tous les appareils du listage, sans taille.
@@ -81,6 +87,34 @@ final class SimulatorsModel: ObservableObject {
     /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
     func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
 
+    /// Valeurs du menu de limite : 30, 60, 90, 180 jours ; la limite par défaut y est ajoutée (en ordre) si elle n'y est pas.
+    static func limitChoices(defaultDays: Int = DeviceSuggestions.defaultLimitDays) -> [Int] {
+        Set([30, 60, 90, 180, defaultDays]).sorted()
+    }
+
+    /// Bandeau « Nothing to suggest… » : au moins une ligne listée, rien de pré-sélectionné, et les tailles sont toutes arrivées.
+    var showsNothingToSuggest: Bool { !isMeasuring && !rows.isEmpty && nothingPreSelected }
+
+    var selectedCount: Int { rows.filter { selected.contains($0.device.device.udid) }.count }
+    /// Taille des appareils cochés (tailles connues seulement).
+    var selectedSize: UInt64 {
+        rows.reduce(0) { $0 + (selected.contains($1.device.device.udid) ? (sizes[$1.device.device.udid] ?? 0) : 0) }
+    }
+
+    /// Coche ou décoche une ligne ; un appareil en cours d'exécution ne se coche jamais.
+    func toggle(_ row: DeviceSuggestions.Row) {
+        guard !row.isRunning else { return }
+        let udid = row.device.device.udid
+        if selected.contains(udid) { selected.remove(udid) } else { selected.insert(udid) }
+    }
+
+    /// Change la limite : la sélection devient TOUT DE SUITE la suggestion de cette limite (les choix manuels sont remplacés),
+    /// sans nouveau scan ni appel au lanceur.
+    func setLimit(_ days: Int) {
+        limitDays = days
+        recompute(selection: .replace)
+    }
+
     /// Somme des tailles mesurées des appareils listés.
     var measuredSizeTotal: UInt64 { rows.reduce(0) { $0 + (sizes[$1.device.device.udid] ?? 0) } }
 
@@ -102,6 +136,7 @@ final class SimulatorsModel: ObservableObject {
         token?.cancel()
         let token = CancelToken()
         self.token = token
+
         phase = .listing
         reset()
 
@@ -124,11 +159,11 @@ final class SimulatorsModel: ObservableObject {
                 let size = await Task.detached(priority: .utility) { folder.map(measure) ?? 0 }.value
                 if token.isCancelled { return }
                 self.sizes[device.udid] = size
-                self.recompute()
+                self.recompute(selection: .prune)
             }
             if token.isCancelled { return }
             self.isMeasuring = false
-            self.recompute()
+            self.recompute(selection: .prune)
         }
     }
 
@@ -143,6 +178,8 @@ final class SimulatorsModel: ObservableObject {
         rows = []
         devices = []
         sizes = [:]
+        selected = []
+        nothingPreSelected = true
         isMeasuring = false
         hiddenSmallCount = 0
         hiddenSmallSize = 0
@@ -150,10 +187,22 @@ final class SimulatorsModel: ObservableObject {
 
     /// Recalcule les lignes et le pied de page : un appareil dont la taille n'est pas connue compte comme « assez gros »
     /// (il reste listé), les autres suivent `DeviceSuggestions.suggest`.
-    private func recompute() {
+    private enum SelectionUpdate {
+        /// La sélection devient la pré-sélection du calcul (arrivée de la liste, changement de limite).
+        case replace
+        /// Les choix de l'utilisateur sont gardés ; seuls sortent les appareils qui ne sont plus listés (mesurés petits).
+        case prune
+    }
+
+    private func recompute(selection: SelectionUpdate) {
         let sized = devices.map { SizedSimulator(device: $0, size: sizes[$0.udid] ?? DeviceSuggestions.smallDeviceThreshold) }
-        let result = DeviceSuggestions.suggest(sized, now: now(), limitDays: DeviceSuggestions.defaultLimitDays)
+        let result = DeviceSuggestions.suggest(sized, now: now(), limitDays: limitDays)
         rows = isMeasuring ? result.rows.sorted(by: Self.listingOrder) : result.rows
+        nothingPreSelected = result.preSelectedCount == 0
+        switch selection {
+        case .replace: selected = Set(result.rows.filter(\.isPreSelected).map(\.device.device.udid))
+        case .prune: selected.formIntersection(result.rows.filter { !$0.isRunning }.map(\.device.device.udid))
+        }
         hiddenSmallCount = result.hiddenSmallCount
         hiddenSmallSize = result.hiddenSmallSize
     }
@@ -180,7 +229,7 @@ final class SimulatorsModel: ObservableObject {
             devices = listing.devices
             phase = .listed
             isMeasuring = true
-            recompute()
+            recompute(selection: .replace)
             return true
         case .timedOut:
             phase = .failed(.notAnswering)

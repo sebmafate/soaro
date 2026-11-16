@@ -75,4 +75,23 @@ enum SimulatorPresentation {
          size.map { Format.fileBytes($0, locale: locale) } ?? "",
          reasonLine(for: row, now: now, locale: locale)]
     }
+
+    // MARK: Bandeau et pied de page
+
+    /// Bandeau affiché quand des lignes sont listées mais qu'aucune n'est pré-sélectionnée.
+    static func nothingToSuggest(limitDays: Int, locale: Locale = .current) -> String {
+        String(localized: "Nothing to suggest at \(limitDays) days. Pick devices yourself, or lower the limit.", locale: locale)
+    }
+
+    /// Pied de page : appareils trop petits, comptés mais non listés. `nil` s'il n'y en a aucun.
+    /// (Pas de forme plurielle : le catalogue les refuse ; « 1 small devices » est accepté, voir le brief de SL8.)
+    static func smallDevicesFooter(count: Int, size: UInt64, locale: Locale) -> String? {
+        guard count > 0 else { return nil }
+        return String(localized: "\(count) small devices (\(Format.fileBytes(size, locale: locale))) not shown.", locale: locale)
+    }
+
+    /// Explication des règles de pré-sélection et de la suppression, avec la limite courante.
+    static func explanationFooter(limitDays: Int, locale: Locale = .current) -> String {
+        String(localized: "Devices inactive for more than \(limitDays) days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio.", locale: locale)
+    }
 }

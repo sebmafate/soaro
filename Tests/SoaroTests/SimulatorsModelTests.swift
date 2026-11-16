@@ -2,10 +2,44 @@ import Foundation
 import Testing
 @testable import Soaro
 
+/// Signal « démarré » qu'un test attend SANS bloquer de fil (un test qui bloquerait un fil du pool coopératif affamerait les
+/// tâches détachées des autres tests, qui tournent en parallèle). Compteur : un signal envoyé avant l'attente n'est pas perdu.
+final class AsyncSignal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func signal() {
+        lock.lock()
+        if waiters.isEmpty {
+            count += 1
+            lock.unlock()
+        } else {
+            let waiter = waiters.removeFirst()
+            lock.unlock()
+            waiter.resume()
+        }
+    }
+
+    func wait() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            lock.lock()
+            if count > 0 {
+                count -= 1
+                lock.unlock()
+                continuation.resume()
+            } else {
+                waiters.append(continuation)
+                lock.unlock()
+            }
+        }
+    }
+}
+
 /// Faux lanceur à crochet : comme `FakeCommandRunner` mais il peut attendre, pour tester l'annulation en plein listage
 /// sans jamais dormir (deux sémaphores, aucun délai).
 final class BlockingRunner: CommandRunner, @unchecked Sendable {
-    let started = DispatchSemaphore(value: 0)
+    let started = AsyncSignal()
     let release = DispatchSemaphore(value: 0)
     private let outcome: CommandOutcome
     private let lock = NSLock()
@@ -27,7 +61,7 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
 
 /// Modèle de l'outil « Simulators and emulators » : états, listage, échecs (T5).
 @MainActor
-@Suite struct SimulatorsModelTests {
+@Suite(.serialized) struct SimulatorsModelTests {
     static let u1 = "00000000-0000-4000-8000-000000000001"
     static let u2 = "00000000-0000-4000-8000-000000000002"
     let now = ISO8601DateFormatter().date(from: "2026-11-16T12:00:00Z")!
@@ -59,7 +93,7 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
 
     /// Attend que le lanceur bloquant ait démarré, SANS bloquer l'acteur principal (la tâche du scan en a besoin pour démarrer).
     func waitUntilRunning(_ runner: BlockingRunner) async {
-        await Task.detached { runner.started.wait() }.value
+        await runner.started.wait()
     }
 
     func run(_ model: SimulatorsModel) async {

@@ -1565,6 +1565,58 @@
         }
       }
     },
+    "%lld small devices (%@) not shown.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kleine Geräte (%@) werden nicht angezeigt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivos pequeños (%@) no se muestran."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld petits appareils (%@) non affichés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivi piccoli (%@) non mostrati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 台の小さなデバイス（%@）は表示されません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "작은 기기 %lld개(%@)는 표시되지 않습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld dispositivos pequenos (%@) não exibidos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未显示 %lld 个小型设备（%@）。"
+          }
+        }
+      }
+    },
     "%lld suggestions:": {
       "localizations": {
         "de": {
@@ -5982,6 +6034,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "开发者"
+          }
+        }
+      }
+    },
+    "Devices inactive for more than %lld days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geräte, die seit mehr als %lld Tagen inaktiv sind, und ältere Kopien desselben Modells sind vorausgewählt. Ein entferntes Gerät nimmt seine Apps, Daten und Schnappschüsse mit; ein neues legen Sie in Xcode oder Android Studio an."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se preseleccionan los dispositivos inactivos desde hace más de %lld días y las copias anteriores del mismo modelo. Un dispositivo eliminado se lleva sus apps, datos e instantáneas; crea uno nuevo desde Xcode o Android Studio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les appareils inactifs depuis plus de %lld jours, et les anciennes copies d'un même modèle, sont présélectionnés. Un appareil supprimé emporte ses apps, ses données et ses instantanés ; créez-en un nouveau depuis Xcode ou Android Studio."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sono preselezionati i dispositivi inattivi da più di %lld giorni e le copie meno recenti dello stesso modello. Un dispositivo rimosso porta via app, dati e istantanee; creane uno nuovo da Xcode o Android Studio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 日を超えて使われていないデバイスと、同じモデルの古いコピーがあらかじめ選択されています。削除したデバイスは、アプリ、データ、スナップショットも一緒に消えます。新しいデバイスは Xcode または Android Studio から作成してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld일 넘게 사용하지 않은 기기와 같은 모델의 이전 복사본이 미리 선택됩니다. 삭제한 기기는 앱, 데이터, 스냅샷도 함께 사라집니다. 새 기기는 Xcode나 Android Studio에서 만드세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos inativos há mais de %lld dias e cópias mais antigas do mesmo modelo vêm pré-selecionados. Um dispositivo removido leva consigo seus apps, dados e snapshots; crie um novo pelo Xcode ou Android Studio."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "闲置超过 %lld 天的设备，以及同一型号的旧副本，会被预先选中。移除设备会连同其中的 App、数据和快照一起删除；请在 Xcode 或 Android Studio 中新建设备。"
           }
         }
       }
@@ -11910,6 +12014,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "一切正常：您的 Mac 状态良好。"
+          }
+        }
+      }
+    },
+    "Nothing to suggest at %lld days. Pick devices yourself, or lower the limit.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei %lld Tagen gibt es nichts vorzuschlagen. Wählen Sie Geräte selbst aus oder senken Sie das Limit."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada que sugerir a %lld días. Elige los dispositivos tú mismo o reduce el límite."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien à suggérer à %lld jours. Choisissez les appareils vous-même, ou réduisez la limite."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun suggerimento a %lld giorni. Scegli i dispositivi tu stesso o abbassa il limite."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 日では提案できるものがありません。デバイスを自分で選ぶか、日数を減らしてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld일 기준으로 제안할 항목이 없습니다. 기기를 직접 선택하거나 기준 일수를 줄이세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada a sugerir com %lld dias. Escolha os dispositivos você mesmo ou diminua o limite."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按 %lld 天没有可建议的项目。请自行选择设备，或调低天数限制。"
           }
         }
       }

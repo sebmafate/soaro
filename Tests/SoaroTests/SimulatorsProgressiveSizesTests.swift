@@ -9,7 +9,7 @@ final class ScriptedMeasure: @unchecked Sendable {
     private var sizes: [String: UInt64]
     private var recorded: [String] = []
     private let gated: Bool
-    let started = DispatchSemaphore(value: 0)
+    let started = AsyncSignal()
     let release = DispatchSemaphore(value: 0)
 
     init(_ sizes: [String: UInt64], gated: Bool = false) { self.sizes = sizes; self.gated = gated }
@@ -31,7 +31,7 @@ final class ScriptedMeasure: @unchecked Sendable {
 
 /// Tailles progressives (T6) : les lignes apparaissent tout de suite, chaque taille arrive une à une.
 @MainActor
-@Suite struct SimulatorsProgressiveSizesTests {
+@Suite(.serialized) struct SimulatorsProgressiveSizesTests {
     static let u1 = "00000000-0000-4000-8000-000000000001"
     static let u2 = "00000000-0000-4000-8000-000000000002"
     static let u3 = "00000000-0000-4000-8000-000000000003"
@@ -59,7 +59,7 @@ final class ScriptedMeasure: @unchecked Sendable {
     }
 
     func waitUntilMeasuring(_ measure: ScriptedMeasure) async {
-        await Task.detached { measure.started.wait() }.value
+        await measure.started.wait()
     }
 
     func udids(_ m: SimulatorsModel) -> [String] { m.rows.map(\.device.device.udid) }
@@ -196,10 +196,11 @@ final class ScriptedMeasure: @unchecked Sendable {
         await waitUntilMeasuring(measure)
         let first = m.scanTask
         m.scan()                                           // « Scan again »
-        measure.release.signal()                           // la mesure du premier scan se termine, sans être appliquée
-        await first?.value
-        // Le second scan mesure à son tour ; on libère ses trois mesures.
+        // Quatre mesures au total (une pour le premier scan annulé, trois pour le second) : on les libère toutes, sans
+        // supposer laquelle reçoit quel signal. Le premier scan se termine sans appliquer sa taille.
+        measure.release.signal()
         for _ in 0..<3 { await waitUntilMeasuring(measure); measure.release.signal() }
+        await first?.value
         await m.scanTask?.value
         #expect(m.phase == .listed)
         #expect(measure.calls.count == 4, "une mesure pour le premier scan annulé, trois pour le second")
