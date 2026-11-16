@@ -78,7 +78,7 @@ Levels left out, and why: property-based (no function whose input space needs it
 | R5 | Must | Unit | A `Booted` device is never pre-selected nor removed, even if it becomes `Booted` between the scan and the action | yes |
 | R6 | Must | Unit | Tool absent, non-zero exit, time limit exceeded, malformed JSON: the entry hides, the other platform stays usable, no error reaches the user | yes |
 | R7 | Must | Unit, manual | Size uses the allocated space (a 1 GB sparse file weighs little); the freed amount equals before minus after. Manual: compare with `df` and `du`, within 10 % | yes, then manual |
-| R8 | Must | Unit | Cancel is the default button for the five confirmations; the text holds the count, the size and what is lost; cancelling deletes nothing (needs the injectable confirmation) | yes |
+| R8 | Must | Unit | Cancel is the default button for the five confirmations; the text holds the count, the size and what is lost; cancelling deletes nothing (needs the injectable confirmation) | yes (SL1: alert construction and cancelled confirmation of the four models; Escape by hand) |
 | R9 | Must | Security | Only `PublicIPService.swift` references `URLSession` or `NWConnection`; the runner refuses a relative path and a shell | yes |
 | R10 | Should | Unit, manual | The commands issued belong to an allowlist (never volumes, containers or the reclaim container); manual: Test B | yes, then manual |
 | R11 | Should | Manual, then unit | Test B; afterwards "returned = free after minus free before" with an injected free-space provider | partly |
@@ -178,7 +178,7 @@ No decision here is hard to reverse, so no new ADR.
 
 Already recorded in `ARCHITECTURE.md` (Testing, 2026-11-15):
 
-1. The cleanup models call `AppState.confirm` directly (a static, modal call), so "cancelling deletes nothing" cannot be tested. The confirmation must be injectable in the models, with a default.
+1. The cleanup models called `AppState.confirm` directly (a static, modal call), so "cancelling deletes nothing" could not be tested. **Done by SL1 (2026-11-16):** the four models take an injectable confirmation with a default (`AppState.cleanup` does not, by design of SL1).
 2. `CleanupService.directory(for:)` reads `NSHomeDirectory()` directly. The home folder must be a parameter with a default, so NuGet (R1) and "App caches" (R2) can be tested without the real home.
 3. New scanners take the root, `now` and the command runner as parameters.
 
