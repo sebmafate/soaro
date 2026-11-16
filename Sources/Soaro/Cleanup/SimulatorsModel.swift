@@ -137,6 +137,18 @@ final class SimulatorsModel: ObservableObject {
         let token = CancelToken()
         self.token = token
 
+        // Mode démo : appareils inventés, tout de suite, sans lanceur, sans détection, sans mesure, sans lire ni écrire de fichier.
+        if demo {
+            reset()
+            let demoDevices = DemoData.simulators(now: now())
+            devices = demoDevices.map(\.device)
+            sizes = Dictionary(uniqueKeysWithValues: demoDevices.map { ($0.device.udid, $0.size) })
+            phase = .listed
+            recompute(selection: .replace)
+            scanTask = nil
+            return
+        }
+
         phase = .listing
         reset()
 

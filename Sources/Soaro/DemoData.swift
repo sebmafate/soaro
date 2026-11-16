@@ -206,4 +206,44 @@ enum DemoData {
         LoginItem(name: "Quick Notes", path: "/Applications/Quick Notes.app"),
         LoginItem(name: "Sound Mixer", path: "/Applications/Sound Mixer.app"),
     ]
+
+    // MARK: Simulators
+
+    /// Made-up Xcode simulators for the "Simulators and emulators" tool: generic Apple product names, fake identifiers
+    /// (`00000000-0000-4000-8000-0000000000NN`, NN from 41), dates relative to `now`, every size known.
+    static func simulators(now: Date = Date()) -> [SizedSimulator] {
+        func device(_ n: Int, _ name: String, runtime: String, model: String, days: Double?, state: String = "Shutdown",
+                    available: Bool = true, size: UInt64) -> SizedSimulator {
+            let runtimeID = "com.apple.CoreSimulator.SimRuntime.\(runtime)"
+            return SizedSimulator(
+                device: SimulatorDevice(udid: String(format: "00000000-0000-4000-8000-%012d", n), name: name,
+                                        modelIdentifier: "com.apple.CoreSimulator.SimDeviceType.\(model)",
+                                        runtimeIdentifier: runtimeID, runtimeName: SimulatorScanner.runtimeName(runtimeID),
+                                        state: state, isAvailable: available,
+                                        lastUsed: days.map { now.addingTimeInterval(-$0 * 86_400) }),
+                size: size)
+        }
+        return [
+            // Inactive for 66 days.
+            device(41, "iPhone 17 Pro", runtime: "iOS-26-2", model: "iPhone-17-Pro", days: 66, size: 4_100 * mb),
+            // An older copy and the one it is a copy of (same name, same model, same system).
+            device(42, "iPhone 17", runtime: "iOS-26-2", model: "iPhone-17", days: 4, size: 2_400 * mb),
+            device(43, "iPhone 17", runtime: "iOS-26-2", model: "iPhone-17", days: 25, size: 2_100 * mb),
+            // Used today.
+            device(44, "iPad Air 11-inch", runtime: "iOS-26-2", model: "iPad-Air-11", days: 0.1, size: 1_700 * mb),
+            // Running.
+            device(45, "iPhone 17 Pro Max", runtime: "iOS-26-2", model: "iPhone-17-Pro-Max", days: 0.02, state: "Booted", size: 3_200 * mb),
+            // Unavailable: its system is not installed.
+            device(46, "iPhone 15", runtime: "iOS-17-5", model: "iPhone-15", days: 140, available: false, size: 1_300 * mb),
+            // Other platforms.
+            device(47, "Apple Watch Series 11 (46mm)", runtime: "watchOS-26-0", model: "Apple-Watch-Series-11-46mm", days: 95, size: 900 * mb),
+            device(48, "Apple Vision Pro", runtime: "xrOS-26-0", model: "Apple-Vision-Pro", days: 12, size: 1_100 * mb),
+            // No date.
+            device(49, "iPad mini (A17 Pro)", runtime: "iOS-26-2", model: "iPad-mini-A17-Pro", days: nil, size: 650 * mb),
+            // Small devices: counted in the footer, not listed.
+            device(50, "Apple TV 4K (3rd generation)", runtime: "tvOS-26-0", model: "Apple-TV-4K-3rd-generation", days: 30, size: 62 * mb),
+            device(51, "iPhone SE (3rd generation)", runtime: "iOS-26-2", model: "iPhone-SE-3rd-generation", days: 200, size: 38 * mb),
+            device(52, "iPad Pro 13-inch (M5)", runtime: "iOS-26-2", model: "iPad-Pro-13-M5", days: 8, size: 24 * mb),
+        ]
+    }
 }

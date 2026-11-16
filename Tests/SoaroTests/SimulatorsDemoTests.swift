@@ -1,0 +1,118 @@
+import Foundation
+import Testing
+@testable import Soaro
+
+/// Mode démo (T8) : appareils inventés, aucun lancement, aucune mesure, aucune lecture de fichier.
+@MainActor
+@Suite struct SimulatorsDemoTests {
+    let now = ISO8601DateFormatter().date(from: "2026-11-16T12:00:00Z")!
+
+    func demoModel(runner: CommandRunner, measure: ScriptedMeasure? = nil, detect: (() -> Void)? = nil) -> SimulatorsModel {
+        let measure = measure ?? ScriptedMeasure([:])
+        return SimulatorsModel(runner: runner,
+                               detect: { detect?(); return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                               locateXcrun: { _ in nil },
+                               home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
+                               measure: { measure.measure($0) }, demo: true, notify: { _ in })
+    }
+
+    @Test func demoNeverCallsTheRunnerNorMeasuresNorDetects() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        var detections = 0
+        let m = demoModel(runner: runner, measure: measure, detect: { detections += 1 })
+        m.scan()
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+        #expect(detections == 0)
+    }
+
+    @Test func demoListArrivesAtOnceWithEverySizeKnown() {
+        let m = demoModel(runner: FakeCommandRunner())
+        m.scan()                                   // sans attendre : tout est déjà là
+        #expect(m.phase == .listed)
+        #expect(!m.isMeasuring)
+        #expect(m.rows.count >= 8 && m.rows.count <= 10)
+        #expect(m.rows.allSatisfy { m.size(of: $0) != nil })
+        #expect(m.hiddenSmallCount >= 2, "plusieurs petits appareils pour le pied de page")
+        #expect(m.hiddenSmallSize > 0)
+        #expect(m.rows.map { m.size(of: $0)! } == m.rows.map { m.size(of: $0)! }.sorted(by: >), "trié par taille")
+    }
+
+    @Test func demoListContainsEachCase() {
+        let m = demoModel(runner: FakeCommandRunner())
+        m.scan()
+        let rows = m.rows
+        #expect(rows.contains { $0.isInactive && ($0.daysSinceLastUse ?? 0) > 60 }, "un appareil inactif depuis plus de 60 jours")
+        let copy = rows.first { $0.isOlderCopy }
+        #expect(copy != nil, "une ancienne copie")
+        #expect(copy?.keptDevice?.device.name == copy?.device.device.name, "dont l'appareil gardé porte le même nom")
+        #expect(rows.contains { $0.daysSinceLastUse == 0 && !$0.isRunning }, "un appareil utilisé aujourd'hui")
+        #expect(rows.contains { $0.isRunning }, "un appareil en cours d'exécution")
+        #expect(rows.contains { !$0.device.device.isAvailable }, "un appareil indisponible (système non installé)")
+        #expect(rows.contains { $0.device.device.runtimeIdentifier.contains("watchOS") }, "un watchOS")
+        #expect(rows.contains { SimulatorPresentation.systemLabel(runtimeIdentifier: $0.device.device.runtimeIdentifier).hasPrefix("visionOS") },
+                "un visionOS")
+        #expect(rows.contains { $0.daysSinceLastUse == nil && !$0.isRunning }, "un appareil sans date")
+        #expect(m.selected.count >= 2, "des appareils pré-sélectionnés")
+        #expect(!m.showsNothingToSuggest)
+    }
+
+    @Test func demoDatesAreRelativeToNow() {
+        let first = DemoData.simulators(now: now)
+        let later = DemoData.simulators(now: now.addingTimeInterval(400 * 86_400))
+        #expect(first.map(\.device.udid) == later.map(\.device.udid))
+        for (a, b) in zip(first, later) {
+            #expect(a.size == b.size)
+            switch (a.device.lastUsed, b.device.lastUsed) {
+            case let (x?, y?): #expect(y.timeIntervalSince(x) == 400 * 86_400)
+            case (nil, nil): break
+            default: Issue.record("la date inconnue doit rester inconnue")
+            }
+        }
+        // Le modèle utilise l'horloge injectée : les jours écoulés restent les mêmes quelle que soit la date « maintenant ».
+        func days(at date: Date) -> [Int?] {
+            let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                                    home: URL(fileURLWithPath: "/home-fake/user-x"), now: { date }, demo: true, notify: { _ in })
+            m.scan()
+            return m.rows.map(\.daysSinceLastUse)
+        }
+        #expect(days(at: now) == days(at: now.addingTimeInterval(400 * 86_400)))
+    }
+
+    @Test func demoDevicesAreMadeUp() {
+        let devices = DemoData.simulators(now: now)
+        for device in devices.map(\.device) {
+            #expect(device.udid.hasPrefix("00000000-0000-4000-8000-0000000000"), "UDID manifestement faux : \(device.udid)")
+            #expect(SimulatorScanner.isValidUDID(device.udid))
+            #expect(!device.name.isEmpty)
+        }
+        #expect(Set(devices.map(\.device.udid)).count == devices.count)
+        // Aucun UDID de démo n'est un UDID des jeux d'essai de SL7 (« 00000000-0000-4000-8000-%012d », n de 1 à 40).
+        let fixtures = Set((1...40).map { String(format: "00000000-0000-4000-8000-%012d", $0) })
+        #expect(fixtures.isDisjoint(with: Set(devices.map(\.device.udid))))
+    }
+
+    @Test func demoSourceHasNoRealIdentifiers() throws {
+        let url = RepositoryRoot.url().appendingPathComponent("Sources/Soaro/DemoData.swift")
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let pattern = #"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"#
+        let regex = try NSRegularExpression(pattern: pattern)
+        let ns = text as NSString
+        for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            #expect(ns.substring(with: match.range).hasPrefix("00000000-0000-4000-8000-0000000000"))
+        }
+        #expect(!text.contains("/Users/"))
+    }
+
+    @Test func demoModelWritesNothingAndReadsNoFile() throws {
+        // Le dossier personnel de démo n'existe pas : si le modèle y touchait, il échouerait ou créerait quelque chose.
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("soaro-demo-\(UUID().uuidString)")
+        let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                                home: missing, now: { self.now }, demo: true, notify: { _ in })
+        m.scan()
+        #expect(m.phase == .listed)
+        #expect(!FileManager.default.fileExists(atPath: missing.path))
+    }
+}
