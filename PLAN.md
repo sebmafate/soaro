@@ -25,7 +25,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | --- | --- | --- | --- | --- | --- | --- |
 | SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
-| SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 7 min of agent time on 2026-11-16, 13:59 to 14:06; QA review and the author's manual checks not included) | done |
+| SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 6 min of agent time on 2026-11-16, 13:59:52 to 14:05:57; QA review and the author's manual checks not included) | done |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
 | SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | | todo |
 | SL8 | The tool "Simulators and emulators", read-only | M | SL3, SL7 | yes | | todo |
@@ -96,6 +96,7 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
   - `SelectionRow` takes a required `name`; an empty name falls back to the state alone. A blank or empty reason still makes the row unavailable (only `nil` is selectable). New string `%@, not selectable` in nine languages (AI-assisted, flagged for the author's review).
   - Increase Contrast on the dark reference background: #B71C1C against #1E1E1E is about 2.5 : 1 (below the 3 : 1 of a non-text component), while the standard #D32F2F gives 3.35 : 1. Not required by the slice; reported to the author (the label inside the button stays at 6.57 : 1).
   - Rows become slightly taller (24 pt check). The reveal-in-Finder button is a second control in each row, so VoiceOver may read the name twice; merging the controls is for SL8.
+  - VoiceOver may read the name twice (button label + visible text); merging rows is for SL8; the author's VoiceOver pass should check it.
   - Days spent (under 0.1): measured from the first to the last SL3 commit timestamp (same method as SL1 and SL2).
 
 ### SL6: NuGet packages row

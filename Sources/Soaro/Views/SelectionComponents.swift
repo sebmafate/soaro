@@ -94,10 +94,10 @@ enum SelectionAccessibility {
         return Description(label: name, value: state)
     }
 
-    /// Une ligne indisponible n'est jamais basculée : `toggle` n'est pas appelé.
-    static func activate(unavailableReason: String?, toggle: () -> Void) {
-        guard unavailableReason == nil else { return }
-        toggle()
+    /// Seule une raison `nil` donne une ligne sélectionnable : une ligne indisponible n'a pas
+    /// de bouton de bascule (la vue affiche une icône inerte).
+    static func isSelectable(unavailableReason: String?) -> Bool {
+        unavailableReason == nil
     }
 }
 
@@ -114,7 +114,7 @@ struct SelectionRow<Content: View>: View {
     var body: some View {
         let description = SelectionAccessibility.description(name: name, isOn: isOn, unavailableReason: unavailableReason)
         HStack(alignment: .center, spacing: 8) {
-            if unavailableReason != nil {
+            if !SelectionAccessibility.isSelectable(unavailableReason: unavailableReason) {
                 Image(systemName: "minus.circle")
                     .foregroundStyle(.secondary)
                     .font(.title3)
@@ -122,7 +122,7 @@ struct SelectionRow<Content: View>: View {
                     .accessibilityLabel(description.label)
                     .accessibilityValue(description.value)
             } else {
-                Button { SelectionAccessibility.activate(unavailableReason: unavailableReason, toggle: toggle) } label: {
+                Button(action: toggle) {
                     Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(isOn ? Color.accentColor : .secondary)
                         .font(.title3)

@@ -87,17 +87,15 @@ import Testing
                 == SelectionAccessibility.description(name: "a", isOn: true))
     }
 
-    @Test func togglingAnUnavailableRowDoesNothing() {
-        var calls = 0
-        SelectionAccessibility.activate(unavailableReason: "In use") { calls += 1 }
-        SelectionAccessibility.activate(unavailableReason: "") { calls += 1 }
-        #expect(calls == 0)
+    /// Seule une raison `nil` donne un bouton de bascule ; une ligne indisponible n'en expose aucun
+    /// (la vue choisit entre bouton et icône inerte avec cette même fonction).
+    @Test(arguments: ["In use", "", " "])
+    func unavailableRowExposesNoToggleButton(reason: String) {
+        #expect(!SelectionAccessibility.isSelectable(unavailableReason: reason))
     }
 
-    @Test func togglingAnAvailableRowCallsToggleOnce() {
-        var calls = 0
-        SelectionAccessibility.activate(unavailableReason: nil) { calls += 1 }
-        #expect(calls == 1)
+    @Test func rowWithoutReasonExposesTheToggleButton() {
+        #expect(SelectionAccessibility.isSelectable(unavailableReason: nil))
     }
 
     /// La clé du catalogue existe, dans les 9 langues, avec `%@` conservé (R12).

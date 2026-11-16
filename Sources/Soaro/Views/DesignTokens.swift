@@ -44,10 +44,6 @@ enum DesignTokens {
         contrastIncreased ? dangerFillIncreasedContrast : dangerFill
     }
 
-    static func dangerFillColor(contrastIncreased: Bool) -> Color {
-        dangerFill(contrastIncreased: contrastIncreased).color
-    }
-
     // MARK: Texte secondaire (text-supporting)
 
     /// Noir pur en clair, blanc pur en sombre, à une opacité ABSOLUE. `Color.primary.opacity(x)`
