@@ -3,7 +3,7 @@ import Testing
 @testable import Soaro
 
 /// Arborescence temporaire supprimée à la fin du test.
-private final class Sandbox {
+final class Sandbox {
     let root: URL
 
     /// `insideHome` : nécessaire pour tester les suppressions, que `isSafeToDelete` limite au dossier personnel.

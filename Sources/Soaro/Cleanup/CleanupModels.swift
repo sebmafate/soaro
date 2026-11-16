@@ -9,11 +9,22 @@ final class CancelToken: @unchecked Sendable {
     func cancel() { lock.lock(); cancelled = true; lock.unlock() }
 }
 
+/// Demande de confirmation avant une action destructrice : titre, message, libellé du bouton, `critical` → accord.
+/// Les modèles la reçoivent à l'initialisation pour que les tests puissent répondre « Annuler » sans afficher d'alerte.
+typealias ConfirmHandler = @MainActor (_ title: String, _ message: String, _ button: String, _ critical: Bool) -> Bool
+
+enum SystemConfirmation {
+    /// Valeur par défaut : la vraie boîte de dialogue (`AppState.confirm`).
+    static let ask: ConfirmHandler = { title, message, button, critical in
+        AppState.confirm(title: title, message: message, button: button, critical: critical)
+    }
+}
+
 // MARK: - Gros fichiers
 
 @MainActor
 final class LargeFilesModel: ObservableObject {
-    @Published private(set) var files: [LargeFile] = []
+    @Published private(set) var files: [LargeFile]
     @Published private(set) var isScanning = false
     @Published private(set) var hasScanned = false
     @Published var selected: Set<String> = []
@@ -24,8 +35,14 @@ final class LargeFilesModel: ObservableObject {
     static let thresholds = [50, 100, 500, 1_000]
     private var token: CancelToken?
     private var notify: (String) -> Void
+    private let confirm: ConfirmHandler
 
-    init(notify: @escaping (String) -> Void) { self.notify = notify }
+    /// `files` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, files: [LargeFile] = []) {
+        self.notify = notify
+        self.confirm = confirm
+        self.files = files
+    }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     var selectedFiles: [LargeFile] { files.filter { selected.contains($0.id) } }
@@ -64,10 +81,10 @@ final class LargeFilesModel: ObservableObject {
     func trashSelected() {
         let items = selectedFiles
         guard !items.isEmpty else { return }
-        guard AppState.confirm(
-            title: String(localized: "Move the selected files to the Trash? (\(items.count))"),
-            message: String(localized: "\(Format.fileBytes(selectedSize)) will be freed once the Trash is emptied. You can still recover them from the Trash."),
-            button: String(localized: "Move to Trash")
+        guard confirm(
+            String(localized: "Move the selected files to the Trash? (\(items.count))"),
+            String(localized: "\(Format.fileBytes(selectedSize)) will be freed once the Trash is emptied. You can still recover them from the Trash."),
+            String(localized: "Move to Trash"), false
         ) else { return }
         let result = LargeFileScanner.trash(items)
         let gone = Set(items.map(\.id))
@@ -81,15 +98,21 @@ final class LargeFilesModel: ObservableObject {
 
 @MainActor
 final class DevArtifactsModel: ObservableObject {
-    @Published private(set) var artifacts: [DevArtifact] = []
+    @Published private(set) var artifacts: [DevArtifact]
     @Published private(set) var isScanning = false
     @Published private(set) var hasScanned = false
     @Published var selected: Set<String> = []
 
     private var token: CancelToken?
     private var notify: (String) -> Void
+    private let confirm: ConfirmHandler
 
-    init(notify: @escaping (String) -> Void) { self.notify = notify }
+    /// `artifacts` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, artifacts: [DevArtifact] = []) {
+        self.notify = notify
+        self.confirm = confirm
+        self.artifacts = artifacts
+    }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     var selectedArtifacts: [DevArtifact] { artifacts.filter { selected.contains($0.id) } }
@@ -129,10 +152,10 @@ final class DevArtifactsModel: ObservableObject {
     func removeSelected() {
         let items = selectedArtifacts
         guard !items.isEmpty else { return }
-        guard AppState.confirm(
-            title: String(localized: "Delete the selected rebuildable folders? (\(items.count))"),
-            message: String(localized: "\(Format.fileBytes(selectedSize)) will be freed. Your sources are not touched: just run “npm install”, “swift build”… to rebuild them."),
-            button: String(localized: "Delete")
+        guard confirm(
+            String(localized: "Delete the selected rebuildable folders? (\(items.count))"),
+            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. Your sources are not touched: just run “npm install”, “swift build”… to rebuild them."),
+            String(localized: "Delete"), false
         ) else { return }
 
         Task { [weak self] in
