@@ -27,8 +27,18 @@ final class SimulatorsModel: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .notScanned
-    /// Lignes affichées (appareils d'au moins 100 Mo, ou de taille encore inconnue).
+    /// Lignes affichées (appareils d'au moins 100 Mo, ou de taille encore inconnue). Tant que les tailles arrivent : ordre du
+    /// listage (nom, puis système, puis UDID) ; une fois la dernière arrivée : par taille décroissante (égalité : nom, UDID).
     @Published private(set) var rows: [DeviceSuggestions.Row] = []
+    /// Les tailles sont en cours de mesure (un dossier à la fois).
+    @Published private(set) var isMeasuring = false
+    /// Appareils mesurés à moins de 100 Mo : comptés, pas listés.
+    @Published private(set) var hiddenSmallCount = 0
+    @Published private(set) var hiddenSmallSize: UInt64 = 0
+    /// Tailles déjà mesurées, par UDID.
+    @Published private var sizes: [String: UInt64] = [:]
+    /// Tous les appareils du listage, sans taille.
+    private var devices: [SimulatorDevice] = []
 
     /// La tâche du scan en cours ou du dernier scan : les tests l'attendent (`await model.scanTask?.value`) sans dormir.
     private(set) var scanTask: Task<Void, Never>?
@@ -68,6 +78,12 @@ final class SimulatorsModel: ObservableObject {
 
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
+    /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
+    func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
+
+    /// Somme des tailles mesurées des appareils listés.
+    var measuredSizeTotal: UInt64 { rows.reduce(0) { $0 + (sizes[$1.device.device.udid] ?? 0) } }
+
     /// Message neutre de l'état courant (jamais de code de sortie, de sortie d'erreur ni de chemin), `nil` sinon.
     var message: String? {
         switch phase {
@@ -87,9 +103,9 @@ final class SimulatorsModel: ObservableObject {
         let token = CancelToken()
         self.token = token
         phase = .listing
-        rows = []
+        reset()
 
-        let runner = runner, detect = detect, locateXcrun = locateXcrun
+        let runner = runner, detect = detect, locateXcrun = locateXcrun, measure = measure, home = home
         scanTask = Task { [weak self] in
             let listing = await Task.detached(priority: .utility) { () -> SimulatorListing in
                 let detection = detect()
@@ -97,7 +113,22 @@ final class SimulatorsModel: ObservableObject {
                 return SimulatorScanner.list(runner: runner, xcrunPath: xcrun)
             }.value
             guard let self, !token.isCancelled else { return }
-            self.apply(listing)
+            guard self.apply(listing) else { return }
+
+            // Les tailles arrivent une à une (un dossier à la fois, hors de l'acteur principal), comme dans le désinstalleur.
+            // Dans l'ordre d'affichage (haut en bas).
+            for device in self.rows.map(\.device.device) {
+                if token.isCancelled { return }
+                // `parse` a validé l'UDID : `deviceFolder` ne peut pas rendre `nil` ici.
+                let folder = SimulatorScanner.deviceFolder(udid: device.udid, home: home)
+                let size = await Task.detached(priority: .utility) { folder.map(measure) ?? 0 }.value
+                if token.isCancelled { return }
+                self.sizes[device.udid] = size
+                self.recompute()
+            }
+            if token.isCancelled { return }
+            self.isMeasuring = false
+            self.recompute()
         }
     }
 
@@ -105,23 +136,57 @@ final class SimulatorsModel: ObservableObject {
     func cancel() {
         token?.cancel()
         scanTask?.cancel()
-        if phase == .listing { phase = .notScanned; rows = [] }
+        if phase == .listing || isMeasuring { phase = .notScanned; reset() }
     }
 
-    private func apply(_ listing: SimulatorListing) {
+    private func reset() {
+        rows = []
+        devices = []
+        sizes = [:]
+        isMeasuring = false
+        hiddenSmallCount = 0
+        hiddenSmallSize = 0
+    }
+
+    /// Recalcule les lignes et le pied de page : un appareil dont la taille n'est pas connue compte comme « assez gros »
+    /// (il reste listé), les autres suivent `DeviceSuggestions.suggest`.
+    private func recompute() {
+        let sized = devices.map { SizedSimulator(device: $0, size: sizes[$0.udid] ?? DeviceSuggestions.smallDeviceThreshold) }
+        let result = DeviceSuggestions.suggest(sized, now: now(), limitDays: DeviceSuggestions.defaultLimitDays)
+        rows = isMeasuring ? result.rows.sorted(by: Self.listingOrder) : result.rows
+        hiddenSmallCount = result.hiddenSmallCount
+        hiddenSmallSize = result.hiddenSmallSize
+    }
+
+    /// Ordre du listage : nom, puis système, puis UDID.
+    private static func listingOrder(_ a: DeviceSuggestions.Row, _ b: DeviceSuggestions.Row) -> Bool {
+        let (x, y) = (a.device.device, b.device.device)
+        let (nx, ny) = (x.name.lowercased(), y.name.lowercased())
+        if nx != ny { return nx < ny }
+        let (sx, sy) = (SimulatorPresentation.systemLabel(runtimeIdentifier: x.runtimeIdentifier),
+                        SimulatorPresentation.systemLabel(runtimeIdentifier: y.runtimeIdentifier))
+        if sx != sy { return sx < sy }
+        return x.udid < y.udid
+    }
+
+    /// - Returns: `true` quand des appareils sont listés (les tailles peuvent alors être mesurées).
+    private func apply(_ listing: SimulatorListing) -> Bool {
         switch listing.status {
         case .ok:
             if listing.devices.isEmpty {
                 phase = .empty
-                return
+                return false
             }
+            devices = listing.devices
             phase = .listed
-            let sized = listing.devices.map { SizedSimulator(device: $0, size: DeviceSuggestions.smallDeviceThreshold) }
-            rows = DeviceSuggestions.suggest(sized, now: now(), limitDays: DeviceSuggestions.defaultLimitDays).rows
+            isMeasuring = true
+            recompute()
+            return true
         case .timedOut:
             phase = .failed(.notAnswering)
         case .toolNotFound, .commandFailed, .outputNotReadable:
             phase = .failed(.couldNotRead)
         }
+        return false
     }
 }

@@ -45,7 +45,7 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
     }
 
     func model(_ runner: CommandRunner, detection: SimulatorToolDetection? = nil,
-               measure: @escaping (URL) -> UInt64 = { _ in 0 }) -> SimulatorsModel {
+               measure: @escaping (URL) -> UInt64 = { _ in 500_000_000 }) -> SimulatorsModel {
         let detection = detection ?? present
         return SimulatorsModel(runner: runner,
                                detect: { detection },
