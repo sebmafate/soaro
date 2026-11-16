@@ -14618,6 +14618,58 @@
         }
       }
     },
+    "Running · quit it first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft · zuerst beenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En ejecución · ciérralo primero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En cours d'exécution · quittez-le d'abord"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In esecuzione · chiudilo prima"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中 · 先に終了してください"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실행 중 · 먼저 종료하세요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em execução · feche-o primeiro"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在运行 · 请先退出"
+          }
+        }
+      }
+    },
     "SMART status": {
       "localizations": {
         "de": {
@@ -18674,6 +18726,58 @@
         }
       }
     },
+    "Unknown system": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekanntes System"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema desconocido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Système inconnu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema sconosciuto"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不明なシステム"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "알 수 없는 시스템"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema desconhecido"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未知系统"
+          }
+        }
+      }
+    },
     "Update available: macOS %@": {
       "localizations": {
         "de": {
@@ -20334,6 +20438,214 @@
           "stringUnit": {
             "state": "translated",
             "value": "npm 缓存"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, used %lld d ago": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, vor %lld T. genutzt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», usada hace %lld d"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », utilisée il y a %lld j"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», usata %lld g fa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、%lld 日前に使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, %lld일 전에 사용"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, usada há %lld d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，%lld 天前使用"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, used today": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, heute genutzt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», usada hoy"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », utilisée aujourd'hui"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», usata oggi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、今日使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, 오늘 사용"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, usada hoje"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，今天使用"
+          }
+        }
+      }
+    },
+    "older copy of “%@”, which is running": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ältere Kopie von „%@“, das gerade läuft"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia anterior de «%@», que se está ejecutando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancienne copie de « %@ », qui est en cours d'exécution"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "copia meno recente di «%@», in esecuzione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の古いコピー、実行中"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”의 이전 복사본, 실행 중"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cópia mais antiga de “%@”, que está em execução"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”的旧副本，正在运行"
+          }
+        }
+      }
+    },
+    "unavailable: system not installed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht verfügbar: System nicht installiert"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no disponible: sistema no instalado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "indisponible : système non installé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "non disponibile: sistema non installato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "利用不可：システムが未インストール"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사용할 수 없음: 시스템이 설치되지 않음"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "indisponível: sistema não instalado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可用：系统未安装"
           }
         }
       }
