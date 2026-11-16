@@ -24,7 +24,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | ID | Slice | Size | Depends on | Counts in the 14 days | Days spent | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
-| SL2 | Repository guards: network allowlist, translation catalog | S | | yes | | todo |
+| SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
 | SL3 | Shared selection list components and the destructive button | M | SL1 | no | | todo |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
 | SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | | todo |
@@ -62,12 +62,16 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Serves**: R9, R12; `TESTING.md` T6, T11.
 - **Components**: the test target only (reads the sources and `Sources/Soaro/Resources/Localizable.xcstrings` through `#filePath`).
 - **Acceptance criteria**
-  - [ ] A test fails if a source file other than `PublicIPService.swift` references `URLSession` or `NWConnection`.
-  - [ ] A test fails if a catalog key lacks one of the nine languages, or if the placeholders (`%@`, `%lld`, `%1$@`, `%%`) differ between languages.
-  - [ ] Both tests pass on the current code, or the real gaps they find are listed (fixed here if small).
-  - [ ] Where the defaults of the two optional network features are readable from a test, a test shows they are off.
+  - [x] A test fails if a source file other than `PublicIPService.swift` references `URLSession` or `NWConnection`. (`NetworkAllowlistTests`; made to fail on purpose with a throwaway file, then removed.)
+  - [x] A test fails if a catalog key lacks one of the nine languages, or if the placeholders (`%@`, `%lld`, `%1$@`, `%%`) differ between languages. (`TranslationCatalogTests`, on `Localizable.xcstrings` and `InfoPlist.xcstrings`.)
+  - [x] Both tests pass on the current code, or the real gaps they find are listed (fixed here if small). (17 gaps found, all in French, all fixed in one commit; see Notes.)
+  - [x] Where the defaults of the two optional network features are readable from a test, a test shows they are off. (`OptInDefaultsTests`, registered defaults only.)
 - **Tests**: unit (repository level).
 - **Notes**: if the catalog test finds existing gaps, list them rather than widening this slice.
+  - Gaps found on the real catalog (17, all French): 16 keys had no French entry (`1 h`, `24 h`, `Application`, `CPU`, `GPU`, `Internet`, `Max`, `Min`, `Orange`, `Signal`, `Soaro`, `Style`, `VPN`, `Wi-Fi`, `Xcode iOS DeviceSupport`, `normal`); the French text of the battery explanation wrote `100 %%` where the key has no placeholder, so the app showed `100 %%` (checked on the built bundle). Fixed in one commit: the 16 French entries equal the English key (what the app already displayed through the fallback), and `%%` became `%`. These French strings are AI-assisted and flagged for the author's review.
+  - The placeholder rule treats a key without placeholder as never formatted: `100 % zu` in German is not a gap there. Checked for `String(localized:)`; `Text("...")` was not checked.
+  - Days spent (0.25): measured from the first to the last SL2 commit timestamp, rounded up to a quarter day.
+  - Out of reach of the allowlist: `Data(contentsOf:)`, `Process`/`curl`, `NWPathMonitor`, Sparkle, and the optional `/sbin/ping` of `NetworkSampler.ping`.
 
 ### SL3: Shared selection list components and the destructive button
 

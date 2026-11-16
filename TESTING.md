@@ -20,12 +20,12 @@ Goals: fast feedback while coding (the suite stays in the order of tens of secon
 | T3 | Wrong recommendation or false alarm | Annoys or misleads | `RecommendationEngineTests`, `NewRecommendationTests`, `LeakDetectorTests`, `Advice*Tests`, threshold tests |
 | T4 | Broken update or release (bad signature, missing translations, bad build number) | Users stranded or app defective | CI dry run (`release.yml` by hand) and the release guards. **Not covered by unit tests** |
 | T5 | Lost history or preferences after a rename or upgrade | Data loss | `HistoryStoreTests`, `LegacyMigrationTests` |
-| T6 | A network call that should be off or opt-in | Breaks the privacy promise | `PublicIPParsingTests`, `InternetIdentityTests` (parsing and validation); the network allowlist test (T11) closes the gap for new code. Opt-in default itself: to check when the slice is written |
+| T6 | A network call that should be off or opt-in | Breaks the privacy promise | `PublicIPParsingTests`, `InternetIdentityTests` (parsing and validation); the network allowlist test (T11) closes the gap for new code. Opt-in default: `OptInDefaultsTests` checks `SettingsKey.defaults` (`publicIP` and `latency` are `false`, `notifications` is `true` for contrast). **Limit:** the `@AppStorage(...) = false` defaults written in `NetworkTab` and `SettingsView` are not readable from a test, so they are not covered |
 | **T7** | Removing the wrong simulator or emulator, or a running one (R4, R5, R17, S3) | Data loss; kill criterion 2 of the spec | Unit tests with a fake command runner, never the real tool; one manual removal of a disposable device |
 | **T8** | A missing, slow, failing or changed tool breaks the view or the app (R6, A5) | Xcode, Android and Docker change their outputs; a command can hang | Unit tests: absent, failing, timed out, malformed output; contract tests on recorded real outputs |
 | **T9** | A wrong suggestion (R3, R16) or a wrong size or "freed" amount (R7) | Misleads the user; `Docker.raw` is 995 GB apparent and 24 GB real | Pure function tested at a fixed date; allocated size tested on a sparse file |
 | **T10** | Confirmations: Return deletes today, and the accessibility slice changes shared components (R8) | Regression on screens already published | Test of the alert construction; the existing tool tests |
-| **T11** | A network call, or an incomplete translation (R9, R12) | Privacy promise; missing texts in eight languages | Two repository-level tests: network allowlist, catalog completeness |
+| **T11** | A network call, or an incomplete translation (R9, R12) | Privacy promise; missing texts in eight languages | Two repository-level tests: `NetworkAllowlistTests`, `TranslationCatalogTests` (both read the repository through `#filePath`, no network) |
 | **T12** | Docker gives no space back to the Mac (R11) | The Docker feature has no value | Test B, manual, once |
 
 Hard to test: private HID and SMC interfaces (real hardware), the real `simctl`, Android tools and `docker`, a really running emulator, Sparkle in a running app, the menu bar panel behaviour, VoiceOver, Liquid Glass and contrast on glass, notarization.
@@ -62,7 +62,7 @@ Levels left out, and why: property-based (no function whose input space needs it
 | Window and panel visibility | secondary | Unit | `VisibilityTests` | yes |
 | Formatting and locales | secondary | Unit | `RateFormatTests`, `MachineInfoTests` | yes |
 | Migration from old names | secondary | Unit | `LegacyMigrationTests` | yes |
-| Translations (nine languages) | secondary | Build guard, plus the catalog test (R12) | the release guard fails if no translation compiles; the catalog test (below) checks content | partly, then yes |
+| Translations (nine languages) | secondary | Build guard, plus the catalog test (R12) | the release guard fails if no translation compiles; `TranslationCatalogTests` checks the content of `Localizable.xcstrings` and `InfoPlist.xcstrings` | yes |
 | Update (Sparkle) | core | Manual | update 1.0.0 to 1.0.1 inside the app | no |
 | Release chain (sign, notarize, DMG, appcast) | core | Dry run | `workflow_dispatch` on `release.yml`; `spctl`, `stapler validate` by hand | partly |
 | SwiftUI views and look | secondary | Manual | `--snapshot` screenshots by eye | no |
@@ -79,10 +79,10 @@ Levels left out, and why: property-based (no function whose input space needs it
 | R6 | Must | Unit | Tool absent, non-zero exit, time limit exceeded, malformed JSON: the entry hides, the other platform stays usable, no error reaches the user | yes |
 | R7 | Must | Unit, manual | Size uses the allocated space (a 1 GB sparse file weighs little); the freed amount equals before minus after. Manual: compare with `df` and `du`, within 10 % | yes, then manual |
 | R8 | Must | Unit | Cancel is the default button for the five confirmations; the text holds the count, the size and what is lost; cancelling deletes nothing (needs the injectable confirmation) | yes (SL1: alert construction and cancelled confirmation of the four models; Escape by hand) |
-| R9 | Must | Security | Only `PublicIPService.swift` references `URLSession` or `NWConnection`; the runner refuses a relative path and a shell | yes |
+| R9 | Must | Security | Only `PublicIPService.swift` references `URLSession` or `NWConnection`; the runner refuses a relative path and a shell | yes (`NetworkAllowlistTests`: raw substring match on every `.swift` under `Sources/Soaro/`, comments included, so a comment that names `URLSession` elsewhere fails on purpose). **Not covered:** Sparkle (`Updater.swift`), `NWPathMonitor`, `Data(contentsOf:)`, `Process`/`curl`, and the opt-in `/sbin/ping` run by `NetworkSampler.ping` |
 | R10 | Should | Unit, manual | The commands issued belong to an allowlist (never volumes, containers or the reclaim container); manual: Test B | yes, then manual |
 | R11 | Should | Manual, then unit | Test B; afterwards "returned = free after minus free before" with an injected free-space provider | partly |
-| R12 | Should | Unit | Every key of the catalogs has the nine languages, and the placeholders (`%@`, `%lld`) match between languages (to write: the validation script of the earlier session is not in the repository) | yes |
+| R12 | Should | Unit | Every key of the catalogs has the nine languages, and the placeholders (`%@`, `%lld`, `%d`, `%1$@`, `%%`) match between languages | yes (`TranslationCatalogTests`: `realLocalizableCatalogIsCompleteInEveryLanguage`, `realInfoPlistCatalogIsCompleteInEveryLanguage`, plus the pure checks on in-memory catalogs). Exclusions: exactly five keys of `Localizable.xcstrings` with an empty entry (`""`, `"%@ %@"`, `"%@ / %@"`, `"%@ · %@"`, `"%lld °C"`); an exclusion whose key disappears fails. A key without placeholder is never formatted at runtime, so `% zu` there is not a gap but `%%` is |
 | R13 | Should | Unit | `includedInQuickClean` is false for NuGet; the quick clean total excludes it | yes |
 | R14 | Could | Unit if built | recommendation engine | n/a |
 | R15 | Could | Manual | Needs an OrbStack tester; not verified here | no |
@@ -193,7 +193,7 @@ Still open from the baseline:
 
 - Is a performance budget check wanted (idle RAM and CPU)? Today: a manual sample before each release.
 - Strict concurrency (Swift 6 mode) as a gate: not enabled.
-- The opt-in default of the two network features (T6): add a test when the accessibility slice is written, if the defaults are readable from a test.
+- The opt-in default of the two network features (T6): closed by SL2 for the registered defaults (`SettingsKey.defaults`); the view-level `@AppStorage` defaults stay unreadable from a test. Open: `Text("...")` was not checked for the no-placeholder rule of the catalog test (only `String(localized:)`).
 - A local `swift test` before each commit stays a habit, not a hook (a gate that is too strict gets bypassed).
 - Not tested on macOS 14 or 15, the stated minimum.
 - Test B (Docker) has no date; it needs the author to start Docker Desktop.

@@ -1736,6 +1736,12 @@
             "value": "1 h"
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 h"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -1829,6 +1835,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 h"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "24 h"
@@ -2606,6 +2618,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aplicación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Application"
           }
         },
         "it": {
@@ -3533,6 +3551,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CPU"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "CPU"
@@ -7692,6 +7716,12 @@
             "value": "GPU"
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPU"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -8617,6 +8647,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Internet"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Internet"
@@ -9656,6 +9692,12 @@
             "value": "Máx."
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -10220,6 +10262,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mín."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Min"
           }
         },
         "it": {
@@ -12398,6 +12446,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Naranja"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orange"
           }
         },
         "it": {
@@ -15670,6 +15724,12 @@
             "value": "Señal"
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signal"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -15815,6 +15875,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Soaro"
@@ -16698,6 +16764,12 @@
             "value": "Estilo"
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Style"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -17475,7 +17547,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce n'est pas une panne : la recharge optimisée plafonne la charge (et laisse la batterie redescendre jusque-là) pour ralentir son usure quand le Mac reste branché. Pour repartir à 100 %%, par exemple avant un déplacement, modifiez-le dans les réglages Batterie."
+            "value": "Ce n'est pas une panne : la recharge optimisée plafonne la charge (et laisse la batterie redescendre jusque-là) pour ralentir son usure quand le Mac reste branché. Pour repartir à 100 %, par exemple avant un déplacement, modifiez-le dans les réglages Batterie."
           }
         },
         "it": {
@@ -18928,6 +19000,12 @@
             "value": "VPN"
           }
         },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VPN"
+          }
+        },
         "it": {
           "stringUnit": {
             "state": "translated",
@@ -19125,6 +19203,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wi-Fi"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Wi-Fi"
@@ -19379,6 +19463,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xcode iOS DeviceSupport"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "Xcode iOS DeviceSupport"
@@ -20101,6 +20191,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "normal"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "normal"
