@@ -72,8 +72,10 @@ enum Diagnostics {
         // Simulateurs iOS : lecture seule (`xcrun simctl list devices -j`), puis tailles allouées sur disque.
         // C'est ici, et nulle part ailleurs, que le vrai lanceur de commandes est construit.
         let simulatorStart = Date()
+        // Détection sans rien lancer : `xcrun` n'est transmis que si `simctl` est sur le disque.
+        let detection = SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory()))
         let simulatorScan = SimulatorScanner.scan(runner: RealCommandRunner(),
-                                                  xcrunPath: ToolLocator.firstExecutable(in: ToolLocator.simulatorCandidates))
+                                                  xcrunPath: ToolLocator.simulatorXcrunPath(detection: detection))
         let suggestions = DeviceSuggestions.suggest(simulatorScan.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
         for line in SimulatorReport.lines(scan: simulatorScan, suggestions: suggestions, locale: .current,
                                           limitDays: DeviceSuggestions.defaultLimitDays) { print(line) }

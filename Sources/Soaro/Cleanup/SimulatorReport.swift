@@ -10,7 +10,7 @@ enum SimulatorReport {
 
         switch scan.status {
         case .toolNotFound:
-            out.append("xcrun not found")
+            out.append("simulator tool not found")
             return out
         case .commandFailed(let code):
             out.append(code.map { "command failed (exit code \($0))" } ?? "command failed")

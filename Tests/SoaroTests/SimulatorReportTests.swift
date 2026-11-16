@@ -128,7 +128,7 @@ import Testing
 
     @Test func eachFailureStatusIsOneDistinctNeutralLine() {
         let statuses: [(SimulatorScan.Status, String)] = [
-            (.toolNotFound, "xcrun not found"),
+            (.toolNotFound, "simulator tool not found"),
             (.commandFailed(exitCode: 72), "command failed (exit code 72)"),
             (.commandFailed(exitCode: nil), "command failed"),
             (.timedOut, "did not answer within 60 s"),
