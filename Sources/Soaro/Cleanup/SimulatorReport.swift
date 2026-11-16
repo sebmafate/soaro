@@ -39,7 +39,10 @@ enum SimulatorReport {
             if row.isPreSelected {
                 var reasons: [String] = []
                 if row.isInactive, let days = row.daysSinceLastUse { reasons.append("inactive for \(days) d") }
-                if row.isOlderCopy { reasons.append("older copy") }
+                if row.isOlderCopy {
+                    reasons.append(row.keptDevice.map { "older copy of \($0.device.name) (\($0.device.runtimeName), \($0.device.udid))" }
+                                   ?? "older copy")
+                }
                 parts.append("pre-selected (\(reasons.joined(separator: ", ")))")
             }
             if row.isRunning { parts.append("running") }

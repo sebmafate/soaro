@@ -217,4 +217,48 @@ import Testing
         #expect(DeviceSuggestions.defaultLimitDays == 60)
         #expect(DeviceSuggestions.smallDeviceThreshold == 100_000_000)
     }
+
+    // MARK: Appareil gardé d'une « ancienne copie »
+
+    private func keptUDIDSuffix(_ n: Int, _ r: DeviceSuggestions.Result) -> Int? {
+        row(n, r)?.keptDevice.map { Int($0.device.udid.suffix(12))! }
+    }
+
+    @Test func twoCopiesTheOlderNamesTheNewer() {
+        let r = DeviceSuggestions.suggest([dev(1, days: 10, model: phone, name: "Newer"), dev(2, days: 30, model: phone, name: "Older")],
+                                          now: now, limitDays: 60)
+        #expect(row(2, r)?.isOlderCopy == true)
+        #expect(keptUDIDSuffix(2, r) == 1)
+        #expect(row(2, r)?.keptDevice?.device.name == "Newer")
+        #expect(row(1, r)?.keptDevice == nil)
+    }
+
+    @Test func threeCopiesBothOlderNameTheNewest() {
+        let r = DeviceSuggestions.suggest([dev(1, days: 50, model: phone), dev(2, days: 5, model: phone), dev(3, days: 20, model: phone)],
+                                          now: now, limitDays: 60)
+        #expect(keptUDIDSuffix(1, r) == 2)
+        #expect(keptUDIDSuffix(3, r) == 2)
+        #expect(keptUDIDSuffix(2, r) == nil)
+    }
+
+    @Test func aSmallKeptDeviceIsStillNamedThoughNotListed() {
+        let r = DeviceSuggestions.suggest([dev(1, days: 1, size: 1_000, model: phone, name: "Tiny Newest"),
+                                           dev(2, days: 40, model: phone)], now: now, limitDays: 60)
+        #expect(row(1, r) == nil, "le petit appareil n'est pas listé")
+        #expect(row(2, r)?.keptDevice?.device.name == "Tiny Newest")
+        #expect(row(2, r)?.keptDevice?.size == 1_000)
+    }
+
+    @Test func aRunningKeptDeviceIsNamedToo() {
+        let r = DeviceSuggestions.suggest([dev(1, days: 90, model: phone, state: "Booted", name: "Live"),
+                                           dev(2, days: 3, model: phone)], now: now, limitDays: 60)
+        #expect(row(2, r)?.isOlderCopy == true)
+        #expect(row(2, r)?.keptDevice?.device.name == "Live")
+        #expect(row(2, r)?.keptDevice?.device.state == "Booted")
+    }
+
+    @Test func aRowThatIsNotAnOlderCopyHasNoKeptDevice() {
+        let r = DeviceSuggestions.suggest([dev(1, days: 100), dev(2, days: 5), dev(3)], now: now, limitDays: 60)
+        #expect(r.rows.allSatisfy { $0.keptDevice == nil })
+    }
 }

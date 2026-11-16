@@ -24,6 +24,9 @@ enum DeviceSuggestions {
         /// État différent de `Shutdown` (Booted, Booting, Shutting Down, inconnu).
         let isRunning: Bool
         let isPreSelected: Bool
+        /// Pour une « ancienne copie » : l'appareil gardé du groupe (le premier du classement : le plus récent, même petit,
+        /// non listé ou en cours d'exécution). `nil` sinon.
+        let keptDevice: SizedSimulator?
     }
 
     struct Result: Equatable {
@@ -53,7 +56,7 @@ enum DeviceSuggestions {
 
         // Anciennes copies : on regroupe TOUS les appareils (petits compris) ; le gardé est le plus récent
         // (égalité : plus gros, puis plus petit UDID).
-        var olderCopies = Set<String>()
+        var olderCopies: [String: SizedSimulator] = [:]   // UDID de la copie → appareil gardé
         for (_, members) in Dictionary(grouping: devices, by: groupKey) {
             let dated = members.filter { effectiveUse($0) != nil }
             let ranked = dated.sorted { a, b in
@@ -62,7 +65,8 @@ enum DeviceSuggestions {
                 if a.size != b.size { return a.size > b.size }
                 return a.device.udid < b.device.udid
             }
-            for copy in ranked.dropFirst() where !isRunning(copy) { olderCopies.insert(copy.device.udid) }
+            guard let kept = ranked.first else { continue }
+            for copy in ranked.dropFirst() where !isRunning(copy) { olderCopies[copy.device.udid] = kept }
         }
 
         var rows: [Row] = []
@@ -77,9 +81,10 @@ enum DeviceSuggestions {
             let days = d.device.lastUsed.map(wholeDays)
             let running = isRunning(d)
             let inactive = !running && (days.map { $0 > limit } ?? false)
-            let older = olderCopies.contains(d.device.udid)
+            let kept = olderCopies[d.device.udid]
+            let older = kept != nil
             rows.append(Row(device: d, daysSinceLastUse: days, isInactive: inactive, isOlderCopy: older,
-                            isRunning: running, isPreSelected: !running && (inactive || older)))
+                            isRunning: running, isPreSelected: !running && (inactive || older), keptDevice: kept))
         }
         rows.sort { a, b in
             if a.device.size != b.device.size { return a.device.size > b.device.size }

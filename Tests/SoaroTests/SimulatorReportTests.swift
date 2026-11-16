@@ -57,9 +57,10 @@ import Testing
         #expect(old?.contains("older copy") == false)
 
         let copy = line(containing: "Phone Copy", in: lines)
-        #expect(copy?.contains("older copy") == true)
+        #expect(copy?.contains("older copy of Phone New (iOS 26.2, 00000000-0000-4000-8000-000000000002)") == true)
         #expect(copy?.contains("inactive for") == false)
-        #expect(line(containing: "Phone New", in: lines)?.contains("pre-selected") == false)
+        // Deux espaces devant : la ligne de la copie nomme aussi « Phone New » (appareil gardé).
+        #expect(line(containing: "  Phone New (", in: lines)?.contains("pre-selected") == false)
 
         #expect(line(containing: "Tiny", in: lines) == nil, "un petit appareil n'est pas listé")
         #expect(lines.contains("1 small device (\(Format.fileBytes(5_000_000, locale: locale))) not listed"))
