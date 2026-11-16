@@ -25,7 +25,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | --- | --- | --- | --- | --- | --- | --- |
 | SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
-| SL3 | Shared selection list components and the destructive button | M | SL1 | no | | todo |
+| SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 7 min of agent time on 2026-11-16, 13:59 to 14:06; QA review and the author's manual checks not included) | done |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
 | SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | | todo |
 | SL8 | The tool "Simulators and emulators", read-only | M | SL3, SL7 | yes | | todo |
@@ -77,16 +77,26 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 
 - **Goal**: `SelectionRow` and `ActionBar` are shared, readable by VoiceOver and keyboard friendly, so the new screen and the existing tools use the same parts.
 - **Serves**: `DESIGN.md` Part 2; R8.
-- **Components**: `CleanupToolViews.swift` (the two components move out of `private`), `Components.swift`.
+- **Components**: `CleanupToolViews.swift` (the two components move out of `private`), new `SelectionComponents.swift` and `DesignTokens.swift`. `Components.swift` is not touched (SL6 edits `CleanupRow` there).
 - **Acceptance criteria**
-  - [ ] The selection button names the device or item, for example "web-shop, selected" (VoiceOver), in the existing "Inactive projects" and "Large files" tools.
-  - [ ] The check has a hit target of at least 24 x 24 pt.
-  - [ ] New variant "unavailable" (icon `minus.circle` plus a text reason) and new "busy" state of the action bar exist and are used nowhere yet except in previews.
-  - [ ] The destructive button uses #D32F2F (and #B71C1C with Increase Contrast).
-  - [ ] A test computes the contrast of the defined colors: white on danger-fill at least 4.5 : 1.
-  - [ ] The existing tool tests still pass.
-- **Tests**: unit (contrast), existing suites; manual VoiceOver pass on the two existing tools.
-- **Notes**: also defines the color token "text-supporting" (primary at 56 %, 70 % with Increase Contrast), used by the new rows; its use across the app is SL4.
+  - [x] The selection button names the item: label = the name, value = "Selected" / "Not selected" (`SelectionRowAccessibilityTests`), wired in Inactive projects, Large files and the Uninstaller (related files).
+  - [ ] Manual, pending the author's check: VoiceOver reads the name on the three tools (for example "web-shop, selected").
+  - [x] The check has a hit target of at least 24 x 24 pt (constant `SelectionMetrics.minimumTargetSize`, test `checkTargetIsAtLeast24Points`; a weak check by nature).
+  - [ ] Manual, pending the author's check: the target measures at least 24 x 24 pt in the Accessibility Inspector.
+  - [x] New variant "unavailable" (icon `minus.circle` plus a text reason; the toggle is never called) and new "busy" state of the action bar exist and are used nowhere yet except in previews (`PreviewProvider` previews in `SelectionComponents.swift`; they exist by compile, pure-function tests and review).
+  - [x] The destructive button uses #D32F2F (and #B71C1C with Increase Contrast): `ActionBarTint.danger`, tested as values. Never a default button, no keyboard shortcut (source scan test, R8).
+  - [ ] Manual, pending the author's check: Digital Color Meter on the real Delete button shows #D32F2F (the tinted `.borderedProminent` style may modulate the fill); Increase Contrast switches to #B71C1C; Return does nothing in the list.
+  - [x] A test computes the contrast of the defined colors: white on danger-fill 4.98 : 1 and on the deeper red 6.57 : 1 (`ContrastTests`); text-supporting at least 4.5 : 1 on both reference backgrounds, with and without Increase Contrast.
+  - [x] The existing tool tests still pass (208 tests, up from 172).
+- **Tests**: unit (contrast, pure label/value function, tint, enabled state, catalog key); existing suites; manual VoiceOver pass on the three tools.
+- **Notes**: also defines the color token "text-supporting", used by the new rows; its use across the app is SL4. Done 2026-11-16.
+  - The shared components are in `Views/SelectionComponents.swift` and the tokens in `Views/DesignTokens.swift`, not in `Components.swift` (SL6 edits `CleanupRow` there).
+  - Three tools are affected, not two: the Uninstaller also uses `SelectionRow` (related files) and `ActionBar(destructive: true)` ("Uninstall"). The author's VoiceOver pass covers all three.
+  - Text-supporting is defined as pure black (light) or pure white (dark) at an **absolute** alpha of 0.56 (0.70 with Increase Contrast). `Color.primary.opacity(0.56)` would start from `labelColor` (about 85 % alpha) and give about 3.6 : 1 on white, which fails; the ratios of `DESIGN.md` (4.95 and 6.1) only hold with the absolute alpha. So SL4's contrast criterion reduces to "applied everywhere": the token is tested here.
+  - `SelectionRow` takes a required `name`; an empty name falls back to the state alone. A blank or empty reason still makes the row unavailable (only `nil` is selectable). New string `%@, not selectable` in nine languages (AI-assisted, flagged for the author's review).
+  - Increase Contrast on the dark reference background: #B71C1C against #1E1E1E is about 2.5 : 1 (below the 3 : 1 of a non-text component), while the standard #D32F2F gives 3.35 : 1. Not required by the slice; reported to the author (the label inside the button stays at 6.57 : 1).
+  - Rows become slightly taller (24 pt check). The reveal-in-Finder button is a second control in each row, so VoiceOver may read the name twice; merging the controls is for SL8.
+  - Days spent (under 0.1): measured from the first to the last SL3 commit timestamp (same method as SL1 and SL2).
 
 ### SL6: NuGet packages row
 
@@ -157,7 +167,7 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Acceptance criteria**
   - [ ] Text that used `.secondary` uses text-supporting; icons keep `.secondary`.
   - [ ] `SectionHeader` is `.caption` in text-supporting; the two `.tertiary` texts use text-supporting; chevrons stay tertiary.
-  - [ ] A test shows text-supporting at least 4.5 : 1 on both reference backgrounds (and 70 % with Increase Contrast).
+  - [ ] Text-supporting is applied everywhere through the token of SL3 (`DesignTokens`, absolute alpha 0.56 / 0.70); its contrast is already tested in `ContrastTests` (SL3).
   - [ ] `--snapshot` screenshots of every tab compared with the previous ones: only the grey changes.
 - **Tests**: unit (contrast); manual screenshot comparison.
 - **Notes**: a `CHANGELOG` line ("slightly darker grey for supporting text").
@@ -273,3 +283,4 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-11-15 | Plan created from the spec, architecture, design and test strategy. SL4 and SL5 placed after SL9 and kept out of the 14-day count | Author's decision during the slice step: protect the time box; SL3 stays before the tool because the screen depends on it |
+| 2026-11-16 | SL3 done on its branch: components in new files, not in `Components.swift`; the Uninstaller is the third tool affected; SL4's contrast criterion reduces to "applied everywhere" | The token is defined and tested in SL3 with an absolute alpha; `Components.swift` is left to SL6 |

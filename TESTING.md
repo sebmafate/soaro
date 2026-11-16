@@ -96,8 +96,8 @@ Levels left out, and why: property-based (no function whose input space needs it
 | Item | Level | Concrete check | Automated |
 | --- | --- | --- | --- |
 | Cancel is the default button (R8) | Unit | the alert is built separately from being shown; the default is Cancel for all five callers | yes |
-| Colors keep their contrast | Unit | danger-fill with a white label at least 4.5 : 1; text-supporting at least 4.5 : 1 on both reference backgrounds | yes |
-| Shared `SelectionRow` and `ActionBar` | Unit, manual | the existing tool tests still pass; manual VoiceOver reads the device name | partly |
+| Colors keep their contrast | Unit | danger-fill with a white label at least 4.5 : 1; text-supporting at least 4.5 : 1 on both reference backgrounds | yes (`ContrastTests`, SL3) |
+| Shared `SelectionRow` and `ActionBar` | Unit, manual | the existing tool tests still pass; manual VoiceOver reads the item name on the three tools (Inactive projects, Large files, Uninstaller) | partly (`ActionBarTests`, `SelectionRowAccessibilityTests`, SL3; VoiceOver, 24 pt, Digital Color Meter and Increase Contrast are manual) |
 | Toast: fade with Reduce Motion, VoiceOver announcement | Manual | turn Reduce Motion on and trigger a toast; with VoiceOver, the message is spoken | no |
 | Supporting text color across the app | Manual | `--snapshot` screenshots of every tab compared with the previous ones: only the grey changes | no |
 
