@@ -5,7 +5,7 @@
 | | |
 | --- | --- |
 | Phase | development of the developer cleanup is planned (2026-11-15), nothing built yet; the released app is in maintenance |
-| Last updated | 2026-11-15 |
+| Last updated | 2026-11-16 |
 | Version | 1.0.1 (tag `v1.0.1`, build 15) |
 
 ## Next action
@@ -20,8 +20,8 @@ Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
 ## Where we are
 
-- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 135 tests pass.
-- In progress: nothing.
+- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 162 tests pass (on the SL2 branch: 135 plus 27 of SL2).
+- In progress: SL1 (own branch) and SL2 (done on its branch, `slice/SL2-repository-guards`, waiting for the pull request). SL2 added the network allowlist test, the catalog completeness test and the opt-in defaults test, and completed 17 French strings (to review by the author).
 - To verify by the author: the update 1.0.0 to 1.0.1 from inside the app, and that Sparkle's window comes to the front for a menu bar app without Dock icon (`docs/updates.md`).
 
 ## Risks and blockers

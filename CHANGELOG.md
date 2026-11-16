@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Fixed
+
+- French: the battery explanation no longer shows "100 %%" (SL2; AI-assisted wording, to review by the author).
+
 ## [1.0.1] - 2026-11-15
 
 ### Fixed
