@@ -7,7 +7,7 @@
 | Status | draft |
 | Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 262 tests in 42 suites with SL7), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
+| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
 
 ## Goals and risks
 
@@ -96,8 +96,8 @@ Levels left out, and why: property-based (no function whose input space needs it
 | Item | Level | Concrete check | Automated |
 | --- | --- | --- | --- |
 | Cancel is the default button (R8) | Unit | the alert is built separately from being shown; the default is Cancel for all five callers | yes |
-| Colors keep their contrast | Unit | danger-fill with a white label at least 4.5 : 1; text-supporting at least 4.5 : 1 on both reference backgrounds | yes |
-| Shared `SelectionRow` and `ActionBar` | Unit, manual | the existing tool tests still pass; manual VoiceOver reads the device name | partly |
+| Colors keep their contrast | Unit | danger-fill with a white label at least 4.5 : 1; text-supporting at least 4.5 : 1 on both reference backgrounds | yes (`ContrastTests`, SL3) |
+| Shared `SelectionRow` and `ActionBar` | Unit, manual | the existing tool tests still pass; manual VoiceOver reads the item name on the three tools (Inactive projects, Large files, Uninstaller) | partly (`ActionBarTests`, `SelectionRowAccessibilityTests`, SL3; VoiceOver, 24 pt, Digital Color Meter and Increase Contrast are manual) |
 | Toast: fade with Reduce Motion, VoiceOver announcement | Manual | turn Reduce Motion on and trigger a toast; with VoiceOver, the message is spoken | no |
 | Supporting text color across the app | Manual | `--snapshot` screenshots of every tab compared with the previous ones: only the grey changes | no |
 
@@ -150,7 +150,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 ## Definition of done (per slice)
 
-- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 262 tests in 42 suites after SL7)
+- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 298 tests in 45 suites after SL3 and SL7)
 - [ ] Acceptance criteria verified; the rows of the matrix updated
 - [ ] No test calls a real simulator, Android or Docker tool, and the destructive paths take their runner as a parameter without a default
 - [ ] Fixtures anonymised (no home path, user name, project or bundle name)

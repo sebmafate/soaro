@@ -25,7 +25,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | --- | --- | --- | --- | --- | --- | --- |
 | SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
-| SL3 | Shared selection list components and the destructive button | M | SL1 | no | | todo |
+| SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 6 min of agent time on 2026-11-16, 13:59:52 to 14:05:57; QA review and the author's manual checks not included) | done |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
 | SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | 0.25 (measured: 18 min of agent time from the first commit at 14:24 to the last at 14:42 on 2026-11-16, rounded up to a quarter day; about 2 min of it waiting on real scans for the manual checks; the reading before the first commit is not counted; QA review and the author's 5-device check not included). Running total: under 0.1 + 0.25 + 0.25 = under 0.6 of the 14 days | done |
 | SL8 | The tool "Simulators and emulators", read-only | M | SL3, SL7 | yes | | todo |
@@ -77,16 +77,27 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 
 - **Goal**: `SelectionRow` and `ActionBar` are shared, readable by VoiceOver and keyboard friendly, so the new screen and the existing tools use the same parts.
 - **Serves**: `DESIGN.md` Part 2; R8.
-- **Components**: `CleanupToolViews.swift` (the two components move out of `private`), `Components.swift`.
+- **Components**: `CleanupToolViews.swift` (the two components move out of `private`), new `SelectionComponents.swift` and `DesignTokens.swift`. `Components.swift` is not touched (SL6 edits `CleanupRow` there).
 - **Acceptance criteria**
-  - [ ] The selection button names the device or item, for example "web-shop, selected" (VoiceOver), in the existing "Inactive projects" and "Large files" tools.
-  - [ ] The check has a hit target of at least 24 x 24 pt.
-  - [ ] New variant "unavailable" (icon `minus.circle` plus a text reason) and new "busy" state of the action bar exist and are used nowhere yet except in previews.
-  - [ ] The destructive button uses #D32F2F (and #B71C1C with Increase Contrast).
-  - [ ] A test computes the contrast of the defined colors: white on danger-fill at least 4.5 : 1.
-  - [ ] The existing tool tests still pass.
-- **Tests**: unit (contrast), existing suites; manual VoiceOver pass on the two existing tools.
-- **Notes**: also defines the color token "text-supporting" (primary at 56 %, 70 % with Increase Contrast), used by the new rows; its use across the app is SL4.
+  - [x] The selection button names the item: label = the name, value = "Selected" / "Not selected" (`SelectionRowAccessibilityTests`), wired in Inactive projects, Large files and the Uninstaller (related files).
+  - [ ] Manual, pending the author's check: VoiceOver reads the name on the three tools (for example "web-shop, selected").
+  - [x] The check has a hit target of at least 24 x 24 pt (constant `SelectionMetrics.minimumTargetSize`, test `checkTargetIsAtLeast24Points`; a weak check by nature).
+  - [ ] Manual, pending the author's check: the target measures at least 24 x 24 pt in the Accessibility Inspector.
+  - [x] New variant "unavailable" (icon `minus.circle` plus a text reason; the toggle is never called) and new "busy" state of the action bar exist and are used nowhere yet except in previews (`PreviewProvider` previews in `SelectionComponents.swift`; they exist by compile, pure-function tests and review).
+  - [x] The destructive button uses #D32F2F (and #B71C1C with Increase Contrast): `ActionBarTint.danger`, tested as values. Never a default button, no keyboard shortcut (source scan test, R8).
+  - [ ] Manual, pending the author's check: Digital Color Meter on the real Delete button shows #D32F2F (the tinted `.borderedProminent` style may modulate the fill); Increase Contrast switches to #B71C1C; Return does nothing in the list.
+  - [x] A test computes the contrast of the defined colors: white on danger-fill 4.98 : 1 and on the deeper red 6.57 : 1 (`ContrastTests`); text-supporting at least 4.5 : 1 on both reference backgrounds, with and without Increase Contrast.
+  - [x] The existing tool tests still pass (208 tests, up from 172).
+- **Tests**: unit (contrast, pure label/value function, tint, enabled state, catalog key); existing suites; manual VoiceOver pass on the three tools.
+- **Notes**: also defines the color token "text-supporting", used by the new rows; its use across the app is SL4. Done 2026-11-16.
+  - The shared components are in `Views/SelectionComponents.swift` and the tokens in `Views/DesignTokens.swift`, not in `Components.swift` (SL6 edits `CleanupRow` there).
+  - Three tools are affected, not two: the Uninstaller also uses `SelectionRow` (related files) and `ActionBar(destructive: true)` ("Uninstall"). The author's VoiceOver pass covers all three.
+  - Text-supporting is defined as pure black (light) or pure white (dark) at an **absolute** alpha of 0.56 (0.70 with Increase Contrast). `Color.primary.opacity(0.56)` would start from `labelColor` (about 85 % alpha) and give about 3.6 : 1 on white, which fails; the ratios of `DESIGN.md` (4.95 and 6.1) only hold with the absolute alpha. So SL4's contrast criterion reduces to "applied everywhere": the token is tested here.
+  - `SelectionRow` takes a required `name`; an empty name falls back to the state alone. A blank or empty reason still makes the row unavailable (only `nil` is selectable). New string `%@, not selectable` in nine languages (AI-assisted, flagged for the author's review).
+  - Increase Contrast on the dark reference background: #B71C1C against #1E1E1E is about 2.5 : 1 (below the 3 : 1 of a non-text component), while the standard #D32F2F gives 3.35 : 1. Not required by the slice; reported to the author (the label inside the button stays at 6.57 : 1).
+  - Rows become slightly taller (24 pt check). The reveal-in-Finder button is a second control in each row, so VoiceOver may read the name twice; merging the controls is for SL8.
+  - VoiceOver may read the name twice (button label + visible text); merging rows is for SL8; the author's VoiceOver pass should check it.
+  - Days spent (under 0.1): measured from the first to the last SL3 commit timestamp (same method as SL1 and SL2).
 
 ### SL6: NuGet packages row
 
@@ -115,7 +126,7 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
   - [x] The suggestion function pre-selects devices inactive beyond the limit (default 60 days) and older copies of the same model and runtime; devices under 100 MB are counted, not listed; the limit is a parameter.
   - [x] Sizes use the allocated space (a sparse file test on `CleanupService.allocatedSize` and on the scanner).
   - [x] Manual (run by the agent on the author's Mac, 2026-11-16, counts only): the list printed by `--scan` matches `xcrun simctl list devices` (same device count and same UDID set between the JSON and the text output of `simctl`; every listed device matches on name, runtime, state, availability, date presence and whole days; listed plus small equals the total).
-- **Tests**: unit, integration, contract (90 tests added: 172 to 262, after the review fixes).
+- **Tests**: unit, integration, contract (90 tests added by SL7, 262 on its own branch; 298 once merged with SL3).
 - **Notes**: scanners and removers take the runner with **no default value**; the real runner is built only in `Diagnostics.scan`. Read-only: nothing is removed. Done 2026-11-16: `CommandRunner` (protocol, outcome type), `RealCommandRunner` (the only new use of `Process`), `ToolLocator` (`/usr/bin/xcrun`), `SimulatorScanner` (parsing, then `scan` with allocated sizes), `DeviceSuggestions`, `SimulatorReport` (pure text of the `--scan` section), the fake runner in the test target. The key read for the last use is `lastUsedAt` (16 of 42 devices on the author's Mac carry it; the others are "unknown" and never pre-selected). Manual results: the simulators section took 16.5 s and 23.2 s in two runs of the debug build (42 devices, about 45 GB; `simctl list` itself under 1 s), so SL8 should use **progressive sizes** (above the 10 s threshold). The allocated total is 1.02 times `du -sk` of the devices folder (within 10 %, R7). Missing `xcrun` (M4) was not tried on the real Mac (not safe to do without changing the system): covered by unit tests only. **Still open: the author's check of the classification on 5 devices.** The limit stays a parameter and 60 days stays provisional (one named constant, `DeviceSuggestions.defaultLimitDays`); `--scan` prints the days since last use of every listed device so the author can judge. Not in SL7, kept open: the decision on simulator runtimes (31.5 GB). Known limit: grandchild processes of a killed tool are not killed. Not changed: `CHANGELOG.md` (the section is a developer mode, no user-facing change).
 
 ### SL8: The tool "Simulators and emulators", read-only
@@ -157,7 +168,7 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Acceptance criteria**
   - [ ] Text that used `.secondary` uses text-supporting; icons keep `.secondary`.
   - [ ] `SectionHeader` is `.caption` in text-supporting; the two `.tertiary` texts use text-supporting; chevrons stay tertiary.
-  - [ ] A test shows text-supporting at least 4.5 : 1 on both reference backgrounds (and 70 % with Increase Contrast).
+  - [ ] Text-supporting is applied everywhere through the token of SL3 (`DesignTokens`, absolute alpha 0.56 / 0.70); its contrast is already tested in `ContrastTests` (SL3).
   - [ ] `--snapshot` screenshots of every tab compared with the previous ones: only the grey changes.
 - **Tests**: unit (contrast); manual screenshot comparison.
 - **Notes**: a `CHANGELOG` line ("slightly darker grey for supporting text").
@@ -273,4 +284,5 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | Date | Change | Reason |
 | --- | --- | --- |
 | 2026-11-15 | Plan created from the spec, architecture, design and test strategy. SL4 and SL5 placed after SL9 and kept out of the 14-day count | Author's decision during the slice step: protect the time box; SL3 stays before the tool because the screen depends on it |
+| 2026-11-16 | SL3 done on its branch: components in new files, not in `Components.swift`; the Uninstaller is the third tool affected; SL4's contrast criterion reduces to "applied everywhere" | The token is defined and tested in SL3 with an absolute alpha; `Components.swift` is left to SL6 |
 | 2026-11-16 | SL7 started before the author's check of the classification on 5 devices. The check moves to before SL8 shows a default limit, and before the release at the latest | The limit is a parameter of the suggestion function, so SL7 does not depend on the check (author's instruction) |

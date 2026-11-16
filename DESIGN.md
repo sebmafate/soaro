@@ -269,3 +269,4 @@ Every screen of Part 1 uses only these. There is no custom component. The two ex
 | 2026-11-15 | Decision by the author: an accessibility slice before the tool, with the text-supporting color applied across the app (not only in the new tool) |
 | 2026-11-15 | Decision by the author: a delete button is never the default button of a confirmation; Cancel is the default for all confirmations |
 | 2026-11-15 | Part 2 (UI) written: roles and contrast, the accessibility lot (shared `SelectionRow` and `ActionBar`, reason line in primary text at `.caption`, danger-fill #D32F2F), accessibility rules |
+| 2026-11-16 | SL3: text-supporting is defined as pure black (light) or pure white (dark) at an absolute alpha of 0.56 (0.70 with Increase Contrast), because "primary at 56 %" starts from a label color that is itself about 85 % opaque and would give about 3.6 : 1 on white. Factual note, the decision is unchanged |
