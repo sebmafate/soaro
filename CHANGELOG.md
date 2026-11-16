@@ -7,6 +7,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Changed
 
 - In every confirmation window, Cancel is now the default button: pressing Return no longer deletes or removes anything.
+- VoiceOver now reads the name of the item on the selection buttons in Inactive projects, Large files and Uninstaller.
+- The Delete and Uninstall buttons use a deeper red with better contrast.
 
 ### Fixed
 
