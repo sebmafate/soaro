@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- In every confirmation window, Cancel is now the default button: pressing Return no longer deletes or removes anything.
+
 ## [1.0.1] - 2026-11-15
 
 ### Fixed

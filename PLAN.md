@@ -23,7 +23,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 
 | ID | Slice | Size | Depends on | Counts in the 14 days | Days spent | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| SL1 | Return never deletes | S | | yes | | todo |
+| SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | | todo |
 | SL3 | Shared selection list components and the destructive button | M | SL1 | no | | todo |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
@@ -49,12 +49,12 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Serves**: R8 (extended 2026-11-15); `DESIGN.md` accessibility rule "Confirmation default".
 - **Components**: `AppState.confirm` and its five callers (cleanup, Trash, inactive projects, uninstall, login items); the cleanup models.
 - **Acceptance criteria**
-  - [ ] The alert is built separately from being shown, and its default button is Cancel for all five callers.
-  - [ ] The `critical` flag still sets only the alert style.
-  - [ ] Each cleanup model receives its confirmation as an injectable parameter with a default; a test with a "cancel" confirmation shows that nothing is deleted (inactive projects, large files, uninstaller, login items).
-  - [ ] The confirmation text of existing tools is unchanged.
+  - [x] The alert is built separately from being shown, and its default button is Cancel for all five callers.
+  - [x] The `critical` flag still sets only the alert style.
+  - [x] Each cleanup model receives its confirmation as an injectable parameter with a default; a test with a "cancel" confirmation shows that nothing is deleted (inactive projects, large files, uninstaller, login items).
+  - [x] The confirmation text of existing tools is unchanged.
 - **Tests**: unit (alert configuration; models with an injected confirmation).
-- **Notes**: touches published behaviour: a `CHANGELOG` line. Enables the "cancelling deletes nothing" tests of later slices.
+- **Notes**: touches published behaviour: a `CHANGELOG` line. Enables the "cancelling deletes nothing" tests of later slices. Done 2026-11-16: `AppState.makeConfirmationAlert` and `AppState.confirmationResult`; the type `ConfirmHandler` and `SystemConfirmation.ask` (in `CleanupModels.swift`); the four models take `confirm:` plus an initial-state parameter (`files`, `artifacts`, `apps`/`current`, `loginItems`; empty by default) as the test seam. The cleanup action of `AppState.cleanup` is not injected (out of scope): it gets the Cancel default through the shared builder only. The login-item test is weak by nature (removal is asynchronous). Still to check by hand: Return then Escape in a real alert (English and French).
 
 ### SL2: Repository guards
 

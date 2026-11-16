@@ -676,15 +676,30 @@ final class AppState: ObservableObject {
     }
 
     /// Boîte de confirmation partagée par toutes les actions destructrices.
+    /// Retour annule, Échap aussi : le bouton destructeur n'a aucun raccourci clavier (R8).
     static func confirm(title: String, message: String, button: String, critical: Bool = false) -> Bool {
+        let alert = makeConfirmationAlert(title: title, message: message, button: button, critical: critical)
+        NSApp.activate(ignoringOtherApps: true)
+        return confirmationResult(for: alert.runModal())
+    }
+
+    /// Construit l'alerte sans l'afficher (testable). « Cancel » est en premier : c'est le bouton par défaut (Retour).
+    /// AppKit lie Échap au bouton intitulé « Cancel ». `critical` ne change que le style de l'alerte.
+    static func makeConfirmationAlert(title: String, message: String, button: String, critical: Bool) -> NSAlert {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: button)
-        alert.addButton(withTitle: String(localized: "Cancel"))
+        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
+        cancel.keyEquivalent = "\r"
+        let destructive = alert.addButton(withTitle: button)
+        destructive.keyEquivalent = ""
         alert.alertStyle = critical ? .warning : .informational
-        NSApp.activate(ignoringOtherApps: true)
-        return alert.runModal() == .alertFirstButtonReturn
+        return alert
+    }
+
+    /// Seul le second bouton (l'action destructrice) confirme ; toute autre réponse annule.
+    static func confirmationResult(for response: NSApplication.ModalResponse) -> Bool {
+        response == .alertSecondButtonReturn
     }
 
     // MARK: Toast
