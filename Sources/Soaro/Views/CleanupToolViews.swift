@@ -50,7 +50,7 @@ struct LargeFilesView: View {
             } else {
                 List {
                     ForEach(model.files) { file in
-                        SelectionRow(isOn: model.selected.contains(file.id), toggle: { model.toggle(file) }) {
+                        SelectionRow(name: file.name, isOn: model.selected.contains(file.id), toggle: { model.toggle(file) }) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
                                 Text("\(file.folder) · modified \(relativeDate(file.modified))")
@@ -109,7 +109,7 @@ struct DevProjectsView: View {
                 List {
                     Section {
                         ForEach(model.artifacts) { item in
-                            SelectionRow(isOn: model.selected.contains(item.id), toggle: { model.toggle(item) }) {
+                            SelectionRow(name: item.projectName, isOn: model.selected.contains(item.id), toggle: { model.toggle(item) }) {
                                 VStack(alignment: .leading, spacing: 1) {
                                     HStack(spacing: 6) {
                                         Text(item.projectName).font(.callout).lineLimit(1)
@@ -231,7 +231,7 @@ struct UninstallerView: View {
                             Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(model.leftovers) { item in
-                            SelectionRow(isOn: !model.excluded.contains(item.id), toggle: {
+                            SelectionRow(name: item.displayPath, isOn: !model.excluded.contains(item.id), toggle: {
                                 if model.excluded.contains(item.id) { model.excluded.remove(item.id) } else { model.excluded.insert(item.id) }
                             }) {
                                 Text(item.displayPath).font(.caption).lineLimit(1).truncationMode(.middle)

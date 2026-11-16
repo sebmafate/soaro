@@ -64,20 +64,50 @@ struct ActionBar: View {
     }
 }
 
+/// Mesures partagées des lignes de sélection.
+enum SelectionMetrics {
+    /// Côté minimal de la zone cliquable de la coche (en points).
+    static let minimumTargetSize: CGFloat = 24
+}
+
+/// Texte lu par VoiceOver pour le bouton de sélection d'une ligne.
+enum SelectionAccessibility {
+    struct Description: Equatable {
+        let label: String
+        let value: String
+    }
+
+    /// Libellé = nom de l'élément ; valeur = « Selected » / « Not selected » (clés existantes
+    /// du catalogue). Sans nom (vide ou espaces), l'état seul sert de libellé, sans valeur.
+    static func description(name: String, isOn: Bool) -> Description {
+        let state = isOn ? String(localized: "Selected") : String(localized: "Not selected")
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return Description(label: state, value: "")
+        }
+        return Description(label: name, value: state)
+    }
+}
+
 struct SelectionRow<Content: View>: View {
+    /// Nom de l'élément, lu par VoiceOver sur le bouton de sélection.
+    let name: String
     let isOn: Bool
     let toggle: () -> Void
     @ViewBuilder var content: Content
 
     var body: some View {
+        let description = SelectionAccessibility.description(name: name, isOn: isOn)
         HStack(alignment: .center, spacing: 8) {
             Button(action: toggle) {
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isOn ? Color.accentColor : .secondary)
                     .font(.title3)
+                    .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isOn ? "Selected" : "Not selected")
+            .accessibilityLabel(description.label)
+            .accessibilityValue(description.value)
             content
         }
         .padding(.vertical, 4)
