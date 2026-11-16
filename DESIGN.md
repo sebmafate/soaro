@@ -118,6 +118,18 @@ Platform unread  ANDROID EMULATORS
 Deleting         action bar disabled with a spinner; the list updates at the end
 ```
 
+**S2, interface text as built by SL8 (read-only, iOS group only)**
+
+- **Older copy:** the reason names the device that is kept, in the device's own name (never a catalog key): "older copy of “iPhone 17”, used 4 d ago", "…, used today" or "…, which is running". It follows the days part with " · " ("inactive for 25 d · older copy of “iPhone 17”, used 4 d ago"). An unavailable device adds "unavailable: system not installed".
+- **Days part:** "inactive for N d" (N of 1 or more), "active today" (0), "activity unknown" (no date).
+- **Group label and system:** one group "iOS Simulators" for all Apple platforms; each row shows its system after the name ("· iOS 26.2", "watchOS 11.2", "tvOS 18.2"); `xrOS` is shown as "visionOS"; an unreadable identifier is "Unknown system". The word "runtime" never appears.
+- **While the sizes are measured:** the header shows a small spinner and "Measuring sizes…" instead of the total; each size reads "…" until measured; rows keep the listing order (name, system) and are sorted by size once, when the last size arrives. When done the header reads "Devices: N · X". A small device (under 100 MB) leaves the list as soon as its size is known.
+- **Neutral messages** (never an exit code, an error output or a path): "Could not read the iOS Simulators." (tool absent, command failed, output unreadable), "Xcode’s simulator service did not answer. Try again in a moment." (time-out), "No simulator or emulator found." (no device at all). The header, the limit menu and "Scan again" stay usable in every state.
+- **Running device:** the SL3 unavailable row with "Running · quit it first"; VoiceOver reads it as "Running · quit it first, not selectable".
+- **Header:** "Devices: N · X", the menu "Inactive for more than" with 30, 60, 90 and 180 days, "Scan again"; it may wrap onto a second line in the panel. The Delete button is shown but disabled until SL9.
+- **Focus and reading order (as built):** limit menu, Scan again, the rows top to bottom, then Delete. This differs from the order written in the accessibility rules below (rows before Scan again); the header comes first on screen, so the focus order follows it.
+- **Text colour:** every supporting text of this screen (sizes, header summary, footer, "Measuring sizes…", messages) uses the supporting-text token (`supportingText()`), with Increase Contrast; the reason line stays in primary text.
+
 **S3**
 
 ```
@@ -270,3 +282,4 @@ Every screen of Part 1 uses only these. There is no custom component. The two ex
 | 2026-11-15 | Decision by the author: a delete button is never the default button of a confirmation; Cancel is the default for all confirmations |
 | 2026-11-15 | Part 2 (UI) written: roles and contrast, the accessibility lot (shared `SelectionRow` and `ActionBar`, reason line in primary text at `.caption`, danger-fill #D32F2F), accessibility rules |
 | 2026-11-16 | SL3: text-supporting is defined as pure black (light) or pure white (dark) at an absolute alpha of 0.56 (0.70 with Increase Contrast), because "primary at 56 %" starts from a label color that is itself about 85 % opaque and would give about 3.6 : 1 on white. Factual note, the decision is unchanged |
+| 2026-11-16 | SL8: interface text of S2 as built (older copy names the kept device, "Measuring sizes…", neutral messages, group label and system label, focus order). Factual notes, no decision changed |

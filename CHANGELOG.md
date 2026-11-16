@@ -4,10 +4,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size and pre-selects those inactive for a long time and older copies. Removal comes in a later version.
+
 ### Changed
 
 - In every confirmation window, Cancel is now the default button: pressing Return no longer deletes or removes anything.
-- VoiceOver now reads the name of the item on the selection buttons in Inactive projects, Large files and Uninstaller.
+- VoiceOver now reads the name of the item on the selection buttons in Inactive projects, Large files and Uninstaller, and each row is read as one item; “Show in Finder” is offered as an action of the row.
 - The Delete and Uninstall buttons use a deeper red with better contrast.
 
 ### Fixed

@@ -19,6 +19,7 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `Cleanup/CommandRunner.swift`, `Cleanup/RealCommandRunner.swift` | Protocol and real runner of external programs (absolute path, no shell, time limit, bounded output). The only new code that uses `Process` |
 | `Cleanup/ToolLocator.swift` | Finds an external tool by absolute path (`/usr/bin/xcrun` for the simulators) |
 | `Cleanup/SimulatorScanner.swift`, `Cleanup/DeviceSuggestions.swift`, `Cleanup/SimulatorReport.swift` | iOS simulators, read-only: reads `simctl list devices -j`, measures the allocated size of each device folder, suggests what to pre-select, formats the `--scan` section |
+| `Cleanup/SimulatorToolDetector.swift`, `Cleanup/SimulatorsModel.swift`, `Cleanup/SimulatorPresentation.swift`, `Views/SimulatorsView.swift` | The tool "Simulators and emulators" (read-only): finds the simulator tool on disk without launching anything, lists then measures the devices progressively, pre-selects, and shows the text and the screen |
 | `LegacyMigration.swift` | Imports data from the former names of the app (history, preferences) |
 | `AppState.swift` | Timing (3 s; sensors and battery every 9 s when the panel is closed), history, actions, notifications |
 | `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots, see [website.md](website.md) |
@@ -47,7 +48,7 @@ Soaro --advice                      # print the settings read and the tips that 
 Soaro --snapshot <folder> [--dark] [--tools] [--window]   # render each tab to PNG (fake history, in memory)
 ```
 
-For development, these environment variables are available: `SOARO_DEMO=1` runs the app on made-up data, `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` chooses what it shows (`overview`, `performance`, `battery`, `network`, `history`, `cleanup`, `machine`, `settings`, or a cleanup tool such as `cleanup:largeFiles`), `SOARO_SCROLL` scrolls it, and `SOARO_DEBUG` adds traces.
+For development, these environment variables are available: `SOARO_DEMO=1` runs the app on made-up data, `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` chooses what it shows (`overview`, `performance`, `battery`, `network`, `history`, `cleanup`, `machine`, `settings`, or a cleanup tool such as `cleanup:largeFiles` or `cleanup:simulators`), `SOARO_SCROLL` scrolls it, and `SOARO_DEBUG` adds traces.
 
 ## Permissions asked by macOS
 
