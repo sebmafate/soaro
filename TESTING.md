@@ -7,7 +7,7 @@
 | Status | draft |
 | Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 410 tests in 53 suites with SL8), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
+| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 420 tests in 53 suites with SL8), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
 
 ## Goals and risks
 
@@ -150,7 +150,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 ## Definition of done (per slice)
 
-- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 410 tests in 53 suites after SL3, SL7 and SL8)
+- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 420 tests in 53 suites after SL3, SL7 and SL8)
 - [ ] Acceptance criteria verified; the rows of the matrix updated
 - [ ] No test calls a real simulator, Android or Docker tool, and the destructive paths take their runner as a parameter without a default
 - [ ] Fixtures anonymised (no home path, user name, project or bundle name)
@@ -163,7 +163,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 SL7 (iOS simulators in `--scan`), done 2026-11-16: the items "a demo-mode branch for every new model", "new user-facing strings translated" and "a destructive path was tried once on a disposable target" are **not applicable to SL7** (no model, no screen, no new string in the catalog, nothing is removed). Fixtures are anonymised (the one real recording was made outside the repository and deleted).
 
-SL8 (the tool "Simulators and emulators", read-only), done 2026-11-16: tests first (the new test files failed to compile before the code); no test calls the real `xcrun` or `simctl` (hand-written `FakeCommandRunner`, a blocking runner and a scripted `measure`, injected detection, temp folders); fixtures and demo data are made up (UDIDs `00000000-0000-4000-8000-0000000000NN`); 20 new strings in nine languages with matching placeholders and no variations, the catalog test passes; a demo-mode branch exists for the new model (`SimulatorsDemoTests`: no runner call, no measure, nothing read or written); no destructive path exists yet (the item "tried once on a disposable target" is not applicable before SL9); no new warnings. The model tests wait on the scan task and on an awaitable signal, never on a sleep; blocking a cooperative thread in a test hangs the suite when suites run in parallel (found by repeating the filter). **Still manual, pending the author:** the 5-device check (merge gate), VoiceOver and Full Keyboard Access, Increase Contrast and text size, German and Japanese truncation, the screenshots, the translation review.
+SL8 (the tool "Simulators and emulators", read-only), done 2026-11-16: tests first for T2 to T11 (the new test files failed to compile or failed before the code), **but not for T1** (the detector tests and code were written together, so their "fails first" step was never observed; after the review fix they were checked by mutation instead: restoring the old fallback rule or the old `ToolLocator.firstExecutable(in:)` gate in `Diagnostics` makes them fail); no test calls the real `xcrun` or `simctl` (hand-written `FakeCommandRunner`, a blocking runner and a scripted `measure`, injected detection, temp folders); fixtures and demo data are made up (UDIDs `00000000-0000-4000-8000-0000000000NN`); 20 new strings in nine languages with matching placeholders and no variations, the catalog test passes; a demo-mode branch exists for the new model (`SimulatorsDemoTests`: no runner call, no measure, nothing read or written); no destructive path exists yet (the item "tried once on a disposable target" is not applicable before SL9); no new warnings. The model tests wait on the scan task and on an awaitable signal, never on a sleep; blocking a cooperative thread in a test hangs the suite when suites run in parallel (found by repeating the filter). Fix round after the review: the model's late size write after a cancel is observed itself (`measuredSize(udid:)`; removing the cancellation check after the measurement fails `SimulatorsProgressiveSizesTests`), `Diagnostics.simulatorScan` follows the same gate as the app, "Scan again" is ignored while listing, and the banner is hidden while sizes are measured (tested). **Still manual, pending the author:** **Full Keyboard Access (blocking before merge)**, the 5-device check (merge gate), VoiceOver and Full Keyboard Access, Increase Contrast and text size, German and Japanese truncation, the screenshots, the translation review.
 
 ## Tooling decisions
 
