@@ -90,3 +90,81 @@ enum SimulatorScanner {
         return fractional.date(from: text)
     }
 }
+
+// MARK: - Scan (lecture seule)
+
+/// Un simulateur avec la taille réelle (espace alloué) de son dossier.
+struct SizedSimulator: Equatable {
+    let device: SimulatorDevice
+    let size: UInt64
+}
+
+/// Résultat d'un scan. Un état autre que `.ok` donne une liste vide : la section se cache, rien d'autre ne casse.
+struct SimulatorScan: Equatable {
+    enum Status: Equatable {
+        case ok
+        /// `xcrun` absent, ou impossible à lancer.
+        case toolNotFound
+        /// Code de sortie non nul (`nil` : commande refusée par le lanceur avant tout lancement).
+        case commandFailed(exitCode: Int32?)
+        case timedOut
+        /// JSON illisible, ou sortie tronquée (jamais d'analyse partielle).
+        case outputNotReadable
+    }
+
+    let status: Status
+    let devices: [SizedSimulator]
+    /// Le scan a été annulé pendant la mesure des tailles : `devices` ne contient que les appareils déjà mesurés.
+    let cancelled: Bool
+
+    init(status: Status, devices: [SizedSimulator] = [], cancelled: Bool = false) {
+        self.status = status
+        self.devices = devices
+        self.cancelled = cancelled
+    }
+}
+
+extension SimulatorScanner {
+    /// Arguments de la commande : `xcrun simctl list devices -j` (liste seule, jamais de modification).
+    static let listArguments = ["simctl", "list", "devices", "-j"]
+    /// Délai de `simctl list` (A8).
+    static let listTimeLimit: TimeInterval = 60
+    /// Borne de la sortie : 8 Mio (A8).
+    static let outputLimit = 8 * 1024 * 1024
+
+    /// Liste les simulateurs et mesure leur dossier. LECTURE SEULE, synchrone, une seule commande.
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0006) : un test ne lance jamais le vrai outil par mégarde.
+    ///   - xcrunPath: chemin absolu trouvé par `ToolLocator`, `nil` s'il est absent.
+    ///   - home: dossier personnel ; les tailles ne sont lues que sous `Library/Developer/CoreSimulator/Devices/<udid>`.
+    ///   - isCancelled: interrogé avant chaque dossier mesuré.
+    static func scan(runner: CommandRunner,
+                     xcrunPath: String?,
+                     home: URL = URL(fileURLWithPath: NSHomeDirectory()),
+                     isCancelled: () -> Bool = { false }) -> SimulatorScan {
+        guard let xcrunPath else { return SimulatorScan(status: .toolNotFound) }
+
+        let outcome = runner.run(executable: xcrunPath, arguments: listArguments, timeLimit: listTimeLimit, outputLimit: outputLimit)
+        let output: CommandOutput
+        switch outcome {
+        case .failedToLaunch: return SimulatorScan(status: .toolNotFound)
+        case .refused: return SimulatorScan(status: .commandFailed(exitCode: nil))
+        case .timedOut: return SimulatorScan(status: .timedOut)
+        case .completed(let value): output = value
+        }
+        // La sortie d'erreur n'est ni analysée ni conservée (elle peut contenir des chemins personnels).
+        if output.exitCode != 0 { return SimulatorScan(status: .commandFailed(exitCode: output.exitCode)) }
+        if output.truncated { return SimulatorScan(status: .outputNotReadable) }
+        guard let devices = parse(output.stdout) else { return SimulatorScan(status: .outputNotReadable) }
+
+        let root = home.appendingPathComponent("Library/Developer/CoreSimulator/Devices", isDirectory: true)
+        var sized: [SizedSimulator] = []
+        for device in devices {
+            if isCancelled() { return SimulatorScan(status: .ok, devices: sized, cancelled: true) }
+            // L'UDID a été validé par `parse` (forme UUID) : il ne peut pas sortir du dossier des appareils.
+            let folder = root.appendingPathComponent(device.udid, isDirectory: true)
+            sized.append(SizedSimulator(device: device, size: CleanupService.allocatedSize(of: folder)))
+        }
+        return SimulatorScan(status: .ok, devices: sized)
+    }
+}
