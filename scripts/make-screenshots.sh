@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 OUT="${1:?output folder}"; shift || true
 LANGS=("$@"); [ ${#LANGS[@]} -gt 0 ] || LANGS=(en fr)
 SECTIONS=(overview performance battery network history cleanup machine settings
-          cleanup:largeFiles cleanup:devProjects cleanup:uninstaller cleanup:startup)
+          cleanup:largeFiles cleanup:devProjects cleanup:simulators cleanup:uninstaller cleanup:startup)
 EXE="build/Soaro.app/Contents/MacOS/Soaro"
 [ -x "$EXE" ] || { echo "Build the app first: scripts/build-app.sh" >&2; exit 1; }
 mkdir -p "$OUT"

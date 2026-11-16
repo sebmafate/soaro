@@ -208,10 +208,12 @@ extension CPUStats {
 struct EmptyHint: View {
     let text: LocalizedStringKey
     var systemImage = "info.circle"
+    /// Couleur du texte ; `nil` : `.secondary` comme avant (l'écran des simulateurs fournit le jeton « texte de soutien »).
+    var color: Color? = nil
     var body: some View {
         Label(text, systemImage: systemImage)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(color.map(AnyShapeStyle.init) ?? AnyShapeStyle(.secondary))
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -9,6 +9,12 @@ struct SimulatorToolDetection: Equatable {
 
     /// L'outil est « présent » dès qu'un dossier d'appareils ou un `simctl` existe.
     var isToolPresent: Bool { devicesFolderExists || simctlPath != nil }
+
+    /// La rangée « Simulators and emulators » de la liste des outils : visible si l'outil est présent, ou en mode démo.
+    /// `nil` : la détection n'a pas encore eu lieu (la rangée reste cachée).
+    static func showsToolsRow(detection: SimulatorToolDetection?, demo: Bool) -> Bool {
+        demo || (detection?.isToolPresent ?? false)
+    }
 }
 
 /// Les quatre questions que la détection pose au disque (un faux est injecté dans les tests).

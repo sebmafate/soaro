@@ -85,3 +85,20 @@ enum DesignTokens {
         return contrastRatio(composited, on: background)
     }
 }
+
+// MARK: - Texte de soutien dans une vue
+
+/// Applique le jeton « texte de soutien » : couleur selon le thème (clair / sombre) et « Augmenter le contraste ».
+private struct SupportingTextStyle: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(DesignTokens.supportingTextColor(dark: scheme == .dark, contrastIncreased: contrast == .increased))
+    }
+}
+
+extension View {
+    /// Texte de soutien (tailles, résumés, pieds de page) : jamais `.secondary` ni `.tertiary` (DESIGN.md partie 2).
+    func supportingText() -> some View { modifier(SupportingTextStyle()) }
+}

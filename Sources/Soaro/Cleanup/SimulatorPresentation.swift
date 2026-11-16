@@ -94,4 +94,11 @@ enum SimulatorPresentation {
     static func explanationFooter(limitDays: Int, locale: Locale = .current) -> String {
         String(localized: "Devices inactive for more than \(limitDays) days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio.", locale: locale)
     }
+
+    // MARK: En-tête
+
+    /// « Devices: N · X » : appareils listés et somme de leurs tailles mesurées.
+    static func headerSummary(count: Int, size: UInt64, locale: Locale = .current) -> String {
+        String(localized: "Devices: \(count) · \(Format.fileBytes(size, locale: locale))", locale: locale)
+    }
 }
