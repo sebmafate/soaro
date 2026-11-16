@@ -7,7 +7,7 @@
 | Status | draft |
 | Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
+| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
 
 ## Goals and risks
 
@@ -73,13 +73,13 @@ Levels left out, and why: property-based (no function whose input space needs it
 | --- | --- | --- | --- | --- |
 | R1 | Must | Unit, manual | NuGet folder path, listed items and size on a fake tree; the row is hidden if the folder does not exist. Manual: the real cleanup frees about the 13 GB (within 10 %) | yes, then manual |
 | R2 | Covered | Unit | the "App caches" cleaner includes `org.swift.swiftpm` and never `~/Library/org.swift.swiftpm` | yes |
-| R3 | Must | Unit, manual | Table-driven cases from test A: inactive beyond the limit, older copies of the same model and runtime, devices under 100 MB not listed, a variable limit. Manual: the author's check on 5 devices | yes, then manual |
+| R3 | Must | Unit, manual | Table-driven cases from test A: inactive beyond the limit, older copies of the same model and runtime, devices under 100 MB not listed, a variable limit. Manual: the author's check on 5 devices | yes (SL7: `DeviceSuggestionsTests`, fixed `now`, limit always passed explicitly, 59/60/61 days at 60, limits 30/90/180, duplicates, small devices at 99,999,999 and 100,000,000 bytes). **Manual, still open:** the author's check on 5 devices, which confirms or changes the provisional 60-day default |
 | R4 | Must | Unit, manual | The fake runner receives exactly `xcrun simctl delete <udid>`; when the tool fails, **no folder is deleted** (no fallback). Manual: one disposable real device | yes, then manual |
-| R5 | Must | Unit | A `Booted` device is never pre-selected nor removed, even if it becomes `Booted` between the scan and the action | yes |
-| R6 | Must | Unit | Tool absent, non-zero exit, time limit exceeded, malformed JSON: the entry hides, the other platform stays usable, no error reaches the user | yes |
-| R7 | Must | Unit, manual | Size uses the allocated space (a 1 GB sparse file weighs little); the freed amount equals before minus after. Manual: compare with `df` and `du`, within 10 % | yes, then manual |
+| R5 | Must | Unit | A `Booted` device is never pre-selected nor removed, even if it becomes `Booted` between the scan and the action | partly (SL7: a device whose state is not `Shutdown` is never pre-selected, whatever its age, and counts as the newest copy of its group; `DeviceSuggestionsTests`). **Not yet:** the removal and the re-check between scan and action (SL9) |
+| R6 | Must | Unit | Tool absent, non-zero exit, time limit exceeded, malformed JSON: the entry hides, the other platform stays usable, no error reaches the user | yes for iOS in `--scan` (SL7: `SimulatorScannerTests` with the fake runner: tool not found, non-zero exit, timed out, malformed or truncated output, empty list; `SimulatorParsingTests` on the anonymised recorded output; `SimulatorReportTests`: one neutral line per failure). **Not yet:** the entry hiding in the screen (SL8) and Android (SL10) |
+| R7 | Must | Unit, manual | Size uses the allocated space (a 1 GB sparse file weighs little); the freed amount equals before minus after. Manual: compare with `df` and `du`, within 10 % | sizes yes (SL7: a 1 GB sparse file on `CleanupService.allocatedSize` and in the scanner; manual check of 2026-11-16: allocated total 1.02 times `du -sk` of the devices folder). **Not yet:** the freed amount, before minus after (SL9) |
 | R8 | Must | Unit | Cancel is the default button for the five confirmations; the text holds the count, the size and what is lost; cancelling deletes nothing (needs the injectable confirmation) | yes (SL1: alert construction and cancelled confirmation of the four models; Escape by hand) |
-| R9 | Must | Security | Only `PublicIPService.swift` references `URLSession` or `NWConnection`; the runner refuses a relative path and a shell | yes (`NetworkAllowlistTests`: raw substring match on every `.swift` under `Sources/Soaro/`, comments included, so a comment that names `URLSession` elsewhere fails on purpose). **Not covered:** Sparkle (`Updater.swift`), `NWPathMonitor`, `Data(contentsOf:)`, `Process`/`curl`, and the opt-in `/sbin/ping` run by `NetworkSampler.ping` |
+| R9 | Must | Security | Only `PublicIPService.swift` references `URLSession` or `NWConnection`; the runner refuses a relative path and a shell | yes (SL7: `CommandRunnerIntegrationTests` on `/bin/echo`, `/bin/sleep`, `/usr/bin/yes`, `/usr/bin/false`: relative and empty paths, `sh`, `bash`, `zsh`, `dash`, `ksh`, `csh`, `tcsh`, `env`, `/bin/../bin/sh` and a symlink to a shell are refused and nothing is launched; `NetworkAllowlistTests`: raw substring match on every `.swift` under `Sources/Soaro/`, comments included, so a comment that names `URLSession` elsewhere fails on purpose). **Not covered:** Sparkle (`Updater.swift`), `NWPathMonitor`, `Data(contentsOf:)`, `Process`/`curl`, and the opt-in `/sbin/ping` run by `NetworkSampler.ping` |
 | R10 | Should | Unit, manual | The commands issued belong to an allowlist (never volumes, containers or the reclaim container); manual: Test B | yes, then manual |
 | R11 | Should | Manual, then unit | Test B; afterwards "returned = free after minus free before" with an injected free-space provider | partly |
 | R12 | Should | Unit | Every key of the catalogs has the nine languages, and the placeholders (`%@`, `%lld`, `%d`, `%1$@`, `%%`) match between languages | yes (`TranslationCatalogTests`: `realLocalizableCatalogIsCompleteInEveryLanguage`, `realInfoPlistCatalogIsCompleteInEveryLanguage`, plus the pure checks on in-memory catalogs). Exclusions: exactly five keys of `Localizable.xcstrings` with an empty entry (`""`, `"%@ %@"`, `"%@ / %@"`, `"%@ · %@"`, `"%lld °C"`); an exclusion whose key disappears fails. A key without placeholder is never formatted at runtime, so `% zu` there is not a gap but `%%` is |
@@ -150,7 +150,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 ## Definition of done (per slice)
 
-- [ ] Tests written first or alongside, and passing (`swift test`)
+- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 298 tests in 45 suites after SL3 and SL7)
 - [ ] Acceptance criteria verified; the rows of the matrix updated
 - [ ] No test calls a real simulator, Android or Docker tool, and the destructive paths take their runner as a parameter without a default
 - [ ] Fixtures anonymised (no home path, user name, project or bundle name)
@@ -160,6 +160,8 @@ Regression in a measured quality: none is measured automatically. Performance is
 - [ ] A demo-mode branch for every new model (nothing measured or written in demo mode)
 - [ ] Documentation, `CHANGELOG.md`, `STATUS.md` and the days spent in `PLAN.md` updated
 - [ ] No new warnings
+
+SL7 (iOS simulators in `--scan`), done 2026-11-16: the items "a demo-mode branch for every new model", "new user-facing strings translated" and "a destructive path was tried once on a disposable target" are **not applicable to SL7** (no model, no screen, no new string in the catalog, nothing is removed). Fixtures are anonymised (the one real recording was made outside the repository and deleted).
 
 ## Tooling decisions
 

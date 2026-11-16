@@ -27,7 +27,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
 | SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 6 min of agent time on 2026-11-16, 13:59:52 to 14:05:57; QA review and the author's manual checks not included) | done |
 | SL6 | NuGet packages row | S | SL1 | yes | | todo |
-| SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | | todo |
+| SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | 0.25 (measured: 18 min of agent time from the first commit at 14:24 to the last at 14:42 on 2026-11-16, rounded up to a quarter day; about 2 min of it waiting on real scans for the manual checks; the reading before the first commit is not counted; QA review and the author's 5-device check not included). Running total: under 0.1 + 0.25 + 0.25 = under 0.6 of the 14 days | done |
 | SL8 | The tool "Simulators and emulators", read-only | M | SL3, SL7 | yes | | todo |
 | SL9 | Remove simulators (**first useful slice**) | M | SL8 | yes | | todo |
 | SL4 | Darker supporting text across the app | M | SL3 | no | | todo |
@@ -121,13 +121,13 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Serves**: R3, R6, R7; ADR 0009; `TESTING.md` T8, T9.
 - **Components**: new `CommandRunner` (protocol, real and fake), `ToolLocator` (`/usr/bin/xcrun`), `SimulatorScanner` (pure parsing of `simctl list devices -j`), `DeviceSuggestions` (pure), the `--scan` mode.
 - **Acceptance criteria**
-  - [ ] The real runner kills a process at the time limit, bounds its output and refuses a relative path or a shell (integration tests on `/bin/echo`, `/bin/sleep`, `/usr/bin/yes`).
-  - [ ] The parser reads a recorded, anonymised `simctl` output (contract test) and survives malformed JSON, a missing tool and a non-zero exit (the section is empty, nothing crashes).
-  - [ ] The suggestion function pre-selects devices inactive beyond the limit (default 60 days) and older copies of the same model and runtime; devices under 100 MB are counted, not listed; the limit is a parameter.
-  - [ ] Sizes use the allocated space (a sparse file test).
-  - [ ] Manual: the list printed on the author's Mac matches `xcrun simctl list devices`.
-- **Tests**: unit, integration, contract.
-- **Notes**: scanners and removers take the runner with **no default value**. The author's check of the classification on 5 devices happens here and fixes the default limit.
+  - [x] The real runner kills a process at the time limit, bounds its output and refuses a relative path or a shell (integration tests on `/bin/echo`, `/bin/sleep`, `/usr/bin/yes`; `CommandRunnerIntegrationTests`, 9 tests, run 5 times in a row without a failure).
+  - [x] The parser reads a recorded, anonymised `simctl` output (contract test) and survives malformed JSON, a missing tool and a non-zero exit (the section is empty, nothing crashes). The fixture is anonymised by hand from a real recording made once on the author's Mac (read-only, outside the repository, deleted afterwards). The recording held only `Shutdown`, available, iOS devices: the `Booted` device, the unavailable one (`availabilityError`) and the watchOS runtime in the fixture were added by hand from the known format of the tool.
+  - [x] The suggestion function pre-selects devices inactive beyond the limit (default 60 days) and older copies of the same model and runtime; devices under 100 MB are counted, not listed; the limit is a parameter.
+  - [x] Sizes use the allocated space (a sparse file test on `CleanupService.allocatedSize` and on the scanner).
+  - [x] Manual (run by the agent on the author's Mac, 2026-11-16, counts only): the list printed by `--scan` matches `xcrun simctl list devices` (same device count and same UDID set between the JSON and the text output of `simctl`; every listed device matches on name, runtime, state, availability, date presence and whole days; listed plus small equals the total).
+- **Tests**: unit, integration, contract (90 tests added by SL7, 262 on its own branch; 298 once merged with SL3).
+- **Notes**: scanners and removers take the runner with **no default value**; the real runner is built only in `Diagnostics.scan`. Read-only: nothing is removed. Done 2026-11-16: `CommandRunner` (protocol, outcome type), `RealCommandRunner` (the only new use of `Process`), `ToolLocator` (`/usr/bin/xcrun`), `SimulatorScanner` (parsing, then `scan` with allocated sizes), `DeviceSuggestions`, `SimulatorReport` (pure text of the `--scan` section), the fake runner in the test target. The key read for the last use is `lastUsedAt` (16 of 42 devices on the author's Mac carry it; the others are "unknown" and never pre-selected). Manual results: the simulators section took 16.5 s and 23.2 s in two runs of the debug build (42 devices, about 45 GB; `simctl list` itself under 1 s), so SL8 should use **progressive sizes** (above the 10 s threshold). The allocated total is 1.02 times `du -sk` of the devices folder (within 10 %, R7). Missing `xcrun` (M4) was not tried on the real Mac (not safe to do without changing the system): covered by unit tests only. **Still open: the author's check of the classification on 5 devices.** The limit stays a parameter and 60 days stays provisional (one named constant, `DeviceSuggestions.defaultLimitDays`); `--scan` prints the days since last use of every listed device so the author can judge. Not in SL7, kept open: the decision on simulator runtimes (31.5 GB). Known limit: grandchild processes of a killed tool are not killed. Not changed: `CHANGELOG.md` (the section is a developer mode, no user-facing change).
 
 ### SL8: The tool "Simulators and emulators", read-only
 
@@ -143,7 +143,7 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
   - [ ] The Delete button is not available yet.
   - [ ] Demo mode works for the screenshots.
 - **Tests**: unit (model states with a fake runner), manual (panel and window, light and dark).
-- **Notes**: if the real sizes take more than about 10 s on the author's Mac, switch to progressive sizes (`DESIGN.md` open question).
+- **Notes**: if the real sizes take more than about 10 s on the author's Mac, switch to progressive sizes (`DESIGN.md` open question). **Prerequisites from the SL7 review:** (1) `/usr/bin/xcrun` is a stub shipped with every macOS, so `ToolLocator` finding it does not mean `simctl` can run. Without the Command Line Tools or Xcode it may open the system "install developer tools" dialog (inferred, not tried); with the Command Line Tools only, `simctl` is missing and the command exits non-zero. The criterion "the row appears only if the simulator tool is found" must therefore be decided with a prompt-free check, one that launches nothing that can open a window. (2) A listed device can be an "older copy" of a small device that is not listed: the reason shown in the tool should name the device that is kept.
 
 ### SL9: Remove simulators (first useful slice)
 
@@ -285,3 +285,4 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | --- | --- | --- |
 | 2026-11-15 | Plan created from the spec, architecture, design and test strategy. SL4 and SL5 placed after SL9 and kept out of the 14-day count | Author's decision during the slice step: protect the time box; SL3 stays before the tool because the screen depends on it |
 | 2026-11-16 | SL3 done on its branch: components in new files, not in `Components.swift`; the Uninstaller is the third tool affected; SL4's contrast criterion reduces to "applied everywhere" | The token is defined and tested in SL3 with an absolute alpha; `Components.swift` is left to SL6 |
+| 2026-11-16 | SL7 started before the author's check of the classification on 5 devices. The check moves to before SL8 shows a default limit, and before the release at the latest | The limit is a parameter of the suggestion function, so SL7 does not depend on the check (author's instruction) |

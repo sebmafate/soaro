@@ -69,6 +69,16 @@ enum Diagnostics {
             print("\(Format.fileBytes(a.size))  \(a.kind.label)  \(a.projectPath)  (inactive \(a.daysInactive().map(String.init) ?? "?") d)")
         }
 
+        // Simulateurs iOS : lecture seule (`xcrun simctl list devices -j`), puis tailles allouées sur disque.
+        // C'est ici, et nulle part ailleurs, que le vrai lanceur de commandes est construit.
+        let simulatorStart = Date()
+        let simulatorScan = SimulatorScanner.scan(runner: RealCommandRunner(),
+                                                  xcrunPath: ToolLocator.firstExecutable(in: ToolLocator.simulatorCandidates))
+        let suggestions = DeviceSuggestions.suggest(simulatorScan.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
+        for line in SimulatorReport.lines(scan: simulatorScan, suggestions: suggestions, locale: .current,
+                                          limitDays: DeviceSuggestions.defaultLimitDays) { print(line) }
+        print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(simulatorStart)))
+
         print("== Installed apps")
         let apps = AppUninstaller.installedApps()
         print("\(apps.count) apps, \(apps.filter(AppUninstaller.canUninstall).count) can be uninstalled")
