@@ -4,7 +4,7 @@
 
 | | |
 | --- | --- |
-| Phase | development of the developer cleanup is planned (2026-11-15), nothing built yet; the released app is in maintenance |
+| Phase | development of the developer cleanup is under way (SL1 and SL2 merged, SL7 done on its branch, 2026-11-16); the released app is in maintenance |
 | Last updated | 2026-11-16 |
 | Version | 1.0.1 (tag `v1.0.1`, build 15) |
 
@@ -14,14 +14,21 @@ The developer cleanup (iOS simulators, Android emulators, NuGet; Docker later) i
 
 1. **The author:** check the simulator classification on 5 devices, check the Android list against Android Studio, decide on simulator runtimes (31.5 GB, outside the home folder; reopens ADR 0006 and 0009 if included).
 2. **Test B for Docker** (the author starts Docker Desktop; nothing destructive without his confirmation). Fixes the status of ADR 0010.
-3. `DESIGN.md` Part 1 (UX) is written (2026-11-15): NuGet is a row in Developer; one tool "Simulators and emulators" covers iOS and Android. `DESIGN.md` Part 2 (UI) is written too (2026-11-15): no new component; an accessibility lot goes into the shared `SelectionRow` and `ActionBar`. Decided: an accessibility slice comes before the tool (Cancel as default button, toast fade and VoiceOver announcement, a darker "supporting text" color across the app, shared selection row and action bar; see `DESIGN.md` Open points). `TESTING.md` v0.2 is written (2026-11-15): matrix for R1 to R19, the accessibility slice, test data rules (anonymised inline fixtures, no default runner for destructive paths), gates, manual checklists, definition of done. `PLAN.md` v0.1 is written (2026-11-15): 15 items, the first useful slice is SL9; the Must slices add up to 13 of the 14 working days. SL1 (Return never deletes) is done and merged (pull request #6, 2026-11-16): Cancel is the default button of the five confirmations, and the four cleanup models take an injectable confirmation. **Next action: `/trellis:deliver` for SL3 or SL6** (SL1 and SL2 are done; SL7 also needs the author's check of the simulator classification on 5 devices). The author still has to check by hand that Return cancels and Escape also cancels (demo mode, English and French; never click the destructive button). Pending decisions of the author: the check of the simulator classification on 5 devices (needed by SL7), the simulator runtimes (out of scope), the date of Docker Test B (SP1).
+3. `DESIGN.md` Part 1 (UX) is written (2026-11-15): NuGet is a row in Developer; one tool "Simulators and emulators" covers iOS and Android. `DESIGN.md` Part 2 (UI) is written too (2026-11-15): no new component; an accessibility lot goes into the shared `SelectionRow` and `ActionBar`. Decided: an accessibility slice comes before the tool (Cancel as default button, toast fade and VoiceOver announcement, a darker "supporting text" color across the app, shared selection row and action bar; see `DESIGN.md` Open points). `TESTING.md` v0.2 is written (2026-11-15): matrix for R1 to R19, the accessibility slice, test data rules (anonymised inline fixtures, no default runner for destructive paths), gates, manual checklists, definition of done. `PLAN.md` v0.1 is written (2026-11-15): 15 items, the first useful slice is SL9; the Must slices add up to 13 of the 14 working days. SL1 (Return never deletes) is done and merged (pull request #6, 2026-11-16): Cancel is the default button of the five confirmations, and the four cleanup models take an injectable confirmation. SL7 (iOS simulators in `--scan`, read-only) is done on its branch `slice/SL7-ios-simulators-scan`, not merged yet. **Next action: SL8 needs SL3 (pull request #8) and SL7 merged; SL6 (NuGet) only needs SL1 and can start now.** Pending items for the author, all kept:
+
+- Check the simulator classification on 5 devices: confirm or change the 60-day default (provisional, `DeviceSuggestions.defaultLimitDays`; `Soaro --scan` prints the days since last use of every listed device). Needed before SL8 shows a default, and before the release at the latest.
+- Decide on simulator runtimes (31.5 GB, outside the home folder; reopens ADR 0006 and 0009 if included).
+- Choose the date of Docker Test B (SP1).
+- Check by hand that Return cancels and Escape also cancels a confirmation (SL1; demo mode, English and French; never click the destructive button).
+- Review the 17 French strings completed by SL2.
+- Check the update 1.0.0 to 1.0.1 from inside the app, and that Sparkle's window comes to the front (`docs/updates.md`).
 
 Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
 ## Where we are
 
-- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 172 tests pass (145 of `main` after SL1, plus 27 of SL2).
-- In progress: SL2 (done on its branch `slice/SL2-repository-guards`, pull request #7 open). SL2 added the network allowlist test, the catalog completeness test and the opt-in defaults test, and completed 17 French strings (to review by the author).
+- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 255 tests pass on the SL7 branch (172 on `main` after SL1 and SL2, plus 83 of SL7).
+- In progress: SL7 is done on its branch, awaiting review and merge. SL1 and SL2 are merged (pull requests #6 and #7). SL3 is pull request #8 (not merged).
 - To verify by the author: the update 1.0.0 to 1.0.1 from inside the app, and that Sparkle's window comes to the front for a menu bar app without Dock icon (`docs/updates.md`).
 
 ## Risks and blockers

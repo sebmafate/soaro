@@ -43,8 +43,8 @@ flowchart LR
   RE[RecommendationEngine, Advice, LeakDetector: pure]
   UI[Views: menu bar panel and standalone window]
   CL[CleanupService and Cleanup/*]
-  DC["Developer cleaners (planned): SimulatorScanner, AndroidEmulatorScanner, Docker (proposed)"]
-  CR["CommandRunner and ToolLocator (planned)"]
+  DC["Developer cleaners: SimulatorScanner (read-only, SL7), AndroidEmulatorScanner (planned), Docker (proposed)"]
+  CR["CommandRunner and ToolLocator (implemented, SL7)"]
   EXT[("External tools: xcrun simctl, docker")]
   UP[Updater: Sparkle]
   SS --> AS
@@ -74,11 +74,12 @@ One `AppState` object (main actor) owns a 3-second timer. Each tick asks the sam
 | `HistoryStore` | SQLite, aggregation by time slices, 30-day retention | `sqlite3` |
 | `RecommendationEngine`, `Advice`, `LeakDetector` | Pure analysis: measurements in, recommendations and tips out | Models only |
 | `CleanupService`, `Cleanup/*` | Scanners (caches, large files, dev artifacts, uninstaller leftovers, login items) and the deletion rules | FileManager, Finder (Apple Events) |
-| `CommandRunner` (planned, ADR 0009) | Runs one external program: absolute path, no shell, time limit that kills the process, bounded output, protocol with a fake for tests. Only new code uses it; the four existing copies of a `Process` helper stay | Foundation `Process` |
-| `ToolLocator` (planned, ADR 0009) | Finds `xcrun`, the Android SDK (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, then `~/Library/Android/sdk`) and later `docker` from candidate paths, never the PATH | FileManager |
-| `SimulatorScanner` (planned) | Reads `simctl list devices -j`, builds the virtual devices, removes one through `simctl delete`, refuses a `Booted` device | CommandRunner, ToolLocator |
+| `CommandRunner` (implemented, SL7; ADR 0009) | Protocol `CommandRunner` (`Cleanup/CommandRunner.swift`) and `RealCommandRunner` (`Cleanup/RealCommandRunner.swift`, the only new code that uses `Process`): absolute path only, no shell (`sh`, `bash`, `zsh`, `dash`, `ksh`, `csh`, `tcsh`, `fish` and `env` are refused, also through `..` or a symlink), arguments as an array, stdin `/dev/null`, a time limit that kills the process with SIGKILL, output read while running and bounded per stream (past the cap: the process is killed, the output cut, `truncated` set). Outcomes: completed, timed out, failed to launch, refused. No default runner: scanners take it as a parameter without a default value, and the real one is built only in `Diagnostics.scan`. The fake is hand-written in the test target. **Known limit:** grandchild processes of a killed tool are not killed. The four existing copies of a `Process` helper stay | Foundation `Process` |
+| `ToolLocator` (implemented for `xcrun` only, SL7; ADR 0009) | Returns the first candidate that is an absolute path to an executable regular file, else nothing; the simulator candidates are exactly `/usr/bin/xcrun`. Android (SL10) and Docker (SL13) candidates come with their slices. Target design: finds `xcrun`, the Android SDK (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, then `~/Library/Android/sdk`) and later `docker` from candidate paths, never the PATH | FileManager |
+| `SimulatorScanner` (read-only part implemented, SL7; removal planned, SL9) | Runs `/usr/bin/xcrun simctl list devices -j` (time limit **60 s**, output cap **8 MiB**), parses it (`SimulatorDevice`), then measures `CleanupService.allocatedSize` of `~/Library/Developer/CoreSimulator/Devices/<udid>` (the whole device folder; never `dataPath` or `dataPathSize` from the tool; the UDID must match the UUID pattern before it is joined to a path). States: ok, tool not found, command failed, timed out, output not readable (a truncated output is not parsed). No fallback to a folder listing when the tool fails. Removal through `simctl delete` and the refusal of a running device come with SL9 | CommandRunner, ToolLocator, CleanupService |
 | `AndroidEmulatorScanner`, Android image scanner (planned) | Reads `~/.android/avd` (`.ini`, `config.ini`), detects a running AVD from the process list (`-avd <name>`), removes the `.ini` and `.avd` pair, links system images to their AVDs | FileManager, process list |
-| `DeviceSuggestions` (planned, pure) | Shared by iOS and Android: pre-selects devices idle beyond the threshold (default 60 days) and older duplicates of the same model and runtime | Models only |
+| `DeviceSuggestions` (implemented, SL7, pure) | Pre-selects devices idle for strictly more than the limit (whole days, the limit is a parameter, default 60 days provisional) and older copies of the same model and runtime; devices under 100,000,000 bytes are counted, not listed. Shared later by iOS and Android (SL10) | Models only |
+| `SimulatorReport` (implemented, SL7, pure) | The text of the `== iOS Simulators` section of `Soaro --scan`, in plain English (not localised), built from a scan result, the suggestions, a locale and the limit | Format |
 | Docker cleaner (proposed, ADR 0010) | Lists usage and prunes the build cache and untagged images through the `docker` command; measures the host space returned | CommandRunner, ToolLocator |
 | `Views/*`, `MainWindow` | Tabbed panel and standalone window (AppKit window, created on demand). The cleanup tool models are `StateObject`s of `CleanupTab`, not part of `AppState`; one new route is planned in `CleanupRoute` for the tool "Simulators and emulators" (iOS and Android in one list, `DESIGN.md`), and a second one for Docker only if Test B passes | AppState |
 | `Updater` | Sparkle, inactive without `SUFeedURL` and `SUPublicEDKey` | Sparkle |
@@ -87,6 +88,16 @@ One `AppState` object (main actor) owns a 3-second timer. Each tick asks the sam
 | `scripts/`, `.github/workflows/` | App assembly, signing, DMG, notarization, appcast, CI | Xcode 26, Sparkle tools |
 
 All **[H]**, from `docs/architecture.md` and the sources.
+
+### Simulator scan (SL7, 2026-11-16): facts recorded
+
+- **A1, last-used key.** Read from the real output of `xcrun simctl list devices -j` on the author's Mac: the key is `lastUsedAt`, an ISO 8601 date without fractional seconds (the parser also accepts fractional seconds). It is present on some devices only (16 of 42): the others are "unknown" and are never pre-selected. `lastBootedAt` is read only if `lastUsedAt` is absent. No file date is used.
+- **A8, runner values.** `simctl list`: time limit 60 s, output cap 8 MiB (the default limit of the runner for other tools is 30 s, not used yet).
+- **A3, running.** A device is running when its state is not `Shutdown` (`Booted`, `Booting`, `Shutting Down`, or a state that is unknown or missing). A running device is never pre-selected and counts as used now.
+- **A4, grouping.** Same model (`deviceTypeIdentifier`, the name if it is missing) and same runtime identifier; the most recently used device of a group is kept, the other dated ones are "older copies". All devices take part in the grouping, including the small ones that are not listed.
+- **A6, runtimes.** All runtimes are listed (iOS, watchOS, tvOS, visionOS); an unavailable device is listed and flagged. SL8 decides how they are labelled.
+- **Sizes.** The scan of 42 devices (about 45 GB) took 16.5 s and 23.2 s on the author's Mac (debug build); SL8 should show sizes progressively.
+- **Limit.** The 60-day default is provisional until the author's check on 5 devices.
 
 ## Data and storage
 
@@ -196,3 +207,4 @@ Components with no requirement of their own: `CommandRunner` (serves R4, R6, R17
 | --- | --- | --- |
 | 2026-11-15 | Reconstructed from the code at `e4520dd` | 0001-0008 |
 | 2026-11-15 | Developer cleanup designed from `SPEC.md` v0.3: contract for tool-owned cleanup actions, proposed Docker decision, notes for NuGet, SwiftPM, simulators, Android and tests | 0009, 0010 (proposed) |
+| 2026-11-16 | SL7: `CommandRunner`, `ToolLocator` (xcrun), `SimulatorScanner` (read-only), `DeviceSuggestions` implemented; facts of the simulator scan recorded (last-used key, limits, running rule, grouping key). No decision changed | 0009 |
