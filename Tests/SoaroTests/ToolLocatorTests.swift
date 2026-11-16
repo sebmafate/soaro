@@ -51,4 +51,22 @@ import Testing
     @Test func simulatorCandidatesAreExactlyXcrunByAbsolutePath() {
         #expect(ToolLocator.simulatorCandidates == ["/usr/bin/xcrun"])
     }
+
+    /// Faux gestionnaire de fichiers pour lequel TOUT existe et est exécutable : seul le refus d'un chemin relatif peut l'arrêter.
+    private final class EverythingExistsFileManager: FileManager {
+        override func fileExists(atPath path: String, isDirectory: UnsafeMutablePointer<ObjCBool>?) -> Bool {
+            isDirectory?.pointee = false
+            return true
+        }
+        override func isExecutableFile(atPath path: String) -> Bool { true }
+    }
+
+    @Test func aRelativeCandidateIsRefusedEvenIfItExistsRelativeToTheCurrentFolder() {
+        let everything = EverythingExistsFileManager()
+        // Sanity du faux : un chemin absolu est accepté.
+        #expect(ToolLocator.firstExecutable(in: ["/usr/bin/xcrun"], fileManager: everything) == "/usr/bin/xcrun")
+        // Un chemin relatif « existe » pour le faux, mais n'est jamais accepté, ni seul ni avant un chemin absolu valide.
+        #expect(ToolLocator.firstExecutable(in: ["xcrun", "./xcrun", "../xcrun", "bin/xcrun", ""], fileManager: everything) == nil)
+        #expect(ToolLocator.firstExecutable(in: ["./xcrun", "/usr/bin/xcrun"], fileManager: everything) == "/usr/bin/xcrun")
+    }
 }

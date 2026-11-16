@@ -74,7 +74,9 @@ struct RealCommandRunner: CommandRunner {
         onLaunch?(pid)
 
         func kill() {
-            Foundation.kill(pid, SIGKILL)
+            // Jamais de signal à un processus déjà fini : son pid pourrait avoir été réattribué à un autre programme.
+            // (Reste une fenêtre minuscule entre la vérification et l'envoi ; elle est inévitable sans pidfd sous macOS.)
+            if process.isRunning { Foundation.kill(pid, SIGKILL) }
             process.waitUntilExit()
         }
 
@@ -111,6 +113,9 @@ private final class StreamCapture {
     private var buffer = Data()
     private var overflow = false
     private var ended = false
+    /// Sérialise le corps du gestionnaire de lecture avec `stop()`.
+    private let handlerLock = NSLock()
+    private var stopped = false
     private let endGroup = DispatchGroup()
 
     init(pipe: Pipe, limit: Int, onOverflow: @escaping () -> Void) {
@@ -125,6 +130,11 @@ private final class StreamCapture {
     func start() {
         endGroup.enter()
         pipe.fileHandleForReading.readabilityHandler = { [self] handle in
+            // `handlerLock` : `stop()` attend la fin d'un appel en cours avant de fermer le tube,
+            // et un appel qui arrive après `stop()` ne lit plus rien.
+            handlerLock.lock()
+            defer { handlerLock.unlock() }
+            if stopped { return }
             let chunk = handle.availableData
             lock.lock()
             if chunk.isEmpty {
@@ -160,8 +170,13 @@ private final class StreamCapture {
     }
 
     /// Arrête la lecture et ferme le tube (idempotent).
+    /// Ordre voulu : plus de nouvel appel du gestionnaire, puis attente de l'appel en cours (`handlerLock`), puis fermeture :
+    /// le descripteur n'est jamais fermé sous les pieds d'une lecture en cours (`availableData` lèverait une exception).
     func stop() {
         pipe.fileHandleForReading.readabilityHandler = nil
+        handlerLock.lock()
+        stopped = true
+        handlerLock.unlock()
         lock.lock()
         finishLocked()
         lock.unlock()

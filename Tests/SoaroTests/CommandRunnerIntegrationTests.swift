@@ -108,6 +108,43 @@ import Testing
         #expect(Date().timeIntervalSince(start) < 30)
     }
 
+    /// `dd` écrit des zéros sur SA sortie d'erreur (`of=/dev/stderr`) : inoffensif, et seul moyen simple d'inonder stderr
+    /// sans shell (`yes` n'écrit que sur la sortie standard).
+    @Test func standardErrorIsBoundedLikeStandardOutput() {
+        let log = PidLog()
+        let runner = makeRunner(log)
+        let cap = 4096
+        let start = Date()
+        let outcome = runner.run(executable: "/bin/dd", arguments: ["if=/dev/zero", "of=/dev/stderr", "bs=1024", "count=200000"],
+                                 timeLimit: 30, outputLimit: cap)
+        guard case .completed(let out) = outcome else { Issue.record("dd aurait dû rendre une sortie coupée, pas \(outcome)"); return }
+        #expect(out.truncated, "le flot d'erreur dépassait la borne")
+        #expect(out.stderr.count <= cap)
+        #expect(out.stderr.count > 0)
+        #expect(out.stdout.count <= cap)
+        #expect(Date().timeIntervalSince(start) < 10, "dd (200 Mo) doit être arrêté bien avant la fin")
+        if let pid = log.pids.first { #expect(waitUntilGone(pid)) }
+    }
+
+    /// L'entrée standard du programme est `/dev/null` : `cat` sans argument rend la main tout de suite, sans rien lire.
+    /// Pour que le test échoue si l'entrée était héritée, on met d'abord sur l'entrée du test un tube dont l'écriture reste ouverte
+    /// (un `cat` qui hériterait de ce tube attendrait jusqu'au délai), puis on la rétablit.
+    @Test(.serialized) func standardInputIsDevNullSoACatReturnsAtOnce() {
+        var fds: [Int32] = [0, 0]
+        guard pipe(&fds) == 0 else { Issue.record("pipe impossible"); return }
+        let saved = dup(0)
+        defer { dup2(saved, 0); close(saved); close(fds[0]); close(fds[1]) }
+        dup2(fds[0], 0)
+
+        let runner = makeRunner()
+        let start = Date()
+        let outcome = runner.run(executable: "/bin/cat", arguments: [], timeLimit: 5, outputLimit: 4096)
+        guard case .completed(let out) = outcome else { Issue.record("cat a attendu sur l'entrée : \(outcome)"); return }
+        #expect(out.exitCode == 0)
+        #expect(out.stdout.isEmpty)
+        #expect(Date().timeIntervalSince(start) < 4)
+    }
+
     // MARK: Lancement impossible
 
     @Test func missingPathDirectoryAndNonExecutableFailToLaunchWithoutCrashing() throws {

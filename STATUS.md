@@ -27,7 +27,7 @@ Source: the author's idea list, item 5 (`~/Projets/Perso/idees.md`).
 
 ## Where we are
 
-- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 255 tests pass on the SL7 branch (172 on `main` after SL1 and SL2, plus 83 of SL7).
+- Done: 1.0.0 and 1.0.1 published on GitHub Releases. Signed with Developer ID, notarized, updated through Sparkle. Website live on `soaro.app` (Cloudflare Pages) and serving the appcast through a redirect to the latest release. Nine languages. 262 tests pass on the SL7 branch (172 on `main` after SL1 and SL2, plus 90 of SL7).
 - In progress: SL7 is done on its branch, awaiting review and merge. SL1 and SL2 are merged (pull requests #6 and #7). SL3 is pull request #8 (not merged).
 - To verify by the author: the update 1.0.0 to 1.0.1 from inside the app, and that Sparkle's window comes to the front for a menu bar app without Dock icon (`docs/updates.md`).
 
