@@ -19,7 +19,13 @@ final class FakeCommandRunner: CommandRunner {
         let arguments: [String]
     }
 
-    private var scripts: [Key: CommandOutcome] = [:]
+    /// Résultats prévus par commande, dans l'ordre ; `next` : rang du prochain à rendre. Le dernier se répète.
+    private struct Script {
+        var outcomes: [CommandOutcome]
+        var next = 0
+    }
+
+    private var scripts: [Key: Script] = [:]
     private(set) var calls: [Call] = []
     private(set) var unscriptedCalls: [Call] = []
 
@@ -28,18 +34,31 @@ final class FakeCommandRunner: CommandRunner {
         Issue.record("Appel non prévu au faux lanceur : \(description)")
     }
 
+    /// Un seul résultat, rendu à chaque appel (comportement d'origine). Remplace tout script précédent de la commande.
     func script(_ outcome: CommandOutcome, executable: String, arguments: [String]) {
-        scripts[Key(executable: executable, arguments: arguments)] = outcome
+        script(sequence: [outcome], executable: executable, arguments: arguments)
+    }
+
+    /// Une suite de résultats pour une même commande : chaque appel rend le suivant, et le dernier se répète
+    /// (p. ex. `simctl list` appelé pour le scan, avant chaque suppression, puis pour le nouveau scan).
+    /// Remplace tout script précédent de la commande.
+    func script(sequence outcomes: [CommandOutcome], executable: String, arguments: [String]) {
+        precondition(!outcomes.isEmpty, "une suite de résultats ne peut pas être vide")
+        scripts[Key(executable: executable, arguments: arguments)] = Script(outcomes: outcomes)
     }
 
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
         let call = Call(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit)
         calls.append(call)
-        guard let outcome = scripts[Key(executable: executable, arguments: arguments)] else {
+        let key = Key(executable: executable, arguments: arguments)
+        guard var script = scripts[key] else {
             unscriptedCalls.append(call)
             reportUnscripted("\(executable) \(arguments.joined(separator: " "))")
             return .failedToLaunch
         }
+        let outcome = script.outcomes[min(script.next, script.outcomes.count - 1)]
+        script.next += 1
+        scripts[key] = script
         return outcome
     }
 }
