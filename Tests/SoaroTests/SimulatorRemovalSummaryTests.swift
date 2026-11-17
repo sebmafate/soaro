@@ -4,6 +4,13 @@ import Testing
 
 /// Bilan d'un lot de suppressions et texte du toast (SL9 T4) : fonctions pures, locale passée.
 /// Les attendus sont les textes anglais (clés du catalogue), comme dans `SimulatorPresentationTests`.
+extension SimulatorRemovalSummary {
+    /// Le toast d'un lot iOS seul : le SEUL texte de toast est celui de `DeviceRemovalSummary` (un lot mixte sans Android).
+    func toast(locale: Locale = .current) -> String {
+        DeviceRemovalSummary(ios: self, android: SimulatorRemovalSummary()).toast(locale: locale)
+    }
+}
+
 @Suite(.serialized) struct SimulatorRemovalSummaryTests {
     let locale = Locale(identifier: "en_US")
     static let gb: UInt64 = 1_000_000_000

@@ -125,19 +125,6 @@ import Testing
         #expect(run.summary.toast(locale: locale) == "\(Format.fileBytes(0, locale: locale)) freed")
     }
 
-    @Test func iosOnlyBatchGivesTheSameTextAsTheIosOnlySummary() {
-        // Le comportement iOS seul ne change pas : même texte que `SimulatorRemovalSummary`.
-        let results: [[SimulatorRemovalResult]] = [
-            [.removed(freed: Self.gb)], [.running(name: "Test Phone I")], [.failed, .refused], [.timedOut],
-            [.removed(freed: Self.gb), .running(name: "Test Phone I")], [.couldNotCheck, .failed],
-        ]
-        for ios in results {
-            let targets = ios.indices.map { "u\($0 + 1)" }
-            let old = SimulatorRemovalSummary.run(targets: targets, isCancelled: { false }) { ios[targets.firstIndex(of: $0)!] }
-            #expect(batch(ios: ios, android: []).summary.toast(locale: locale) == old.toast(locale: locale), "\(ios)")
-        }
-    }
-
     @Test func theIosGroupAlwaysRunsBeforeTheAndroidGroup() {
         let run = batch(ios: [.removed(freed: 1), .removed(freed: 1)], android: [.removed(freed: 1), .removed(freed: 1)])
         #expect(run.tried == ["u1", "u2", "Test_Avd_1", "Test_Avd_2"])

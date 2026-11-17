@@ -1,7 +1,7 @@
 import Foundation
 
-/// Bilan d'un lot de suppressions de simulateurs et texte du toast (SL9, R4, R5, R7) : tout est PUR (locale explicite).
-/// Les noms d'appareils ne sont jamais des clés de catalogue : ils sont insérés tels quels dans le texte.
+/// Bilan d'un lot de suppressions d'un groupe d'appareils (SL9, R4, R5, R7) : tout est PUR. Le texte du toast, lui, est UN seul : celui de
+/// `DeviceRemovalSummary.toast` (un lot iOS seul est un lot mixte sans Android).
 struct SimulatorRemovalSummary: Equatable {
     /// Appareils réellement supprimés.
     private(set) var removedCount = 0
@@ -61,28 +61,5 @@ struct SimulatorRemovalSummary: Equatable {
         case .timedOut:
             timedOut = true
         }
-    }
-
-    /// Texte du toast, morceaux joints par « · ». « Non supprimés » = échecs + cibles jamais essayées après un Retour.
-    /// - Chaîne VIDE quand Retour est arrivé avant la moindre tentative : il n'y a rien à dire.
-    /// - L'espace libéré d'abord, quand au moins un appareil a été supprimé, ou quand rien n'est « non supprimé » et qu'il n'y a pas
-    ///   de délai dépassé ;
-    /// - puis : délai dépassé → « did not answer » ; sinon un seul appareil non supprimé, en cours d'exécution → son nom ;
-    ///   sinon, s'il y en a → leur nombre (les appareils en cours d'exécution inclus).
-    func toast(locale: Locale = .current) -> String {
-        if attemptedCount == 0 && untriedCount > 0 { return "" }
-        let notRemoved = failureCount + untriedCount
-        var parts: [String] = []
-        if removedCount > 0 || (notRemoved == 0 && !timedOut) {
-            parts.append(String(localized: "\(Format.fileBytes(freed, locale: locale)) freed", locale: locale))
-        }
-        if timedOut {
-            parts.append(String(localized: "Xcode’s simulator service did not answer. Try again in a moment.", locale: locale))
-        } else if notRemoved == 1, let name = runningNames.first, runningNames.count == 1 {
-            parts.append(String(localized: "“\(name)” is running: quit it first.", locale: locale))
-        } else if notRemoved > 0 {
-            parts.append(String(localized: "Devices that could not be removed: \(notRemoved)", locale: locale))
-        }
-        return parts.joined(separator: " · ")
     }
 }
