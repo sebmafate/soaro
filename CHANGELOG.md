@@ -7,6 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size and pre-selects those inactive for a long time and older copies. Removal comes in a later version.
+- New cleaner “NuGet packages” (Cleanup > Developer): frees the NuGet package cache, after a confirmation. It is not part of the quick clean.
 
 ### Changed
 
@@ -16,6 +17,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
+- In demo mode, confirming a cleanup no longer deletes real files.
 - French: the battery explanation no longer shows "100 %%" (SL2; AI-assisted wording, to review by the author).
 
 ## [1.0.1] - 2026-11-15

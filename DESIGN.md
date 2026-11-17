@@ -132,6 +132,11 @@ Deleting         action bar disabled with a spinner; the list updates at the end
 - **Focus and reading order (as built):** limit menu, Scan again, the rows top to bottom, then Delete. This differs from the order written in the accessibility rules below (rows before Scan again); the header comes first on screen, so the focus order follows it.
 - **Text colour:** every supporting text of this screen (sizes, header summary, footer, "Measuring sizes…", messages) uses the supporting-text token (`supportingText()`), with Increase Contrast; the reason line stays in primary text.
 
+**S1, as built by SL6 (the NuGet row)**
+
+- **Position and text:** after "Cargo cache (Rust)" and before "Xcode iOS DeviceSupport" in Developer; title "NuGet packages", detail "Downloaded packages, downloaded again when needed" (the npm text). The row is shown only when the folder exists and holds something (size above 0); the existing `CleanupRow` states are unchanged.
+- **Confirmation (S3):** unchanged text: title "Clean “NuGet packages”?", message "• NuGet packages", then "About 13 GB will be freed." (size of the last scan). **Toast:** unchanged rules: "13 GB freed", with " (N items in use were skipped)" when some were; the first error replaces it. In demo mode the toast shows the demo size and nothing is deleted.
+
 **S3**
 
 ```
@@ -285,3 +290,4 @@ Every screen of Part 1 uses only these. There is no custom component. The two ex
 | 2026-11-15 | Part 2 (UI) written: roles and contrast, the accessibility lot (shared `SelectionRow` and `ActionBar`, reason line in primary text at `.caption`, danger-fill #D32F2F), accessibility rules |
 | 2026-11-16 | SL3: text-supporting is defined as pure black (light) or pure white (dark) at an absolute alpha of 0.56 (0.70 with Increase Contrast), because "primary at 56 %" starts from a label color that is itself about 85 % opaque and would give about 3.6 : 1 on white. Factual note, the decision is unchanged |
 | 2026-11-16 | SL8: interface text of S2 as built (older copy names the kept device, "Measuring sizes…", neutral messages, group label and system label, focus order). Factual notes, no decision changed |
+| 2026-11-17 | SL6: S1 as built (NuGet row after Cargo, confirmation and toast texts unchanged, demo mode deletes nothing). Factual notes, no decision changed |

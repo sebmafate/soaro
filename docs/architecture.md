@@ -15,7 +15,7 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `LeakDetector.swift` | Memory leak detection (linear regression and thresholds) |
 | `Advice.swift` | Settings tips: read-only collection (`pmset`, `tmutil`, preferences), pure analysis |
 | `RecommendationEngine.swift` | Pure function: measurements in, recommendations out |
-| `CleanupService.swift`, `Cleanup/*` | Caches, large files, inactive projects, uninstaller, login items |
+| `CleanupService.swift`, `Cleanup/*` | Caches (including the NuGet package cache; `CacheCleanupFlow` is the confirm-then-clean flow), large files, inactive projects, uninstaller, login items |
 | `Cleanup/CommandRunner.swift`, `Cleanup/RealCommandRunner.swift` | Protocol and real runner of external programs (absolute path, no shell, time limit, bounded output). The only new code that uses `Process` |
 | `Cleanup/ToolLocator.swift` | Finds an external tool by absolute path (`/usr/bin/xcrun` for the simulators) |
 | `Cleanup/SimulatorScanner.swift`, `Cleanup/DeviceSuggestions.swift`, `Cleanup/SimulatorReport.swift` | iOS simulators, read-only: reads `simctl list devices -j`, measures the allocated size of each device folder, suggests what to pre-select, formats the `--scan` section |

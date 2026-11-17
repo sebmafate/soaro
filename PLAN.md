@@ -26,7 +26,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL1 | Return never deletes | S | | yes | under 0.1 (measured: about 14 min of agent time, 13:03 to 13:17 on 2026-11-16, of which about 10 min waiting on a stuck package download; QA review and the author's manual Return/Escape check not included) | done |
 | SL2 | Repository guards: network allowlist, translation catalog | S | | yes | 0.25 | done |
 | SL3 | Shared selection list components and the destructive button | M | SL1 | no | under 0.1 (measured from the first to the last commit timestamp, about 6 min of agent time on 2026-11-16, 13:59:52 to 14:05:57; QA review and the author's manual checks not included) | done |
-| SL6 | NuGet packages row | S | SL1 | yes | | todo |
+| SL6 | NuGet packages row | S | SL1 | yes | 0.25 (measured from the first commit at 10:53 to the last (the documents) at about 11:01 on 2026-11-17, about 8 min of agent time, rounded up to a quarter day; the reading before the first commit is not counted; QA review and the author's manual checks not included). Running total: under 0.85 + 0.25 = under 1.1 of the 14 days (SL9 is not in this base) | done |
 | SL7 | iOS simulators in `--scan` | M | SL1, SL2 | yes | 0.25 (measured: 18 min of agent time from the first commit at 14:24 to the last at 14:42 on 2026-11-16, rounded up to a quarter day; about 2 min of it waiting on real scans for the manual checks; the reading before the first commit is not counted; QA review and the author's 5-device check not included). Running total: under 0.1 + 0.25 + 0.25 = under 0.6 of the 14 days | done |
 | SL8 | The tool "Simulators and emulators", read-only | M | SL3, SL7 | yes | 0.25 (measured from the first commit at 15:35 to the last (the documents) at 16:21 on 2026-11-16, about 46 min of agent time, rounded up to a quarter day; the reading before the first commit is not counted; about 10 min of it were lost to a test run that hung, see the notes; QA review and the author's manual checks not included). Running total: under 0.1 + 0.25 + 0.25 + 0.25 = under 0.85 of the 14 days | done |
 | SL9 | Remove simulators (**first useful slice**) | M | SL8 | yes | | todo |
@@ -105,15 +105,23 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Serves**: R1, R2, R13; J1, J2; S1, S3.
 - **Components**: `CleanupKind` (new `nugetCache`, `~/.nuget/packages`), `CleanupService` (home folder as a parameter), `CleanupRow`, demo data.
 - **Acceptance criteria**
-  - [ ] The row "NuGet packages" appears in Developer only if the folder exists, with its size.
-  - [ ] Clean asks for a confirmation with the size; Cancel (default) deletes nothing.
-  - [ ] After the cleanup the toast shows the space really freed.
-  - [ ] NuGet is not part of the quick clean, and the quick clean total excludes it.
-  - [ ] A test shows that "App caches" includes `org.swift.swiftpm` and never `~/Library/org.swift.swiftpm`.
-  - [ ] Manual: on the author's Mac about 13 GB are freed (within 10 % of `df`).
-  - [ ] Demo mode shows the row without touching the disk.
-- **Tests**: unit (kind, items, size on a fake tree with an injected home, quick clean); manual.
-- **Notes**: strings added in nine languages (the catalog test of SL2 checks them).
+  - [x] The row "NuGet packages" appears in Developer only if the folder exists, with its size (`CleanupKindTests` on a fake tree, `CleanupListRulesTests`; the real size read by `--scan`: 13.7 GB against `du -sk` 13,377,848 KB, the same number).
+  - [x] Clean asks for a confirmation with the size; Cancel (default) deletes nothing (`CacheCleanupFlowTests`: exact text, a cancelling confirmation gives zero `clean` calls; the Cancel-first alert is the SL1 builder, already tested).
+  - [x] After the cleanup the toast shows the space really freed (`NuGetCleanupTests`: before minus after per item; `CacheCleanupFlowTests`: the toast text).
+  - [x] NuGet is not part of the quick clean, and the quick clean total excludes it (`CleanupKindTests`, `CleanupListRulesTests`, `EngineTests`).
+  - [x] A test shows that "App caches" includes `org.swift.swiftpm` and never `~/Library/org.swift.swiftpm` (`CleanupServiceHomeTests`).
+  - [ ] Manual: on the author's Mac about 13 GB are freed (within 10 % of `df`). **Pending the author** (a real, destructive clean is the author's decision; the agent did not run it).
+  - [x] Demo mode shows the row without touching the disk (`DemoData` has 13.1 GB for NuGet; confirming in demo mode deletes nothing: `CacheCleanupFlowTests`). Looked at on screen: not done, pending the author.
+- **Tests**: unit (kind, items, size on a fake tree with an injected home, quick clean); disk tests in the `.soaro-test-<uuid>` sandbox; manual. 40 tests added (463 in 57 suites on its own branch).
+- **Notes**: strings added in nine languages (the catalog test of SL2 checks them): one new key, "NuGet packages", AI-assisted wording to review by the author. The detail line reuses the npm key. Done 2026-11-17:
+  - **Route**: plain file deletion through `CleanupService.clean` (ADR 0009 Option C, ADR 0006), no `dotnet nuget locals`, no runner. `NUGET_PACKAGES` and `globalPackagesFolder` are not read; the HTTP cache and the plugin cache are not covered (backlog).
+  - **Home parameter**: `directory(for:)`, `items(for:)`, `size(of:)` and `clean(_:)` take `home` with the real home as default; `isSafeToDelete` stays tied to the real home, so a fake home gives "listed, every deletion refused".
+  - **Freed space**: before minus after for each top-level item, for every cache kind. It differs from before only when a deletion fails partway (an item that fails now adds what was really removed; `removeItem` stops at the first error, in directory order). The test needs a folder that holds files read before the locked one; it checks the directory order and says so if the volume gives another order.
+  - **Pure rules**: `CleanupKind.visibleDeveloperKinds(sizes:)` and `CleanupKind.quickCleanTotal(sizes:)`, used by `CleanupTab`, `AppState.quickCleanReclaimable` and `RecommendationEngine`.
+  - **Demo fix**: before SL6, confirming a cleanup under `SOARO_DEMO=1` deleted the real folders (`AppState.cleanup` had no demo check). The new `CacheCleanupFlow` (confirm, then clean, then toast) has a demo branch that never calls `clean`; it fixes every kind. `AppState.cleanup` now passes the confirmation, the real `CleanupService.clean` and `DemoMode.isEnabled`. The flow takes one parameter more than the brief lists, `willStart`, so that the rows are marked busy only after a confirmation (and never in demo mode).
+  - **Symlinks**: a `packages` folder that is a symbolic link is read as "folder not accessible" (`contentsOfDirectory(at:)` does not follow it), so the row is hidden and nothing is touched; a symlinked package inside is refused by `isSafeToDelete` (its target is outside the home folder).
+  - **Scan cost**: the NuGet size (70,873 files, 13.7 GB on the author's Mac) joins the 30-minute scan; `du -sk` of it takes about 3 s, the whole `--scan` about 42 s with the simulators.
+  - **No "in use" check** for NuGet (as npm, Gradle and Cargo): a restore or build running during the clean may fail and must be run again.
 
 ### SL7: iOS simulators in `--scan`
 
@@ -298,3 +306,4 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | 2026-11-16 | SL3 done on its branch: components in new files, not in `Components.swift`; the Uninstaller is the third tool affected; SL4's contrast criterion reduces to "applied everywhere" | The token is defined and tested in SL3 with an absolute alpha; `Components.swift` is left to SL6 |
 | 2026-11-16 | SL7 started before the author's check of the classification on 5 devices. The check moves to before SL8 shows a default limit, and before the release at the latest | The limit is a parameter of the suggestion function, so SL7 does not depend on the check (author's instruction) |
 | 2026-11-16 | SL8 done on its branch. Progressive sizes (backlog item) done as planned; tool detection by disk only, as the SL7 review asked. The 5-device check is the blocking merge gate of the SL8 pull request | Author's instruction in the SL8 brief |
+| 2026-11-17 | SL6 done on its branch. Plain deletion route (ADR 0009 Option C). Demo mode no longer deletes real files when a cleanup is confirmed (fix of a defect found while adding the demo row). Freed space is now before minus after per item | The SL6 brief, decisions 1, 4 and 5; the real clean on the author's Mac stays a manual decision |
