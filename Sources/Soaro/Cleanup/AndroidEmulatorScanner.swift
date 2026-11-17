@@ -208,3 +208,46 @@ extension AndroidEmulatorScanner {
         return best
     }
 }
+
+// MARK: - Appareils en cours d'exécution (liste des processus)
+
+extension AndroidEmulatorScanner {
+    /// Arguments exacts de `ps` : toutes les lignes de commande, sans limite de largeur, sans en-tête.
+    static let processListArguments = ["-axww", "-o", "command="]
+    /// Délai de `ps` : 10 secondes (une seule valeur dans le code).
+    static let processListTimeLimit: TimeInterval = 10
+    /// Borne de la sortie de `ps` : 4 Mio (une seule valeur dans le code).
+    static let processListOutputLimit = 4 * 1024 * 1024
+
+    /// Les noms d'AVD en cours d'exécution, d'après le texte de `ps -axww -o command=` (ADR 0009, règle 3).
+    /// Chaque ligne est coupée sur les blancs : un mot `-avd` suivi d'un mot donne ce nom ; un mot `@<nom>` (forme courte
+    /// `emulator @nom`) compte aussi (prudent : un faux positif rend seulement une ligne non sélectionnable).
+    /// Comparaison exacte, sensible à la casse ; seuls les noms valides sont gardés.
+    static func runningNames(fromProcessList text: String) -> Set<String> {
+        var names = Set<String>()
+        for line in text.split(whereSeparator: \.isNewline) {
+            let tokens = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+            for (index, token) in tokens.enumerated() {
+                if token == "-avd", index + 1 < tokens.count, isValidAVDName(tokens[index + 1]) {
+                    names.insert(tokens[index + 1])
+                } else if token.hasPrefix("@"), isValidAVDName(String(token.dropFirst())) {
+                    names.insert(String(token.dropFirst()))
+                }
+            }
+        }
+        return names
+    }
+
+    /// Lance `<psPath> -axww -o command=` et rend les noms en cours d'exécution, ou `nil` (« indisponible ») : chemin absent
+    /// (rien n'est lancé), délai dépassé, lancement impossible, refus, code non nul, fin par un signal, sortie tronquée.
+    /// La sortie d'erreur n'est jamais lue. Une sortie vide est un ensemble vide, pas « indisponible ».
+    /// - Parameter runner: sans valeur par défaut (ADR 0009) : un test ne lance jamais le vrai `ps` par mégarde.
+    static func runningAVDNames(runner: CommandRunner, psPath: String?) -> Set<String>? {
+        guard let psPath else { return nil }
+        let outcome = runner.run(executable: psPath, arguments: processListArguments,
+                                 timeLimit: processListTimeLimit, outputLimit: processListOutputLimit)
+        guard case .completed(let output) = outcome,
+              output.exitCode == 0, output.termination == .exited, !output.truncated else { return nil }
+        return runningNames(fromProcessList: String(decoding: output.stdout, as: UTF8.self))
+    }
+}
