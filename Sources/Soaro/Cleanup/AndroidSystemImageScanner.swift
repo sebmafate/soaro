@@ -228,8 +228,8 @@ struct AndroidSystemImage: Equatable {
 /// Les raisons pour lesquelles la liste des appareils peut être incomplète (jamais un chemin ni une valeur).
 struct AndroidSystemImageIncompleteness: Equatable {
     enum Reason: Equatable {
-        /// Variables d'environnement définies et non vides parmi `ANDROID_AVD_HOME`, `ANDROID_USER_HOME`, `ANDROID_EMULATOR_HOME`,
-        /// dans cet ordre : les appareils déplacés par elles ne sont pas lus.
+        /// Variables d'environnement définies et non vides parmi `customLocationVariables` (`ANDROID_AVD_HOME`, `ANDROID_USER_HOME`,
+        /// `ANDROID_EMULATOR_HOME`, `ANDROID_SDK_HOME`, `ANDROID_PREFS_ROOT`), dans cet ordre : les appareils déplacés par elles ne sont pas lus.
         case customLocation([String])
         /// Le dossier des AVD ne peut pas être lu.
         case avdFolderUnreadable
@@ -274,9 +274,11 @@ struct AndroidSystemImageListing: Equatable {
 }
 
 extension AndroidSystemImageScanner {
-    /// Les variables qui déplacent les AVD, dans l'ordre où elles sont nommées. Une UNIQUE constante : si l'auteur utilise encore
-    /// d'anciens outils, `ANDROID_SDK_HOME` s'y ajoute ici.
-    static let customLocationVariables = ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME"]
+    /// Les variables qui peuvent déplacer les AVD, dans l'ordre où elles sont nommées. Une UNIQUE constante. Les trois premières sont
+    /// celles des outils actuels ; `ANDROID_SDK_HOME` (ancien emplacement de `.android`) et `ANDROID_PREFS_ROOT` ont été ajoutées de
+    /// mémoire des outils Android et NON vérifiées sur la machine de l'auteur : il peut les retirer d'ici (plus de « cannot tell »
+    /// seulement, le sens sûr).
+    static let customLocationVariables = ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME", "ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"]
 
     /// Les raisons d'incomplétude, dans l'ordre : emplacements personnalisés, dossier illisible, inscriptions écartées, image inconnue.
     /// Fonction pure ; l'environnement est injecté.

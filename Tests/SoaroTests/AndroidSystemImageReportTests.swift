@@ -77,7 +77,7 @@ import Testing
         #expect(output == [
             "== Android system images",
             "\(size(1_000_000_000))  \(oldPath)  API 34  cannot tell (see the notes)",
-            "note: ANDROID_AVD_HOME is set: virtual devices there are not read, so an image may be in use",
+            "note: ANDROID_AVD_HOME is set: virtual devices kept there are not read, so an image may be in use",
             "note: the AVD folder could not be read",
             "note: 2 registrations could not be read",
             "note: 3 AVDs have no readable system image",
@@ -96,7 +96,13 @@ import Testing
     @Test func twoVariablesAreNamedInOneNoteInOrder() {
         let output = lines(scan(.ok, images: [image(oldPath, .cannotTell)], sizes: [1],
                                 reasons: [.customLocation(["ANDROID_AVD_HOME", "ANDROID_EMULATOR_HOME"])], sdk: sdk))
-        #expect(output.contains("note: ANDROID_AVD_HOME, ANDROID_EMULATOR_HOME are set: virtual devices there are not read, so an image may be in use"))
+        #expect(output.contains("note: ANDROID_AVD_HOME, ANDROID_EMULATOR_HOME are set: virtual devices kept there are not read, so an image may be in use"))
+    }
+
+    @Test func theNewVariablesAreNamedLikeTheOthers() {
+        let output = lines(scan(.ok, images: [image(oldPath, .cannotTell)], sizes: [1],
+                                reasons: [.customLocation(["ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"])], sdk: sdk))
+        #expect(output.contains("note: ANDROID_SDK_HOME, ANDROID_PREFS_ROOT are set: virtual devices kept there are not read, so an image may be in use"))
     }
 
     @Test func theSkippedLineAppearsOnlyAboveZero() {

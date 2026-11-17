@@ -47,7 +47,7 @@ enum AndroidSystemImageReport {
     private static func note(_ reason: AndroidSystemImageIncompleteness.Reason) -> String {
         switch reason {
         case .customLocation(let variables):
-            "note: \(variables.joined(separator: ", ")) \(variables.count == 1 ? "is" : "are") set: virtual devices there are not read, so an image may be in use"
+            "note: \(variables.joined(separator: ", ")) \(variables.count == 1 ? "is" : "are") set: virtual devices kept there are not read, so an image may be in use"
         case .avdFolderUnreadable:
             "note: the AVD folder could not be read"
         case .skippedRegistrations(let n):

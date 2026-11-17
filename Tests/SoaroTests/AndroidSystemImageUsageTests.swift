@@ -117,7 +117,7 @@ import Testing
     }
 
     @Test func aCustomLocationVariableMakesTheUnusedImageCannotTell() throws {
-        for variable in ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME"] {
+        for variable in ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME", "ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"] {
             let box = try Sandbox(insideHome: true)
             try makeImage(box, "android-36/google_apis_playstore/arm64-v8a")
             try makeImage(box, "android-34/default/arm64-v8a")
@@ -129,12 +129,19 @@ import Testing
         }
     }
 
-    @Test func allThreeVariablesAreNamedInOrder() throws {
+    @Test func allTheVariablesAreNamedInOrder() throws {
         let box = try Sandbox(insideHome: true)
         try makeImage(box, "android-34/default/arm64-v8a")
-        let environment = ["ANDROID_EMULATOR_HOME": "/Users/test/c", "ANDROID_AVD_HOME": "/Users/test/a", "ANDROID_USER_HOME": "/Users/test/b"]
+        let environment = ["ANDROID_PREFS_ROOT": "/Users/test/e", "ANDROID_SDK_HOME": "/Users/test/d", "ANDROID_EMULATOR_HOME": "/Users/test/c",
+                           "ANDROID_AVD_HOME": "/Users/test/a", "ANDROID_USER_HOME": "/Users/test/b"]
         let listing = list(box, environment: environment)
-        #expect(listing.incompleteness.reasons == [.customLocation(["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME"])])
+        #expect(listing.incompleteness.reasons == [.customLocation(["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME",
+                                                                      "ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"])])
+    }
+
+    @Test func theFiveVariablesAreOneNamedConstant() {
+        #expect(AndroidSystemImageScanner.customLocationVariables
+                == ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME", "ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"])
     }
 
     @Test func aVariableSetToAnEmptyStringDoesNotCount() throws {
