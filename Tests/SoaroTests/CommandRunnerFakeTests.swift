@@ -49,4 +49,55 @@ import Testing
         #expect(fake.run(executable: "/usr/bin/one", arguments: ["b"], timeLimit: 1, outputLimit: 1) == .failedToLaunch)
         #expect(fake.unscriptedCalls.count == 1)
     }
+
+    // MARK: Résultats successifs (SL9 T1)
+
+    @Test func aSequenceReturnsEachOutcomeInOrderThenRepeatsTheLastOne() {
+        let fake = FakeCommandRunner()
+        fake.script(sequence: [.finished(stdout: "1"), .finished(stdout: "2"), .finished(stdout: "3")],
+                    executable: "/usr/bin/one", arguments: ["a"])
+
+        let results = (0..<4).map { _ in fake.run(executable: "/usr/bin/one", arguments: ["a"], timeLimit: 1, outputLimit: 10) }
+
+        #expect(results == [.finished(stdout: "1"), .finished(stdout: "2"), .finished(stdout: "3"), .finished(stdout: "3")])
+        #expect(fake.calls.count == 4)
+        #expect(fake.unscriptedCalls.isEmpty)
+    }
+
+    @Test func eachCommandHasItsOwnSequenceAndTheCallsAreRecordedInOrder() {
+        let fake = FakeCommandRunner()
+        fake.script(sequence: [.finished(stdout: "a1"), .timedOut], executable: "/usr/bin/one", arguments: [])
+        fake.script(sequence: [.finished(stdout: "b1"), .finished(stdout: "b2")], executable: "/usr/bin/two", arguments: [])
+
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1) == .finished(stdout: "a1"))
+        #expect(fake.run(executable: "/usr/bin/two", arguments: [], timeLimit: 2, outputLimit: 2) == .finished(stdout: "b1"))
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 3, outputLimit: 3) == .timedOut)
+        #expect(fake.run(executable: "/usr/bin/two", arguments: [], timeLimit: 4, outputLimit: 4) == .finished(stdout: "b2"))
+
+        #expect(fake.calls.map(\.executable) == ["/usr/bin/one", "/usr/bin/two", "/usr/bin/one", "/usr/bin/two"])
+        #expect(fake.calls.map(\.timeLimit) == [1, 2, 3, 4])
+    }
+
+    @Test func aSingleScriptStillRepeatsAndScriptingAgainReplacesTheSequence() {
+        let fake = FakeCommandRunner()
+        fake.script(.finished(stdout: "x"), executable: "/usr/bin/one", arguments: [])
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1) == .finished(stdout: "x"))
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1) == .finished(stdout: "x"))
+
+        fake.script(sequence: [.finished(stdout: "1"), .finished(stdout: "2")], executable: "/usr/bin/one", arguments: [])
+        fake.script(.timedOut, executable: "/usr/bin/one", arguments: [])
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1) == .timedOut)
+        #expect(fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1) == .timedOut)
+    }
+
+    @Test func anUnscriptedCallIsStillReportedWhenOtherCommandsHaveSequences() {
+        let fake = FakeCommandRunner()
+        fake.script(sequence: [.finished(), .timedOut], executable: "/usr/bin/one", arguments: [])
+        var reports: [String] = []
+        fake.reportUnscripted = { reports.append($0) }
+
+        #expect(fake.run(executable: "/usr/bin/two", arguments: ["x"], timeLimit: 1, outputLimit: 1) == .failedToLaunch)
+        #expect(reports == ["/usr/bin/two x"])
+        #expect(fake.unscriptedCalls.count == 1)
+    }
 }

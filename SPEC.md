@@ -67,7 +67,7 @@ Motivation, stated honestly: a real personal need, and the pleasure of building 
 | --- | --- | --- | --- |
 | R1 | The Cleanup view shows the NuGet package cache with its reclaimable size, and lets the user clean it after confirmation. | Must | Unit test on a fake folder tree; manual run on the author's Mac (13 GB) |
 | R2 | The SwiftPM cache is cleaned. Already met by the existing "App caches" cleaner, which includes `~/Library/Caches/org.swift.swiftpm`. The configuration folder `~/Library/org.swift.swiftpm` is never touched. | Covered by existing | Unit test: the "App caches" cleaner includes the SwiftPM cache folder and never the configuration folder |
-| R3 | The Cleanup view lists every simulator device with its real size on disk, last-used date, runtime and availability. It suggests (pre-selects) devices idle for more than a threshold (default 60 days, adjustable) and older duplicates of the same model and runtime, keeping the most recently used. The other devices stay visible and unselected. | Must | Unit tests on fixture data from `simctl`; the author checks the classification on a sample of 5 devices |
+| R3 | The Cleanup view lists every simulator device with its real size on disk, last-used date, runtime and availability. It suggests (pre-selects) devices idle for more than a threshold (default 60 days, adjustable) and older duplicates of the same model and runtime, keeping the most recently used. The other devices stay visible and unselected. | Must | Unit tests on fixture data from `simctl`; the author checks the classification on a sample of 5 devices (done 2026-11-17) |
 | R4 | A simulator is removed in the way Apple supports, so the simulator system stays consistent, never by deleting its folder by hand. The confirmation says what is lost (the data of test apps). | Must | Unit test with a fake command runner; manual removal of one disposable device |
 | R5 | A running (booted) simulator is never suggested or removed. | Must | Unit test with a booted fixture |
 | R6 | Each new cleaner appears only if its tool or data exists on the Mac. A missing tool, a failing command or an unreadable output never breaks the Cleanup view or the app (ADR 0005). | Must | Unit tests: tool absent, command failing, malformed output |
@@ -105,7 +105,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 | # | Assumption or risk | Impact if false | Status |
 | --- | --- | --- | --- |
-| A1 | **Riskiest (Must):** Soaro can show which simulators are disposable clearly enough for the author to dare delete them. | The feature is dangerous or never used. | Partly tested (Test A): 83 % of the space is idle for more than 60 days (29 % at 90 days); 23 % is superseded duplicates; "no app of yours" is useless as a signal (14 devices carry the author's own app). The 5-device check by the author is still to do. |
+| A1 | **Riskiest (Must):** Soaro can show which simulators are disposable clearly enough for the author to dare delete them. | The feature is dangerous or never used. | Partly tested (Test A): 83 % of the space is idle for more than 60 days (29 % at 90 days); 23 % is superseded duplicates; "no app of yours" is useless as a signal (14 devices carry the author's own app). The 5-device check by the author was done on 2026-11-17: confirmed (60 days stays the default). |
 | A2 | **Riskiest (Should):** a Docker cleanup started from Soaro returns real space to the Mac, without touching volumes. | Docker support has no value. | Untested (Test B) |
 | A3 | Removing a simulator in the supported way needs no administrator rights. | Needs a privileged step, which the app avoids. | Untested |
 | A4 | Other developers want this and can ignore it if not. | Low: costs only space in the view. | Untested; low impact |
@@ -116,7 +116,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 ## Cheapest test
 
-- **Test A (simulators), done 2026-11-15, read-only, on the author's Mac.** Criterion: at least 80 % of the space gets a readable reason. Result: met at a 60-day threshold (83 %), not at 90 days (29 %), so the threshold stays adjustable with 60 as default. The check on a sample of 5 devices by the author is still to do.
+- **Test A (simulators), done 2026-11-15, read-only, on the author's Mac.** Criterion: at least 80 % of the space gets a readable reason. Result: met at a 60-day threshold (83 %), not at 90 days (29 %), so the threshold stays adjustable with 60 as default. The check on a sample of 5 devices by the author was done on 2026-11-17: confirmed.
 - **Test A2 (Android), done 2026-11-15, read-only.** Sizes and dates measured (see Problem and A6). Result: the size signal is strong (Pixel_9a alone is 11 GB); the "last used" signal is weak and should be checked against Android Studio on the author's Mac (R16).
 - **Test B (Docker), to do, about one evening.** With Docker Desktop running, measure `df` and the disk image size before and after a build-cache prune and an unused-image prune (no volumes), with and without Docker's own space-reclaim command. Criterion: at least half of what Docker says it freed comes back on the Mac. OrbStack cannot be tested (not installed).
 
@@ -130,7 +130,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 ## Open questions
 
 - **Simulator runtimes (31.5 GB, outside the home folder):** include them? They are bigger than the devices once cleaned. It would need the "home folder only" rule of ADR 0006 to change. Not decided; the non-goal stands until the author decides.
-- **Default threshold:** is 60 days right? To confirm with the 5-device check. Note that at 60 days the biggest Android device (Pixel_9a, 54 days) is not suggested; whether that is acceptable is for the author to say.
+- **Default threshold:** is 60 days right? Answered on 2026-11-17: the author's 5-device check confirmed 60 days (factual note; no requirement changed). Note that at 60 days the biggest Android device (Pixel_9a, 54 days) is not suggested; whether that is acceptable is for the author to say.
 - **Android last-used date:** which file date is the best signal (userdata image, snapshots, or the emulator's own records)? To settle in the architecture.
 - **Where it lives in the interface:** the developer caches section, or a tool of its own like the simulator list. For the `ux` skill.
 - **Docker tool location:** Docker Desktop and OrbStack install their command in different places; to settle in the architecture.

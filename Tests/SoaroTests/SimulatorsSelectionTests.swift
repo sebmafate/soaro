@@ -39,7 +39,7 @@ import Testing
     func model(_ runner: CommandRunner, measure: ScriptedMeasure? = nil) -> SimulatorsModel {
         let measure = measure ?? ScriptedMeasure([:])
         return SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in "/usr/bin/xcrun" }, home: home,
-                               now: { self.now }, measure: { measure.measure($0) }, demo: false, notify: { _ in })
+                               now: { self.now }, measure: { measure.measure($0) }, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 
     /// Tous les appareils pèsent 500 Mo sauf indication contraire.

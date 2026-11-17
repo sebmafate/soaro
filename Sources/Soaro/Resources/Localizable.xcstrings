@@ -1044,6 +1044,58 @@
         }
       }
     },
+    "%@ will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ werden freigegeben. Die Geräte, ihre Apps und Daten sowie ihre Schnappschüsse werden gelöscht. Neue Geräte können Sie in Xcode oder Android Studio anlegen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se liberarán %@. Se eliminarán los dispositivos, las apps y los datos que contienen, y sus instantáneas. Puedes crear dispositivos nuevos desde Xcode o Android Studio."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ seront libérés. Les appareils, les apps et les données qu'ils contiennent, ainsi que leurs instantanés, seront supprimés. Vous pouvez créer de nouveaux appareils depuis Xcode ou Android Studio."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verranno liberati %@. I dispositivi, le app e i dati al loro interno e le relative istantanee verranno eliminati. Puoi creare nuovi dispositivi da Xcode o Android Studio."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ を解放します。デバイス、その中のアプリとデータ、およびスナップショットが削除されます。新しいデバイスは Xcode または Android Studio から作成できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 공간을 확보합니다. 기기와 그 안의 앱 및 데이터, 스냅샷이 삭제됩니다. 새 기기는 Xcode나 Android Studio에서 만들 수 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ serão liberados. Os dispositivos, os apps e os dados neles, e seus snapshots serão apagados. Você pode criar novos dispositivos pelo Xcode ou Android Studio."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将释放 %@。设备、其中的 App 和数据以及快照都会被删除。你可以在 Xcode 或 Android Studio 中新建设备。"
+          }
+        }
+      }
+    },
     "%@ will be freed. Your sources are not touched: just run “npm install”, “swift build”… to rebuild them.": {
       "localizations": {
         "de": {
@@ -5830,6 +5882,58 @@
         }
       }
     },
+    "Delete the selected devices? (%lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die ausgewählten Geräte löschen? (%lld)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar los dispositivos seleccionados? (%lld)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer les appareils sélectionnés ? (%lld)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminare i dispositivi selezionati? (%lld)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択したデバイス（%lld 件）を削除しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 기기를 삭제할까요? (%lld개)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar os dispositivos selecionados? (%lld)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要删除所选设备吗？（%lld）"
+          }
+        }
+      }
+    },
     "Delete the selected rebuildable folders? (%lld)": {
       "localizations": {
         "de": {
@@ -5878,6 +5982,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "要删除所选的可重新生成的文件夹吗？（%lld）"
+          }
+        }
+      }
+    },
+    "Deleting…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird gelöscht…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminando…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suppression…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminazione…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제 중…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagando…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在删除…"
           }
         }
       }
@@ -6138,6 +6294,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "闲置超过 %lld 天的设备，以及同一型号的旧副本，会被预先选中。移除设备会连同其中的 App、数据和快照一起删除；请在 Xcode 或 Android Studio 中新建设备。"
+          }
+        }
+      }
+    },
+    "Devices that could not be removed: %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gelöschte Geräte: %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos que no se pudieron eliminar: %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appareils qui n'ont pas pu être supprimés : %lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivi non eliminati: %lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除できなかったデバイス：%lld"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삭제하지 못한 기기: %lld개"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivos que não puderam ser apagados: %lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法删除的设备：%lld"
           }
         }
       }
@@ -21426,6 +21634,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "“%@”正在运行：请先将其退出。"
+          }
+        }
+      }
+    },
+    "“%@” is running: quit it first.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ läuft: Beenden Sie es zuerst."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está en ejecución: ciérralo primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "« %@ » est en cours d'exécution : quittez-le d'abord."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” è in esecuzione: chiudilo prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は実行中です。先に終了してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” 실행 중: 먼저 종료하세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” está em execução: feche-o primeiro."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”正在运行：请先退出。"
           }
         }
       }

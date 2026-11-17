@@ -183,7 +183,7 @@ private final class FakeToolFileSystem: ToolFileSystem {
 
         let runner = FakeCommandRunner()
         let model = SimulatorsModel(runner: runner, detect: { detection }, locateXcrun: { _ in "/usr/bin/xcrun" },
-                                    home: home, demo: false, notify: { _ in })
+                                    home: home, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         model.scan()
         await model.scanTask?.value
         #expect(runner.calls.isEmpty)

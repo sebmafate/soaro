@@ -88,7 +88,7 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
                                now: { self.now },
                                measure: measure,
                                demo: false,
-                               notify: { _ in })
+                               confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 
     /// Attend que le lanceur bloquant ait démarré, SANS bloquer l'acteur principal (la tâche du scan en a besoin pour démarrer).
@@ -178,7 +178,7 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
         let runner = FakeCommandRunner()
         let m = SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in nil },
                                 home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now }, measure: { _ in 0 },
-                                demo: false, notify: { _ in })
+                                demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         await run(m)
         #expect(runner.calls.isEmpty)
         #expect(m.phase == .failed(.couldNotRead))
