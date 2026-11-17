@@ -261,6 +261,24 @@ final class GatedRunner: CommandRunner, @unchecked Sendable {
         #expect(!runner.calls.contains { $0.arguments.contains("delete") })
     }
 
+    @Test func anIosOnlyBatchNeverLooksUpPsNorRunsItAtActionTime() async throws {
+        let box = try home([phone])
+        let runner = fake(ios: [[Self.u1, Self.u2], [Self.u1, Self.u2], [Self.u2]], ps: [""])
+        let counters = Counters()
+        let m = model(runner, home: box, counters: counters)
+        await scanAndSelect(m, ios: [Self.u1], android: [])
+        let afterScan = runner.calls.count
+        #expect(counters.psLookups == 1)
+
+        try await confirmedDelete(m)
+
+        #expect(Array(runner.calls.dropFirst(afterScan)).map(\.arguments) == [Self.listArgs, ["simctl", "delete", Self.u1], Self.listArgs, Self.psArguments],
+                "iOS : revérification, suppression ; nouveau scan : simctl list, ps (Android est toujours listé)")
+        #expect(counters.psLookups == 2, "scan et nouveau scan seulement : aucune recherche de ps à l'action")
+        #expect(recorder.calls.isEmpty)
+        #expect(box.exists(".android/avd/Test_Phone_A.ini") && box.exists(".android/avd/Test_Phone_A.avd/config.ini"))
+    }
+
     // MARK: Lot mixte
 
     @Test func aMixedBatchRunsIosThenAndroidThenRescansAndTheToastIsTheSumOfBoth() async throws {
