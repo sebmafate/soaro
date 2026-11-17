@@ -88,17 +88,25 @@ enum DesignTokens {
 
 // MARK: - Texte de soutien dans une vue
 
-/// Applique le jeton « texte de soutien » : couleur selon le thème (clair / sombre) et « Augmenter le contraste ».
-private struct SupportingTextStyle: ViewModifier {
-    @Environment(\.colorScheme) private var scheme
-    @Environment(\.colorSchemeContrast) private var contrast
-
-    func body(content: Content) -> some View {
-        content.foregroundStyle(DesignTokens.supportingTextColor(dark: scheme == .dark, contrastIncreased: contrast == .increased))
+/// Le jeton « texte de soutien » sous forme de `ShapeStyle` : la couleur se résout depuis l'environnement
+/// (thème clair / sombre et « Augmenter le contraste »). Utilisable partout où un style est attendu,
+/// y compris dans un ternaire : `highlighted ? AnyShapeStyle(.primary) : AnyShapeStyle(.supportingText)`.
+struct SupportingTextShapeStyle: ShapeStyle {
+    /// Couleur du jeton pour un environnement donné (testable sans rendu).
+    static func color(in environment: EnvironmentValues) -> Color {
+        DesignTokens.supportingTextColor(dark: environment.colorScheme == .dark,
+                                         contrastIncreased: environment.colorSchemeContrast == .increased)
     }
+
+    func resolve(in environment: EnvironmentValues) -> some ShapeStyle { Self.color(in: environment) }
+}
+
+extension ShapeStyle where Self == SupportingTextShapeStyle {
+    /// Texte de soutien : `.foregroundStyle(.supportingText)`. Jamais `.secondary` ni `.tertiary` pour du texte.
+    static var supportingText: SupportingTextShapeStyle { SupportingTextShapeStyle() }
 }
 
 extension View {
     /// Texte de soutien (tailles, résumés, pieds de page) : jamais `.secondary` ni `.tertiary` (DESIGN.md partie 2).
-    func supportingText() -> some View { modifier(SupportingTextStyle()) }
+    func supportingText() -> some View { foregroundStyle(.supportingText) }
 }
