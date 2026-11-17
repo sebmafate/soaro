@@ -9,9 +9,11 @@ struct CleanupResult {
 /// Scanne et nettoie des emplacements connus et sûrs. Ne touche jamais en dehors du
 /// dossier personnel de l'utilisateur.
 enum CleanupService {
-    private static var home: URL { URL(fileURLWithPath: NSHomeDirectory()) }
+    /// Le vrai dossier personnel. Seul `isSafeToDelete` s'y réfère toujours : un dossier injecté
+    /// pour les tests ne peut donc jamais élargir le périmètre des suppressions (ADR 0006).
+    static var realHome: URL { URL(fileURLWithPath: NSHomeDirectory()) }
 
-    static func directory(for kind: CleanupKind) -> URL {
+    static func directory(for kind: CleanupKind, home: URL = realHome) -> URL {
         switch kind {
         case .caches: home.appendingPathComponent("Library/Caches")
         case .logs: home.appendingPathComponent("Library/Logs")
@@ -26,8 +28,8 @@ enum CleanupService {
     }
 
     /// Éléments de premier niveau supprimables pour ce type de nettoyage.
-    static func items(for kind: CleanupKind) -> [URL]? {
-        let dir = directory(for: kind)
+    static func items(for kind: CleanupKind, home: URL = realHome) -> [URL]? {
+        let dir = directory(for: kind, home: home)
         guard let children = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: nil, options: []
         ) else { return nil }
@@ -42,15 +44,15 @@ enum CleanupService {
     }
 
     /// Taille récupérable, ou `nil` si le dossier est inaccessible / inexistant.
-    static func size(of kind: CleanupKind) -> UInt64? {
-        guard let items = items(for: kind) else { return nil }
+    static func size(of kind: CleanupKind, home: URL = realHome) -> UInt64? {
+        guard let items = items(for: kind, home: home) else { return nil }
         return items.reduce(0) { $0 + allocatedSize(of: $1) }
     }
 
-    static func clean(_ kind: CleanupKind) -> CleanupResult {
+    static func clean(_ kind: CleanupKind, home: URL = realHome) -> CleanupResult {
         if kind == .trash { return emptyTrash() }
 
-        guard let items = items(for: kind) else {
+        guard let items = items(for: kind, home: home) else {
             return CleanupResult(freed: 0, failures: 0, error: String(localized: "Folder not accessible"))
         }
         var freed: UInt64 = 0
@@ -95,7 +97,7 @@ enum CleanupService {
     /// Refuse tout chemin hors du dossier personnel ou le dossier personnel lui-même.
     static func isSafeToDelete(_ url: URL) -> Bool {
         let path = url.standardizedFileURL.resolvingSymlinksInPath().path
-        let homePath = home.standardizedFileURL.resolvingSymlinksInPath().path
+        let homePath = realHome.standardizedFileURL.resolvingSymlinksInPath().path
         return path.hasPrefix(homePath + "/") && path.count > homePath.count + 1
     }
 
