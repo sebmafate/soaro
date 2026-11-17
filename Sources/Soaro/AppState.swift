@@ -129,7 +129,28 @@ final class AppState: ObservableObject {
     /// Instance de l'app (créée au premier accès, donc après la migration des anciennes données).
     static let shared = AppState(history: DemoMode.isEnabled ? Snapshot.demoStore() : HistoryStore())
 
-    init(history: HistoryStore? = HistoryStore()) { self.history = history }
+    /// Mode démo, et les actions qui touchent au vrai système : remplaçables pour que les tests vérifient
+    /// qu'en démo rien n'est nettoyé et aucune vraie app n'est quittée. Par défaut, le comportement réel.
+    /// Ce drapeau ne couvre que les actions qui touchent au système (`cleanup`, `scanCleanup`, `quitApp`) ;
+    /// les autres vérifications du mode démo lisent encore `DemoMode.isEnabled` directement.
+    private let demo: Bool
+    private let confirm: ConfirmHandler
+    private let cleanAction: @Sendable (CleanupKind) -> CleanupResult
+    private let terminateApp: @MainActor (String) -> Bool
+
+    init(history: HistoryStore? = HistoryStore(),
+         demo: Bool = DemoMode.isEnabled,
+         confirm: @escaping ConfirmHandler = SystemConfirmation.ask,
+         clean: @escaping @Sendable (CleanupKind) -> CleanupResult = { CleanupService.clean($0) },
+         terminateApp: @escaping @MainActor (String) -> Bool = { path in
+             NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }?.terminate() == true
+         }) {
+        self.history = history
+        self.demo = demo
+        self.confirm = confirm
+        self.cleanAction = clean
+        self.terminateApp = terminateApp
+    }
 
     // Mesures
     private let sampler = SystemSampler()
@@ -604,8 +625,12 @@ final class AppState: ObservableObject {
     }
 
     func quitApp(path: String, name: String) {
-        let app = NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }
-        if app?.terminate() == true {
+        if demo {
+            // Démo : les chemins (Safari, Xcode…) sont ceux de vraies apps qui tournent peut-être : on n'en quitte aucune.
+            showToast(String(localized: "Quit request sent to \(name)"))
+            return
+        }
+        if terminateApp(path) {
             showToast(String(localized: "Quit request sent to \(name)"))
             Task { try? await Task.sleep(for: .seconds(2)); refreshProcesses() }
         } else {
@@ -616,7 +641,7 @@ final class AppState: ObservableObject {
     // MARK: Nettoyage
 
     func scanCleanup() {
-        guard !DemoMode.isEnabled else { return }
+        guard !demo else { return }
         lastCleanupScan = Date()
         Task { [weak self] in
             let sizes = await Task.detached(priority: .utility) { () -> [CleanupKind: UInt64?] in
@@ -631,46 +656,25 @@ final class AppState: ObservableObject {
 
     /// Octets récupérables par le nettoyage rapide.
     var quickCleanReclaimable: UInt64 {
-        CleanupKind.allCases.filter(\.includedInQuickClean).reduce(0) { $0 + ((cleanupSizes[$1] ?? nil) ?? 0) }
+        CleanupKind.quickCleanTotal(sizes: cleanupSizes)
     }
 
-    /// Demande confirmation puis nettoie.
+    /// Demande confirmation puis nettoie (le déroulé est dans `CacheCleanupFlow`, rien n'est supprimé en mode démo).
     func cleanup(_ kinds: [CleanupKind]) {
         guard !kinds.isEmpty, busyKinds.isDisjoint(with: kinds) else { return }
 
-        let total = kinds.reduce(UInt64(0)) { $0 + ((cleanupSizes[$1] ?? nil) ?? 0) }
-        var info = kinds.map { "• \($0.title)" }.joined(separator: "\n")
-        if total > 0 { info += String(localized: "\n\nAbout \(Format.fileBytes(total)) will be freed.") }
-        if kinds.contains(.trash) { info += String(localized: "\nEmptying the Trash is permanent.") }
-        guard Self.confirm(
-            title: kinds.count == 1 ? String(localized: "Clean “\(kinds[0].title)”?") : String(localized: "Run the quick clean?"),
-            message: info, button: String(localized: "Clean"), critical: kinds.contains(.trash)
+        guard let outcome = CacheCleanupFlow.run(
+            kinds: kinds, sizes: cleanupSizes, demo: demo,
+            confirm: confirm,
+            clean: cleanAction,
+            willStart: { [weak self] in self?.busyKinds.formUnion(kinds) }
         ) else { return }
 
-        busyKinds.formUnion(kinds)
         Task { [weak self] in
-            let outcome = await Task.detached(priority: .userInitiated) { () -> (freed: UInt64, failures: Int, errors: [String]) in
-                var freed: UInt64 = 0
-                var failures = 0
-                var errors: [String] = []
-                for kind in kinds {
-                    let result = CleanupService.clean(kind)
-                    freed += result.freed
-                    failures += result.failures
-                    if let error = result.error { errors.append("\(kind.title) : \(error)") }
-                }
-                return (freed, failures, errors)
-            }.value
-
+            let message = await outcome.value
             guard let self else { return }
             self.busyKinds.subtract(kinds)
-            if let first = outcome.errors.first {
-                self.showToast(first)
-            } else {
-                var message = String(localized: "\(Format.fileBytes(outcome.freed)) freed")
-                if outcome.failures > 0 { message += String(localized: " (\(outcome.failures) items in use were skipped)") }
-                self.showToast(message)
-            }
+            self.showToast(message)
             self.scanCleanup()
         }
     }

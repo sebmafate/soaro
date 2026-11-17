@@ -152,7 +152,7 @@ struct CleanupTab: View {
     }
 
     @ViewBuilder private var developerSection: some View {
-        let visible = CleanupKind.developerKinds.filter { ((state.cleanupSizes[$0] ?? nil) ?? 0) > 0 }
+        let visible = CleanupKind.visibleDeveloperKinds(sizes: state.cleanupSizes)
         if !visible.isEmpty {
             SectionHeader(title: "Developer")
             VStack(spacing: 2) {

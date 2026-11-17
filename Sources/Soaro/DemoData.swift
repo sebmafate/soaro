@@ -116,7 +116,7 @@ enum DemoData {
     static let cleanupSizes: [CleanupKind: UInt64?] = [
         .caches: 4_200 * mb, .logs: 310 * mb, .trash: 1_100 * mb,
         .derivedData: 8_700 * mb, .npmCache: 1_300 * mb, .gradleCache: 2_600 * mb,
-        .cargoCache: 900 * mb, .xcodeDeviceSupport: 5_400 * mb, .simulatorCaches: 1_800 * mb,
+        .cargoCache: 900 * mb, .nugetCache: 13_100 * mb, .xcodeDeviceSupport: 5_400 * mb, .simulatorCaches: 1_800 * mb,
     ]
 
     static let traffic = DailyTraffic(down: 3_800 * mb, up: 412 * mb)

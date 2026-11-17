@@ -138,6 +138,11 @@ Deleting         action bar disabled with a spinner; the list updates at the end
 - **Demo deletion:** the same confirmation is shown (so S3 can be captured); if confirmed, the checked made-up rows leave the list at once and the toast is the sum of their made-up sizes "freed". Nothing is launched, measured, read or written, and the list is not read again.
 - **Text colour:** every supporting text of this screen (sizes, header summary, footer, "Measuring sizes…", messages) uses the supporting-text token (`supportingText()`), with Increase Contrast; the reason line stays in primary text.
 
+**S1, as built by SL6 (the NuGet row)**
+
+- **Position and text:** after "Cargo cache (Rust)" and before "Xcode iOS DeviceSupport" in Developer; title "NuGet packages", detail "Downloaded packages, downloaded again when needed" (the npm text). The row is shown only when the folder exists and holds something (size above 0); the existing `CleanupRow` states are unchanged.
+- **Confirmation (S3):** unchanged text: title "Clean “NuGet packages”?", message "• NuGet packages", then "About 13 GB will be freed." (size of the last scan). **Toast:** unchanged rules: "13 GB freed", with " (N items in use were skipped)" when some were; the first error replaces it. In demo mode the toast shows the demo size and nothing is deleted. The same holds in the four tools (Large files, Inactive projects, Uninstaller, Startup items): the confirmation is shown with the same texts, then the rows leave the list and the toast shows the made-up size, with no file moved and no system command run; the Overview "Quit" button only shows its toast.
+
 **S3**
 
 ```
@@ -291,5 +296,6 @@ Every screen of Part 1 uses only these. There is no custom component. The two ex
 | 2026-11-15 | Part 2 (UI) written: roles and contrast, the accessibility lot (shared `SelectionRow` and `ActionBar`, reason line in primary text at `.caption`, danger-fill #D32F2F), accessibility rules |
 | 2026-11-16 | SL3: text-supporting is defined as pure black (light) or pure white (dark) at an absolute alpha of 0.56 (0.70 with Increase Contrast), because "primary at 56 %" starts from a label color that is itself about 85 % opaque and would give about 3.6 : 1 on white. Factual note, the decision is unchanged |
 | 2026-11-16 | SL8: interface text of S2 as built (older copy names the kept device, "Measuring sizes…", neutral messages, group label and system label, focus order). Factual notes, no decision changed |
+| 2026-11-17 | SL6: S1 as built (NuGet row after Cargo, confirmation and toast texts unchanged, demo mode deletes nothing). Factual notes, no decision changed |
 | 2026-11-17 | SL9: S2 as built for deletion (when Delete is available, the deleting state, the toast combinations, Back during a deletion, demo deletion) and the confirmation text of S3 for simulators. Factual notes, no decision changed |
 | 2026-11-17 | SL9 fix round: S2 as built for Back (honest toast), reopening during a batch, and leaving the tab. Factual notes, no decision changed |

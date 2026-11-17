@@ -71,6 +71,12 @@ private func group(_ name: String, cpu: Double = 1, memory: UInt64 = 100_000_000
         #expect(recs.contains { $0.action == .cleanup(.trash) })
     }
 
+    @Test func nugetIsNotPartOfQuickCleanup() {
+        let recs = RecommendationEngine.evaluate(input(snapshot(), cleanup: [.nugetCache: 13 * GB]))
+        #expect(!recs.contains { $0.id == "cleanup.quick" })
+        #expect(!recs.contains { $0.action == .quickCleanup })
+    }
+
     @Test func unknownSizesAreIgnored() {
         let recs = RecommendationEngine.evaluate(input(snapshot(), cleanup: [.trash: nil, .caches: nil]))
         #expect(recs.isEmpty)

@@ -291,4 +291,69 @@ final class Sandbox {
             #expect(CleanupService.isSafeToDelete(CleanupService.directory(for: kind).appendingPathComponent("x")), "\(kind)")
         }
     }
+
+    // MARK: NuGet (SL6)
+
+    @Test func nugetIsADeveloperKindOutsideTheQuickClean() {
+        #expect(CleanupKind.developerKinds.contains(.nugetCache))
+        #expect(!CleanupKind.systemKinds.contains(.nugetCache))
+        #expect(CleanupKind.nugetCache.isDeveloper)
+        #expect(!CleanupKind.nugetCache.includedInQuickClean)
+        #expect(Set(CleanupKind.allCases.filter(\.includedInQuickClean)) == [.caches, .logs, .derivedData])
+    }
+
+    @Test func nugetRowComesAfterCargoAndBeforeDeviceSupport() throws {
+        let order = CleanupKind.developerKinds
+        let nuget = try #require(order.firstIndex(of: .nugetCache))
+        #expect(order[nuget - 1] == .cargoCache)
+        #expect(order[nuget + 1] == .xcodeDeviceSupport)
+        #expect(CleanupKind.nugetCache.rawValue == "nugetCache")
+    }
+
+    @Test func nugetPresentation() {
+        #expect(CleanupKind.nugetCache.title == "NuGet packages")
+        #expect(CleanupKind.nugetCache.detail == CleanupKind.npmCache.detail)
+        #expect(CleanupKind.nugetCache.systemImage == "shippingbox")
+    }
+
+    @Test func nugetDirectoryIsTheGlobalPackagesFolder() {
+        let home = URL(fileURLWithPath: "/Users/test")
+        #expect(CleanupService.directory(for: .nugetCache, home: home).path == "/Users/test/.nuget/packages")
+        #expect(CleanupService.isSafeToDelete(CleanupService.directory(for: .nugetCache).appendingPathComponent("x")))
+    }
+
+    @Test func nugetListsOnlyThePackageFoldersNeverTheConfiguration() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.file(".nuget/packages/newtonsoft.json/13.0.3/lib/a.dll", bytes: 25_000)
+        try box.file(".nuget/packages/serilog/3.1.1/b.dll", bytes: 15_000)
+        try box.file(".nuget/NuGet/NuGet.Config", bytes: 200)
+
+        let items = try #require(CleanupService.items(for: .nugetCache, home: box.root))
+        #expect(Set(items.map(\.lastPathComponent)) == ["newtonsoft.json", "serilog"])
+        #expect(!items.contains { $0.path.contains("/.nuget/NuGet") })
+        let expected = items.reduce(UInt64(0)) { $0 + CleanupService.allocatedSize(of: $1) }
+        #expect(expected > 0)
+        #expect(CleanupService.size(of: .nugetCache, home: box.root) == expected)
+    }
+
+    @Test func nugetSizeIsNilWithoutFolderAndZeroWhenEmpty() throws {
+        let box = try Sandbox(insideHome: true)
+        #expect(CleanupService.size(of: .nugetCache, home: box.root) == nil)
+        try box.dir(".nuget/packages")
+        #expect(CleanupService.size(of: .nugetCache, home: box.root) == 0)
+    }
+
+    @Test func nugetTitleIsInTheCatalogInNineLanguagesWithoutVariations() throws {
+        let catalog = try TranslationCatalog.loadCatalog(TranslationCatalogTests.localizable)
+        let strings = try #require(catalog["strings"] as? [String: Any])
+        let entry = try #require(strings["NuGet packages"] as? [String: Any], "clé absente")
+        #expect(entry["variations"] == nil)
+        let localizations = try #require(entry["localizations"] as? [String: Any])
+        for language in TranslationCatalog.requiredTranslations {
+            let unit = try #require((localizations[language] as? [String: Any])?["stringUnit"] as? [String: Any], "\(language)")
+            let value = try #require(unit["value"] as? String)
+            #expect(!value.isEmpty && value.contains("NuGet"), "\(language)")
+            #expect(TranslationCatalog.placeholders(in: value).byPosition.isEmpty, "\(language)")
+        }
+    }
 }
