@@ -62,6 +62,13 @@ enum AndroidEmulatorScanner {
 
 // MARK: - Liste sur le disque (lecture seule)
 
+/// La date de modification d'un fichier du signal « dernière utilisation » (`AndroidEmulatorScanner.lastUsedFiles`).
+struct AndroidFileDate: Equatable {
+    /// Chemin relatif au dossier de l'AVD.
+    let file: String
+    let date: Date
+}
+
 /// Un appareil virtuel Android, SANS taille (la taille est mesurée à part, dossier par dossier).
 struct AndroidDevice: Equatable {
     /// Nom de l'AVD (validé) : la clé de l'appareil, jamais montrée comme clé de catalogue.
@@ -78,9 +85,12 @@ struct AndroidDevice: Equatable {
     let lastUsedSource: String?
     /// Un processus tourne avec `-avd <nom>` (rempli par `AndroidEmulatorScanner.list`).
     let isRunning: Bool
+    /// La date de CHAQUE fichier de `lastUsedFiles` qui existe, dans l'ordre de la constante (pour que l'auteur compare
+    /// fichier par fichier avec `--scan`). Vide : aucun de ces fichiers.
+    let fileDates: [AndroidFileDate]
 
     init(name: String, displayName: String, systemVersion: String?, folder: URL, lastUsed: Date?, lastUsedSource: String?,
-         isRunning: Bool = false) {
+         isRunning: Bool = false, fileDates: [AndroidFileDate] = []) {
         self.name = name
         self.displayName = displayName
         self.systemVersion = systemVersion
@@ -88,11 +98,12 @@ struct AndroidDevice: Equatable {
         self.lastUsed = lastUsed
         self.lastUsedSource = lastUsedSource
         self.isRunning = isRunning
+        self.fileDates = fileDates
     }
 
     func withRunning(_ running: Bool) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates)
     }
 }
 
@@ -148,12 +159,13 @@ extension AndroidEmulatorScanner {
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
                   isStrictlyInside(folder, homePath: homePath) else { continue }
             let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
-            let used = lastUsed(in: folder)
+            let dates = fileDates(in: folder)
+            let used = dates.max { $0.date < $1.date }
             devices.append(AndroidDevice(name: name,
                                          displayName: displayName(config: config, avdName: name),
                                          systemVersion: systemVersion(imageSysdir: config["image.sysdir.1"]),
                                          folder: folder.resolvingSymlinksInPath().standardizedFileURL,
-                                         lastUsed: used?.date, lastUsedSource: used?.file))
+                                         lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates))
         }
         devices.sort { a, b in
             let (x, y) = (a.displayName.lowercased(), b.displayName.lowercased())
@@ -196,16 +208,17 @@ extension AndroidEmulatorScanner {
         return parseINI(data)
     }
 
-    /// La date de modification (contenu) la plus récente parmi `lastUsedFiles` (fichiers ordinaires, liens suivis).
-    private static func lastUsed(in folder: URL) -> (date: Date, file: String)? {
-        var best: (date: Date, file: String)?
+    /// La date de modification (contenu) de chaque fichier de `lastUsedFiles` qui existe (fichiers ordinaires, liens suivis),
+    /// dans l'ordre de la constante. Le signal est la plus récente ; à égalité, le premier de la liste.
+    private static func fileDates(in folder: URL) -> [AndroidFileDate] {
+        var result: [AndroidFileDate] = []
         for file in lastUsedFiles {
             var info = stat()
             guard stat(folder.appendingPathComponent(file).path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else { continue }
             let date = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec) + TimeInterval(info.st_mtimespec.tv_nsec) / 1e9)
-            if best == nil || date > best!.date { best = (date, file) }
+            result.append(AndroidFileDate(file: file, date: date))
         }
-        return best
+        return result
     }
 }
 

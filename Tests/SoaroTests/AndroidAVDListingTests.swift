@@ -110,6 +110,26 @@ import Testing
         #expect(device.lastUsedSource == nil)
     }
 
+    @Test func everyExistingListedFileDateIsReturnedInConstantOrder() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try touch(folder, "cache.img.qcow2", daysAgo: 41)
+        try touch(folder, "emulator-user.ini", daysAgo: 2)
+        try touch(folder, "hardware-qemu.ini", daysAgo: 40)
+        try touch(folder, "multiinstance.lock", daysAgo: 0)    // hors liste : jamais renvoyé
+        let device = try #require(list(box).devices.first)
+        #expect(device.fileDates == [AndroidFileDate(file: "hardware-qemu.ini", date: daysAgo(40)),
+                                     AndroidFileDate(file: "emulator-user.ini", date: daysAgo(2)),
+                                     AndroidFileDate(file: "cache.img.qcow2", date: daysAgo(41))])
+        #expect(device.lastUsedSource == "emulator-user.ini")
+    }
+
+    @Test func noListedFileGivesNoFileDates() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        #expect(try #require(list(box).devices.first).fileDates.isEmpty)
+    }
+
     @Test func theSignalIsOneNamedConstant() {
         #expect(AndroidEmulatorScanner.lastUsedFiles == ["hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2",
                                                         "userdata-qemu.img", "cache.img.qcow2", "snapshots/default_boot/snapshot.pb"])

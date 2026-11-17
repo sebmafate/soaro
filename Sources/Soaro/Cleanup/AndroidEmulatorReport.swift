@@ -4,7 +4,7 @@ import Foundation
 /// Fonction PURE (résultat du scan, suggestions, locale et fuseau explicites), texte anglais brut comme les autres sections de
 /// `--scan` : volontairement ni `String(localized:)` ni clé de catalogue. Aucun chemin n'est jamais affiché.
 enum AndroidEmulatorReport {
-    static func lines(scan: AndroidScan, suggestions: DeviceSuggestions.AndroidResult, locale: Locale,
+    static func lines(scan: AndroidScan, suggestions: DeviceSuggestions.AndroidResult, now: Date, locale: Locale,
                       timeZone: TimeZone = .current) -> [String] {
         var out = ["== Android emulators"]
         switch scan.status {
@@ -42,6 +42,9 @@ enum AndroidEmulatorReport {
             if row.isRunning { parts.append("running") }
             if row.isPreSelected { parts.append("pre-selected: inactive") }
             out.append(parts.joined(separator: "  "))
+            // La date de CHAQUE fichier du signal qui existe : l'auteur compare fichier par fichier pour confirmer ou changer le signal.
+            let files = device.fileDates.map { "\($0.file) \(day($0.date)) (\(DeviceSuggestions.wholeDays(from: $0.date, to: now)) d)" }
+            out.append("    files: " + (files.isEmpty ? "none" : files.joined(separator: ", ")))
         }
 
         if suggestions.hiddenSmallCount > 0 {

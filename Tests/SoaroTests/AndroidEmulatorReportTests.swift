@@ -11,18 +11,21 @@ import Testing
 
     private func ago(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
 
+    /// `files` : les dates de chaque fichier du signal qui existe (nom, jours depuis) ; par défaut, seulement le gagnant.
     private func sized(_ name: String, display: String? = nil, version: String? = "36", days: Double?, source: String? = "hardware-qemu.ini",
-                       running: Bool = false, size: UInt64) -> SizedAndroidDevice {
-        SizedAndroidDevice(
+                       running: Bool = false, size: UInt64, files: [(String, Double)]? = nil) -> SizedAndroidDevice {
+        let dates = files ?? (days.map { [(source ?? "hardware-qemu.ini", $0)] } ?? [])
+        return SizedAndroidDevice(
             device: AndroidDevice(name: name, displayName: display ?? name, systemVersion: version,
                                   folder: URL(fileURLWithPath: "/Users/test/.android/avd/\(name).avd"),
-                                  lastUsed: days.map(ago), lastUsedSource: days == nil ? nil : source, isRunning: running),
+                                  lastUsed: days.map(ago), lastUsedSource: days == nil ? nil : source, isRunning: running,
+                                  fileDates: dates.map { AndroidFileDate(file: $0.0, date: ago($0.1)) }),
             size: size)
     }
 
     private func report(_ scan: AndroidScan, limit: Int = 60) -> [String] {
         let suggestions = DeviceSuggestions.suggestAndroid(scan.devices, now: now, limitDays: limit)
-        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, locale: locale, timeZone: utc)
+        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc)
     }
 
     private func size(_ bytes: UInt64) -> String { Format.fileBytes(bytes, locale: locale) }
@@ -32,24 +35,32 @@ import Testing
     @Test func exactLinesForTwoListedDevicesAndOneSmallOne() {
         let sdk = AndroidSDKLocation(path: "/Users/test/Library/Android/sdk", source: .androidHome)
         let scan = AndroidScan(status: .ok, sdk: sdk, devices: [
-            sized("Old_Phone_C", display: "Old Phone C", days: 90, size: 3_000_000_000),
-            sized("Test_Phone_A", version: nil, days: 2, running: true, size: 1_000_000_000),
+            sized("Old_Phone_C", display: "Old Phone C", days: 90, size: 3_000_000_000,
+                  files: [("hardware-qemu.ini", 90), ("userdata-qemu.img.qcow2", 200)]),
+            sized("Test_Phone_A", version: nil, days: 2, running: true, size: 1_000_000_000,
+                  files: [("hardware-qemu.ini", 40), ("emulator-user.ini", 2), ("cache.img.qcow2", 41)]),
             sized("Test_Tablet_B", days: nil, size: 50_000_000),
         ])
         #expect(report(scan) == [
             "== Android emulators",
             "\(size(3_000_000_000))  Old_Phone_C  Old Phone C (API 36)  last used 2026-08-18 (90 d, from hardware-qemu.ini)  pre-selected: inactive",
+            "    files: hardware-qemu.ini 2026-08-18 (90 d), userdata-qemu.img.qcow2 2026-04-30 (200 d)",
             "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from hardware-qemu.ini)  running",
+            "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
             "1 small device (\(size(50_000_000))) not listed",
             "SDK source: ANDROID_HOME",
         ])
     }
 
-    @Test func anUnknownDateIsPrintedAsUnknown() {
+    @Test func aDeviceWithNoListedFilePrintsNoneAndNoPerFileDates() {
         let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .defaultLocation),
                                devices: [sized("Test_Phone_A", days: nil, size: 500_000_000)])
-        #expect(report(scan)[1] == "\(size(500_000_000))  Test_Phone_A  Test_Phone_A (API 36)  last used unknown")
-        #expect(report(scan).last == "SDK source: default")
+        #expect(report(scan) == [
+            "== Android emulators",
+            "\(size(500_000_000))  Test_Phone_A  Test_Phone_A (API 36)  last used unknown",
+            "    files: none",
+            "SDK source: default",
+        ])
     }
 
     @Test func manySmallDevicesArePluralAndTheFileSourceIsPrinted() {
@@ -58,6 +69,7 @@ import Testing
             sized("Test_Tablet_B", days: 5, size: 1), sized("Test_Tablet_C", days: 5, size: 2)])
         let lines = report(scan)
         #expect(lines[1].contains("from snapshots/default_boot/snapshot.pb"))
+        #expect(lines[2] == "    files: snapshots/default_boot/snapshot.pb 2026-11-11 (5 d)")
         #expect(lines.contains("2 small devices (\(size(3))) not listed"))
     }
 
@@ -66,7 +78,7 @@ import Testing
             sized("Small_First", days: 1, size: 200_000_000), sized("Big_Second", days: 1, size: 900_000_000)])
         let lines = report(scan)
         #expect(lines[1].contains("Big_Second"))
-        #expect(lines[2].contains("Small_First"))
+        #expect(lines[3].contains("Small_First"))
     }
 
     @Test func statusLines() {

@@ -103,7 +103,7 @@ enum Diagnostics {
         let android = Self.androidScan(runner: RealCommandRunner(), home: URL(fileURLWithPath: NSHomeDirectory()),
                                        environment: ProcessInfo.processInfo.environment)
         let androidSuggestions = DeviceSuggestions.suggestAndroid(android.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
-        for line in AndroidEmulatorReport.lines(scan: android, suggestions: androidSuggestions, locale: .current) { print(line) }
+        for line in AndroidEmulatorReport.lines(scan: android, suggestions: androidSuggestions, now: Date(), locale: .current) { print(line) }
         print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(androidStart)))
 
         print("== Installed apps")
