@@ -252,21 +252,44 @@ enum DemoData {
     /// Made-up Android virtual devices for the "Simulators and emulators" tool: generic names, no real path (the folder is
     /// never read in demo mode), dates relative to `now`, every size known.
     static func androidEmulators(now: Date = Date()) -> [SizedAndroidDevice] {
-        func device(_ name: String, display: String, version: String, days: Double, running: Bool = false, size: UInt64) -> SizedAndroidDevice {
+        func device(_ name: String, display: String, version: String, days: Double, running: Bool = false, size: UInt64,
+                    image: String) -> SizedAndroidDevice {
             SizedAndroidDevice(
                 device: AndroidDevice(name: name, displayName: display, systemVersion: version,
                                       folder: URL(fileURLWithPath: "/demo-folder/\(name).avd"),
                                       lastUsed: now.addingTimeInterval(-days * 86_400), lastUsedSource: "emulator-user.ini",
-                                      isRunning: running),
+                                      isRunning: running, imageSysdir: "system-images/\(image)/"),
                 size: size)
         }
         return [
             // Inactive for 70 days and over 100 MB: pre-selected.
-            device("Demo_Phone_A", display: "Demo Phone A", version: "36", days: 70, size: 8_100 * mb),
+            device("Demo_Phone_A", display: "Demo Phone A", version: "36", days: 70, size: 8_100 * mb,
+                   image: "android-36/google_apis_playstore/arm64-v8a"),
             // Used recently and running: not selectable.
-            device("Demo_Tablet_B", display: "Demo Tablet B", version: "35", days: 0.02, running: true, size: 6_400 * mb),
+            device("Demo_Tablet_B", display: "Demo Tablet B", version: "35", days: 0.02, running: true, size: 6_400 * mb,
+                   image: "android-35/google_apis/arm64-v8a"),
             // Under 100 MB: counted in the footer, not listed.
-            device("Demo_Wear_C", display: "Demo Wear C", version: "34", days: 20, size: 60 * mb),
+            device("Demo_Wear_C", display: "Demo Wear C", version: "34", days: 20, size: 60 * mb,
+                   image: "android-34/default/arm64-v8a"),
         ]
+    }
+
+    // MARK: Android system images
+
+    /// Made-up Android system images for the "Simulators and emulators" tool: folders under `/demo-folder/` (never read in demo
+    /// mode), made-up sizes, every size known. The usage comes from the same pure matching as the real listing (with nothing
+    /// missing), so the demo devices use 36, 35 and 34 and the 33 is "not used by any listed device".
+    static func androidSystemImages(now: Date = Date()) -> [(image: AndroidSystemImage, size: UInt64)] {
+        let demo: [(path: String, size: UInt64)] = [
+            ("android-36/google_apis_playstore/arm64-v8a", 4_200 * mb), ("android-35/google_apis/arm64-v8a", 3_900 * mb),
+            ("android-34/default/arm64-v8a", 2_800 * mb), ("android-33/default/arm64-v8a", 2_600 * mb),
+        ]
+        let folders = demo.map { item in
+            AndroidSystemImageFolder(key: AndroidSystemImageScanner.imageKey(imageSysdir: "system-images/\(item.path)")!,
+                                     folder: URL(fileURLWithPath: "/demo-folder/\(item.path)"))
+        }
+        let rows = AndroidSystemImageScanner.usage(images: folders, devices: androidEmulators(now: now).map(\.device),
+                                                   incompleteness: AndroidSystemImageIncompleteness(reasons: []))
+        return zip(rows, demo).map { ($0, $1.size) }
     }
 }

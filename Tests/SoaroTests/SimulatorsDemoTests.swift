@@ -133,6 +133,39 @@ import Testing
         #expect(detections == 0)
     }
 
+    @Test func demoImagesAppearAtOnceOneUsageEachWithoutRunnerOrMeasure() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        let m = demoModel(runner: runner, measure: measure)
+        m.scan()                                   // sans attendre : tout est déjà là
+        #expect(m.imagesPhase == .listed)
+        #expect(m.imageRows.map(\.key.path) == ["android-36/google_apis_playstore/arm64-v8a", "android-35/google_apis/arm64-v8a",
+                                               "android-34/default/arm64-v8a", "android-33/default/arm64-v8a"])
+        #expect(m.imageRows.allSatisfy { m.size(of: $0) != nil }, "toutes les tailles sont connues")
+        #expect(m.imageRows.allSatisfy { $0.folder.path.hasPrefix("/demo-folder/") })
+        let used = m.imageRows.filter { if case .usedBy = $0.usage { true } else { false } }
+        #expect(used.count == 3)
+        #expect(m.imageRows.last?.usage == .notUsed, "la 33 : « not used by any listed device »")
+        #expect(!m.imagesUsageIncomplete)
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+    }
+
+    @Test func demoImagesAreUsedByTheDemoDevices() {
+        let names = Dictionary(uniqueKeysWithValues: DemoData.androidEmulators(now: now).map { ($0.device.name, $0.device) })
+        let sized = DemoData.androidSystemImages(now: now)
+        let images = sized.map(\.image)
+        #expect(sized.allSatisfy { $0.size > 0 })
+        #expect(images.map(\.key.path) == ["android-36/google_apis_playstore/arm64-v8a", "android-35/google_apis/arm64-v8a",
+                                          "android-34/default/arm64-v8a", "android-33/default/arm64-v8a"])
+        if case .usedBy(let devices) = images[0].usage { #expect(devices.map(\.name) == ["Demo_Phone_A"]) } else { Issue.record("36") }
+        if case .usedBy(let devices) = images[1].usage { #expect(devices.map(\.name) == ["Demo_Tablet_B"]) } else { Issue.record("35") }
+        if case .usedBy(let devices) = images[2].usage { #expect(devices.map(\.name) == ["Demo_Wear_C"]) } else { Issue.record("34") }
+        #expect(names.count == 3)
+        #expect(images[3].usage == .notUsed)
+    }
+
     @Test func demoAndroidHasTheThreeCases() {
         let m = demoModel(runner: FakeCommandRunner())
         m.scan()

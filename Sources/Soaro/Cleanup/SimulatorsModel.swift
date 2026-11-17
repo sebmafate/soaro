@@ -5,7 +5,8 @@ import Foundation
 ///
 /// Deux groupes côte à côte : les simulateurs iOS (UDID) et, SL10, les émulateurs Android (nom d'AVD). Chacun a son état, ses
 /// lignes, ses tailles et sa sélection ; les parties communes (limite, totaux, pied de page, « Scan again », « Delete ») les
-/// additionnent. Un échec d'un groupe n'abîme jamais l'autre. SL11 : « Delete » agit sur les deux groupes (un lot mixte : iOS d'abord, puis Android).
+/// additionnent. Un échec d'un groupe n'abîme jamais l'autre. SL12a : un troisième groupe, les images système Android (lecture seule,
+/// sans sélection), reste hors de « Delete » et des totaux. SL11 : « Delete » agit sur les deux groupes (un lot mixte : iOS d'abord, puis Android).
 ///
 /// - Le listage (une commande) tourne dans une tâche détachée (priorité utilitaire), jamais sur l'acteur principal,
 ///   jamais dans le tick de 3 secondes. Un `CancelToken` annule le scan : le résultat d'un scan annulé n'est jamais appliqué.
@@ -63,6 +64,17 @@ final class SimulatorsModel: ObservableObject {
     private var androidNothingPreSelected = true
     /// Tous les appareils Android du listage, sans taille.
     private var androidDevices: [AndroidDevice] = []
+    // Groupe « images système Android » (SL12a) : lecture seule, indépendant de « Delete ». Aucune sélection, aucun cas de `Group`.
+    // Sa mesure n'entre PAS dans `isMeasuring`, ni dans les totaux, ni dans `canDelete` (décision D6).
+    @Published private(set) var imagesPhase: Phase = .notScanned
+    /// Images installées : ordre du listage (version décroissante, variante, ABI) tant que les tailles arrivent, puis par taille
+    /// décroissante (égalité : ordre du listage). Jamais cachées pour être petites.
+    @Published private(set) var imageRows: [AndroidSystemImage] = []
+    @Published private var imageSizes: [AndroidSystemImageKey: UInt64] = [:]
+    /// Les tailles des images sont en cours de mesure (sert à Retour ; JAMAIS à `isMeasuring`).
+    private var imagesMeasuring = false
+    /// Au moins une ligne dit « cannot tell » : la vue montre alors le pied de page explicatif.
+    var imagesUsageIncomplete: Bool { imageRows.contains { $0.usage == .cannotTell } }
     /// Limite d'inactivité choisie (menu) : `DeviceSuggestions.defaultLimitDays` au départ, JAMAIS mémorisée entre deux sessions.
     @Published private(set) var limitDays = DeviceSuggestions.defaultLimitDays
     /// Appareils cochés (UDID).
@@ -154,7 +166,7 @@ final class SimulatorsModel: ObservableObject {
 
     /// « Scan again » est inutilisable pendant le listage (une seule commande à la fois, un seul outil à la fois) dans l'un ou
     /// l'autre groupe, et pendant une suppression.
-    var canScanAgain: Bool { phase != .listing && androidPhase != .listing && !isDeleting }
+    var canScanAgain: Bool { phase != .listing && androidPhase != .listing && imagesPhase != .listing && !isDeleting }
 
     /// « Delete » est disponible : aucune taille en cours de mesure, aucune suppression en cours, et au moins un appareil coché dans un
     /// groupe affiché (iOS listé avec une ligne iOS cochée, ou Android listé avec une ligne Android cochée). SL11 : une ligne Android
@@ -175,6 +187,8 @@ final class SimulatorsModel: ObservableObject {
     func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
     func size(of row: DeviceSuggestions.AndroidRow) -> UInt64? { androidSizes[row.device.device.name] }
     func measuredSize(avd name: String) -> UInt64? { androidSizes[name] }
+    /// Taille d'une image, `nil` tant qu'elle n'est pas mesurée (la vue affiche « … »).
+    func size(of image: AndroidSystemImage) -> UInt64? { imageSizes[image.key] }
 
     /// Valeurs du menu de limite : 30, 60, 90, 180 jours ; la limite par défaut y est ajoutée (en ordre) si elle n'y est pas.
     static func limitChoices(defaultDays: Int = DeviceSuggestions.defaultLimitDays) -> [Int] {
@@ -300,6 +314,12 @@ final class SimulatorsModel: ObservableObject {
         return nil
     }
 
+    /// Message du groupe des images quand sa lecture a échoué, `nil` sinon.
+    var imagesMessage: String? {
+        if case .failed = imagesPhase { return AndroidSystemImagePresentation.couldNotReadMessage }
+        return nil
+    }
+
     /// Texte de l'attente de l'écran (« non scanné » ou en cours de listage) : « Deleting… » quand une suppression tourne,
     /// même ailleurs (écran rouvert pendant un lot), sinon « Looking for… ».
     var progressMessage: String {
@@ -333,6 +353,11 @@ final class SimulatorsModel: ObservableObject {
             androidDevices = demoAndroid.map(\.device)
             androidSizes = Dictionary(uniqueKeysWithValues: demoAndroid.map { ($0.device.name, $0.size) })
             androidPhase = .listed
+            // Images inventées, tailles connues tout de suite : rien n'est lu ni mesuré.
+            let demoImages = DemoData.androidSystemImages(now: now())
+            imageRows = demoImages.map(\.image)
+            imageSizes = Dictionary(uniqueKeysWithValues: demoImages.map { ($0.image.key, $0.size) })
+            imagesPhase = .listed
             recompute(selection: .replace)
             scanTask = nil
             return
@@ -340,13 +365,14 @@ final class SimulatorsModel: ObservableObject {
 
         phase = .listing
         androidPhase = .listing
+        imagesPhase = .listing
         reset()
 
         let runner = runner, detect = detect, locateTool = locateTool, measure = measure, home = home, environment = environment
         scanTask = Task { [weak self] in
             // UNE seule tâche, UN outil à la fois (le faux lanceur des tests n'est pas sûr entre fils) : `simctl list` d'abord,
             // puis `ps` pour Android. Aucun outil iOS sur ce Mac (ni dossier d'appareils ni `simctl`) : le groupe iOS est caché.
-            let (iosListing, androidListing) = await Task.detached(priority: .utility) { () -> (SimulatorListing?, AndroidListing) in
+            let (iosListing, androidListing, imagesListing) = await Task.detached(priority: .utility) { () -> (SimulatorListing?, AndroidListing, AndroidSystemImageListing) in
                 let detection = detect()
                 var ios: SimulatorListing?
                 if detection.isToolPresent {
@@ -357,11 +383,14 @@ final class SimulatorsModel: ObservableObject {
                 let psPath = ToolLocator.androidSDK(environment: environment, home: home) == nil
                     ? nil : locateTool(ToolLocator.processListCandidates)
                 let android = AndroidEmulatorScanner.list(runner: runner, psPath: psPath, environment: environment, home: home)
-                return (ios, android)
+                // Les images système : lectures de fichiers seulement, aucun lanceur ; après le listage Android.
+                let images = AndroidSystemImageScanner.list(environment: environment, home: home)
+                return (ios, android, images)
             }.value
             guard let self, !token.isCancelled else { return }
             let iosListed = self.apply(iosListing)
             let androidListed = self.apply(androidListing)
+            let imagesListed = self.apply(imagesListing)
 
             // Les tailles arrivent une à une (un dossier à la fois, hors de l'acteur principal), comme dans le désinstalleur.
             // Dans l'ordre d'affichage (haut en bas) : les lignes iOS d'abord, puis les lignes Android.
@@ -391,6 +420,19 @@ final class SimulatorsModel: ObservableObject {
                 if token.isCancelled { return }
                 self.androidMeasuring = false
                 self.recomputeAndroid(selection: .prune)
+            }
+            // Les images en dernier : un dossier à la fois, hors de l'acteur principal, jeton vérifié avant et après chaque mesure.
+            if imagesListed {
+                for image in self.imageRows {
+                    if token.isCancelled { return }
+                    let folder = image.folder
+                    let size = await Task.detached(priority: .utility) { measure(folder) }.value
+                    if token.isCancelled { return }
+                    self.imageSizes[image.key] = size
+                }
+                if token.isCancelled { return }
+                self.imagesMeasuring = false
+                self.sortImagesBySize()
             }
         }
     }
@@ -491,10 +533,12 @@ final class SimulatorsModel: ObservableObject {
             deleteToken.cancel()
             phase = .notScanned
             androidPhase = .notScanned
+            imagesPhase = .notScanned
             reset()
-        } else if phase == .listing || androidPhase == .listing || isMeasuring {
+        } else if phase == .listing || androidPhase == .listing || imagesPhase == .listing || isMeasuring || imagesMeasuring {
             phase = .notScanned
             androidPhase = .notScanned
+            imagesPhase = .notScanned
             reset()
         }
     }
@@ -516,6 +560,19 @@ final class SimulatorsModel: ObservableObject {
         androidMeasuring = false
         androidHiddenSmallCount = 0
         androidHiddenSmallSize = 0
+        imageRows = []
+        imageSizes = [:]
+        imagesMeasuring = false
+    }
+
+    /// Une fois la dernière taille arrivée : par taille décroissante ; à égalité, l'ordre du listage (le tri est stable ici : l'indice
+    /// départage). Une taille inconnue compte pour 0.
+    private func sortImagesBySize() {
+        let indexed = Array(imageRows.enumerated())
+        imageRows = indexed.sorted { a, b in
+            let (x, y) = (imageSizes[a.element.key] ?? 0, imageSizes[b.element.key] ?? 0)
+            return x != y ? x > y : a.offset < b.offset
+        }.map(\.element)
     }
 
     /// Recalcule les lignes et le pied de page : un appareil dont la taille n'est pas connue compte comme « assez gros »
@@ -593,6 +650,27 @@ final class SimulatorsModel: ObservableObject {
             phase = .failed(.notAnswering)
         case .toolNotFound, .commandFailed, .outputNotReadable:
             phase = .failed(.couldNotRead)
+        }
+        return false
+    }
+
+    /// - Returns: `true` quand des images sont listées (leurs tailles peuvent alors être mesurées).
+    /// Pas de SDK, SDK hors du dossier personnel ou aucune image : le groupe est caché ; `system-images` illisible : échec du seul groupe.
+    private func apply(_ listing: AndroidSystemImageListing) -> Bool {
+        switch listing.status {
+        case .sdkNotFound, .sdkOutsideHome:
+            imagesPhase = .hidden
+        case .unreadable:
+            imagesPhase = .failed(.couldNotRead)
+        case .ok:
+            if listing.images.isEmpty {
+                imagesPhase = .hidden
+                return false
+            }
+            imageRows = listing.images
+            imagesPhase = .listed
+            imagesMeasuring = true
+            return true
         }
         return false
     }
