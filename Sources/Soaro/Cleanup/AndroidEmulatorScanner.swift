@@ -59,3 +59,152 @@ enum AndroidEmulatorScanner {
         return name.isEmpty ? avdName : name
     }
 }
+
+// MARK: - Liste sur le disque (lecture seule)
+
+/// Un appareil virtuel Android, SANS taille (la taille est mesurée à part, dossier par dossier).
+struct AndroidDevice: Equatable {
+    /// Nom de l'AVD (validé) : la clé de l'appareil, jamais montrée comme clé de catalogue.
+    let name: String
+    /// `avd.ini.displayname`, sinon le nom de l'AVD.
+    let displayName: String
+    /// `"36"` ou `"36.1"` ; `nil` : « Unknown system ».
+    let systemVersion: String?
+    /// Dossier `.avd`, standardisé et sans lien symbolique, STRICTEMENT dans le dossier personnel.
+    let folder: URL
+    /// Date de dernière utilisation (proposition, voir `AndroidEmulatorScanner.lastUsedFiles`), `nil` si inconnue.
+    let lastUsed: Date?
+    /// Le fichier (relatif au dossier de l'AVD) qui a donné la date, `nil` si inconnue. Affiché par `--scan`.
+    let lastUsedSource: String?
+    /// Un processus tourne avec `-avd <nom>` (rempli par `AndroidEmulatorScanner.list`).
+    let isRunning: Bool
+
+    init(name: String, displayName: String, systemVersion: String?, folder: URL, lastUsed: Date?, lastUsedSource: String?,
+         isRunning: Bool = false) {
+        self.name = name
+        self.displayName = displayName
+        self.systemVersion = systemVersion
+        self.folder = folder
+        self.lastUsed = lastUsed
+        self.lastUsedSource = lastUsedSource
+        self.isRunning = isRunning
+    }
+
+    func withRunning(_ running: Bool) -> AndroidDevice {
+        AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running)
+    }
+}
+
+/// Résultat de la lecture de `<home>/.android/avd` : l'état, et les appareils SANS taille.
+struct AndroidAVDListing: Equatable {
+    enum Status: Equatable {
+        /// Lu (éventuellement vide, aussi quand le dossier `avd` n'existe pas).
+        case ok
+        /// Le dossier existe mais ne peut pas être listé.
+        case unreadable
+    }
+
+    let status: Status
+    let devices: [AndroidDevice]
+}
+
+extension AndroidEmulatorScanner {
+    /// Les fichiers que l'émulateur écrit quand l'appareil tourne, relatifs au dossier de l'AVD. Le signal « dernière utilisation »
+    /// est la date de modification la plus récente parmi eux (PROPOSITION de SL10, à confirmer par l'auteur : un changement
+    /// après la revue tient en cette seule constante). `config.ini`, `multiinstance.lock` et le `.ini` sont EXCLUS exprès :
+    /// Android Studio écrit les deux premiers sans que l'appareil serve, et le verrou existe même quand rien ne tourne (ADR 0009).
+    static let lastUsedFiles = [
+        "hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2", "userdata-qemu.img",
+        "cache.img.qcow2", "snapshots/default_boot/snapshot.pb",
+    ]
+
+    /// Borne de lecture d'un `.ini` ou d'un `config.ini` : 1 Mio. Au-delà, ou illisible, le fichier compte comme absent.
+    static let iniSizeLimit = 1_048_576
+
+    /// Lit `<home>/.android/avd` : un appareil par `<nom>.ini` (nom valide), dont le dossier est dans le dossier personnel.
+    /// LECTURE SEULE, synchrone, sans taille. Triés par nom affiché (sans tenir compte de la casse), puis par nom d'AVD.
+    /// - Un `.avd` sans son `.ini` est ignoré ; un `.ini` sans dossier utilisable est ignoré.
+    /// - Le dossier : le premier existant parmi `path=` (absolu seulement), `path.rel` (contre `<home>/.android`), puis
+    ///   `<home>/.android/avd/<nom>.avd` ; il doit être strictement dans le dossier personnel (ADR 0009, règle 1), sinon l'AVD est ignoré.
+    static func listAVDs(home: URL) -> AndroidAVDListing {
+        let androidFolder = home.appendingPathComponent(".android", isDirectory: true)
+        let avdFolder = androidFolder.appendingPathComponent("avd", isDirectory: true)
+
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: avdFolder.path, isDirectory: &isDirectory) else {
+            return AndroidAVDListing(status: .ok, devices: [])
+        }
+        guard isDirectory.boolValue, let entries = try? FileManager.default.contentsOfDirectory(atPath: avdFolder.path) else {
+            return AndroidAVDListing(status: .unreadable, devices: [])
+        }
+
+        let homePath = resolvedPath(home)
+        var devices: [AndroidDevice] = []
+        for entry in entries.sorted() where entry.hasSuffix(".ini") {
+            let name = String(entry.dropLast(".ini".count))
+            guard isValidAVDName(name) else { continue }
+            let registration = readINI(avdFolder.appendingPathComponent(entry)) ?? [:]
+            guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
+                  isStrictlyInside(folder, homePath: homePath) else { continue }
+            let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
+            let used = lastUsed(in: folder)
+            devices.append(AndroidDevice(name: name,
+                                         displayName: displayName(config: config, avdName: name),
+                                         systemVersion: systemVersion(imageSysdir: config["image.sysdir.1"]),
+                                         folder: folder.resolvingSymlinksInPath().standardizedFileURL,
+                                         lastUsed: used?.date, lastUsedSource: used?.file))
+        }
+        devices.sort { a, b in
+            let (x, y) = (a.displayName.lowercased(), b.displayName.lowercased())
+            return x != y ? x < y : a.name < b.name
+        }
+        return AndroidAVDListing(status: .ok, devices: devices)
+    }
+
+    /// Le premier candidat qui est un dossier existant (`path=` absolu, `path.rel`, dossier par défaut). `nil` sinon.
+    private static func deviceFolder(name: String, registration: [String: String], androidFolder: URL, avdFolder: URL) -> URL? {
+        var candidates: [URL] = []
+        if let path = registration["path"], path.hasPrefix("/") { candidates.append(URL(fileURLWithPath: path, isDirectory: true)) }
+        if let rel = registration["path.rel"], !rel.isEmpty, !rel.hasPrefix("/") {
+            candidates.append(androidFolder.appendingPathComponent(rel, isDirectory: true))
+        }
+        candidates.append(avdFolder.appendingPathComponent("\(name).avd", isDirectory: true))
+        return candidates.first { url in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+        }
+    }
+
+    private static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
+
+    /// Le dossier, standardisé et sans lien symbolique, est STRICTEMENT dans le dossier personnel (jamais le dossier lui-même).
+    private static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {
+        let path = resolvedPath(folder)
+        let prefix = homePath.hasSuffix("/") ? homePath : homePath + "/"
+        return path.count > prefix.count && path.hasPrefix(prefix)
+    }
+
+    /// Lit et analyse un fichier INI : fichier ordinaire de 1 Mio au plus, UTF-8 valide. Sinon `nil` (le fichier compte comme absent).
+    private static func readINI(_ url: URL) -> [String: String]? {
+        var info = stat()
+        guard stat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_size <= iniSizeLimit,
+              let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        // Une lecture de plus que la borne : un fichier qui a grossi entre-temps compte aussi comme trop gros.
+        guard let data = try? handle.read(upToCount: iniSizeLimit + 1), data.count <= iniSizeLimit else { return nil }
+        return parseINI(data)
+    }
+
+    /// La date de modification (contenu) la plus récente parmi `lastUsedFiles` (fichiers ordinaires, liens suivis).
+    private static func lastUsed(in folder: URL) -> (date: Date, file: String)? {
+        var best: (date: Date, file: String)?
+        for file in lastUsedFiles {
+            var info = stat()
+            guard stat(folder.appendingPathComponent(file).path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else { continue }
+            let date = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec) + TimeInterval(info.st_mtimespec.tv_nsec) / 1e9)
+            if best == nil || date > best!.date { best = (date, file) }
+        }
+        return best
+    }
+}

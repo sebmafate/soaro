@@ -27,6 +27,15 @@ final class Sandbox {
         return url
     }
 
+    /// Écrit un fichier texte (créant les dossiers parents).
+    @discardableResult
+    func write(_ path: String, _ text: String) throws -> URL {
+        let url = root.appendingPathComponent(path)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(text.utf8).write(to: url)
+        return url
+    }
+
     func dir(_ path: String) throws {
         try FileManager.default.createDirectory(at: root.appendingPathComponent(path), withIntermediateDirectories: true)
     }
