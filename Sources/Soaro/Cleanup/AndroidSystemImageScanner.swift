@@ -47,8 +47,18 @@ enum AndroidSystemImageScanner {
 
 /// Un dossier d'image système trouvé sur le disque : sa clé et son dossier (standardisé, sans lien symbolique, dans le dossier personnel).
 struct AndroidSystemImageFolder: Equatable {
+    /// La clé AFFICHÉE : le vrai nom du dossier quand on peut le lire (ses trois derniers composants), sinon le premier nom trouvé.
     let key: AndroidSystemImageKey
     let folder: URL
+    /// TOUTES les clés qui mènent à ce dossier (un lien `android-35` vers `android-36`, un lien d'ABI) : un appareil qui écrit l'une
+    /// d'elles dans `image.sysdir.1` utilise ce dossier. Contient toujours `key`.
+    let keys: [AndroidSystemImageKey]
+
+    init(key: AndroidSystemImageKey, folder: URL, keys: [AndroidSystemImageKey]? = nil) {
+        self.key = key
+        self.folder = folder
+        self.keys = keys ?? [key]
+    }
 }
 
 /// Résultat de la lecture de `<sdk>/system-images`.
@@ -106,8 +116,9 @@ extension AndroidSystemImageScanner {
             return AndroidSystemImageFolderListing(status: .unreadable)
         }
 
-        var images: [AndroidSystemImageFolder] = []
-        var taken = Set<String>()
+        /// Un dossier réel (chemin résolu) et tous les noms sous lesquels on y arrive, dans l'ordre de lecture.
+        var groups: [(resolved: String, folder: URL, keys: [AndroidSystemImageKey])] = []
+        var groupIndex: [String: Int] = [:]
         var skipped = 0
 
         /// Les sous-dossiers de `folder` (liens suivis) triés par nom, ou `nil` si le dossier ne peut pas être listé.
@@ -143,16 +154,29 @@ extension AndroidSystemImageScanner {
                     let resolved = AndroidEmulatorScanner.resolvedPath(abi.url)
                     guard AndroidEmulatorScanner.isValidAVDName(abi.name),
                           AndroidEmulatorScanner.isStrictlyInside(abi.url, homePath: homePath),
-                          hasMarker(in: abi.url), taken.insert(resolved).inserted else {
+                          hasMarker(in: abi.url) else {
                         skipped += 1
                         continue
                     }
-                    images.append(AndroidSystemImageFolder(key: AndroidSystemImageKey(version: version, variant: variant.name, abi: abi.name),
-                                                           folder: abi.url.resolvingSymlinksInPath().standardizedFileURL))
+                    let key = AndroidSystemImageKey(version: version, variant: variant.name, abi: abi.name)
+                    // Un second nom du même dossier (lien) : on garde SA clé aussi (un appareil peut l'écrire dans `image.sysdir.1`),
+                    // sans nouvelle ligne ; il reste compté comme écarté (une seule ligne par dossier).
+                    if let index = groupIndex[resolved] {
+                        if !groups[index].keys.contains(key) { groups[index].keys.append(key) }
+                        skipped += 1
+                        continue
+                    }
+                    groupIndex[resolved] = groups.count
+                    groups.append((resolved, abi.url.resolvingSymlinksInPath().standardizedFileURL, [key]))
                 }
             }
         }
-        images.sort(by: isOrderedBefore)
+        let images = groups.map { group -> AndroidSystemImageFolder in
+            // La clé affichée est le vrai nom du dossier (ses trois derniers composants) quand c'est l'une des clés trouvées, sinon la première.
+            let real = imageKey(imageSysdir: "system-images/" + group.folder.pathComponents.suffix(3).joined(separator: "/"))
+            let shown = real.flatMap { group.keys.contains($0) ? $0 : nil } ?? group.keys[0]
+            return AndroidSystemImageFolder(key: group.keys.first { $0 == shown } ?? shown, folder: group.folder, keys: group.keys)
+        }.sorted(by: isOrderedBefore)
         return AndroidSystemImageFolderListing(status: .ok, images: images, skippedCount: skipped)
     }
 
@@ -275,7 +299,8 @@ extension AndroidSystemImageScanner {
                       incompleteness: AndroidSystemImageIncompleteness) -> [AndroidSystemImage] {
         let sorted = devices.sorted(by: AndroidDevice.isOrderedBefore)
         return images.map { image in
-            let users = sorted.filter { imageKey(imageSysdir: $0.imageSysdir) == image.key }
+            // Utilisée si l'UNE des clés du dossier est celle de l'appareil (un lien peut donner plusieurs noms à un même dossier).
+            let users = sorted.filter { device in imageKey(imageSysdir: device.imageSysdir).map { image.keys.contains($0) } ?? false }
             let usage: AndroidSystemImage.Usage = !users.isEmpty ? .usedBy(users) : (incompleteness.isEmpty ? .notUsed : .cannotTell)
             return AndroidSystemImage(key: image.key, folder: image.folder, usage: usage)
         }

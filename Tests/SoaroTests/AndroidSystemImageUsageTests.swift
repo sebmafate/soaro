@@ -231,6 +231,39 @@ import Testing
         if case .usedBy? = usage(list(box), "android-36/google_apis_playstore/arm64-v8a") {} else { Issue.record("doit être utilisée") }
     }
 
+    // MARK: Deux noms pour un même dossier (liens symboliques)
+
+    @Test func anImageUsedByEitherKeyOfALinkedFolderIsUsedByBothDevicesOnOneRow() {
+        let real = AndroidSystemImageScanner.imageKey(imageSysdir: "system-images/android-36/google_apis/arm64-v8a")!
+        let alias = AndroidSystemImageScanner.imageKey(imageSysdir: "system-images/android-35/google_apis/arm64-v8a")!
+        let folder = AndroidSystemImageFolder(key: real, folder: URL(fileURLWithPath: "/Users/test/Library/Android/sdk/system-images/android-36/google_apis/arm64-v8a"),
+                                              keys: [alias, real])
+        let a = device("Test_Phone_A", image: "system-images/android-35/google_apis/arm64-v8a/")
+        let b = device("Test_Tablet_B", image: "system-images/android-36/google_apis/arm64-v8a/")
+        let rows = AndroidSystemImageScanner.usage(images: [folder], devices: [b, a], incompleteness: none)
+        #expect(rows.count == 1)
+        #expect(rows.first?.key == real)
+        #expect(rows.map(\.usage) == [.usedBy([a, b])])
+        let onlyAlias = AndroidSystemImageScanner.usage(images: [folder], devices: [a], incompleteness: none)
+        #expect(onlyAlias.map(\.usage) == [.usedBy([a])], "le dossier est utilisé même quand seul le nom du lien est écrit dans config.ini")
+    }
+
+    @Test(arguments: ["android-35", "android-37"])
+    func aDeviceUsingTheLinkNameKeepsTheRealFolderUsedOnDisk(linkName: String) throws {
+        let box = try Sandbox(insideHome: true)
+        try makeImage(box, "android-36/google_apis_playstore/arm64-v8a")
+        try FileManager.default.createSymbolicLink(
+            atPath: box.root.appendingPathComponent("Library/Android/sdk/system-images/\(linkName)").path,
+            withDestinationPath: box.root.appendingPathComponent("Library/Android/sdk/system-images/android-36").path)
+        try makeAVD(box, name: "Test_Phone_A", system: "system-images/\(linkName)/google_apis_playstore/arm64-v8a/")
+        try makeAVD(box, name: "Test_Tablet_B", system: "system-images/android-36/google_apis_playstore/arm64-v8a/")
+        let listing = list(box)
+        #expect(listing.images.count == 1)
+        guard case .usedBy(let devices)? = listing.images.first?.usage else { Issue.record("l'image doit être utilisée"); return }
+        #expect(devices.map(\.name) == ["Test_Phone_A", "Test_Tablet_B"])
+        #expect(listing.images.first?.key.path == "android-36/google_apis_playstore/arm64-v8a")
+    }
+
     // MARK: SDK
 
     @Test func noSdkGivesSdkNotFoundEvenWithImagesAndAvdsInTheSandbox() throws {

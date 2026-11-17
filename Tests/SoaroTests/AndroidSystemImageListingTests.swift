@@ -179,6 +179,54 @@ import Testing
         #expect(listing.images.map(\.key.abi) == ["arm64-v8a"], "le premier par nom, de façon déterministe")
     }
 
+    // MARK: Deux noms pour un même dossier : toutes les clés sont gardées, la vraie est affichée
+
+    private func link(_ box: Sandbox, _ name: String, to real: URL) throws {
+        try FileManager.default.createSymbolicLink(atPath: box.root.appendingPathComponent("Library/Android/sdk/system-images/\(name)").path,
+                                                   withDestinationPath: real.path)
+    }
+
+    @Test(arguments: ["android-35", "android-37"])
+    func aVersionLinkIsAnotherKeyOfTheSameFolderWhateverItsSortOrder(linkName: String) throws {
+        // `android-35` se trie AVANT le vrai `android-36`, `android-37` APRÈS : dans les deux cas, une seule ligne, nommée d'après le vrai dossier.
+        let box = try Sandbox(insideHome: true)
+        let real = try makeImage(box, "android-36/google_apis/arm64-v8a")
+        try link(box, linkName, to: real.deletingLastPathComponent().deletingLastPathComponent())
+        let listing = list(box)
+        #expect(listing.images.count == 1)
+        let image = try #require(listing.images.first)
+        #expect(image.key.path == "android-36/google_apis/arm64-v8a", "la clé affichée est celle du vrai dossier")
+        #expect(Set(image.keys.map(\.path)) == ["android-36/google_apis/arm64-v8a", "\(linkName)/google_apis/arm64-v8a"], "toutes les clés sont gardées")
+        #expect(realPath(image.folder) == realPath(real))
+    }
+
+    @Test(arguments: ["arm64", "zz-link"])
+    func anAbiLinkIsAnotherKeyOfTheSameFolderWhateverItsSortOrder(linkName: String) throws {
+        // `arm64` se trie AVANT `arm64-v8a`, `zz-link` APRÈS.
+        let box = try Sandbox(insideHome: true)
+        let real = try makeImage(box, "android-36/google_apis/arm64-v8a")
+        try FileManager.default.createSymbolicLink(
+            atPath: box.root.appendingPathComponent("Library/Android/sdk/system-images/android-36/google_apis/\(linkName)").path,
+            withDestinationPath: real.path)
+        let listing = list(box)
+        #expect(listing.images.count == 1)
+        let image = try #require(listing.images.first)
+        #expect(image.key.path == "android-36/google_apis/arm64-v8a")
+        #expect(Set(image.keys.map(\.path)) == ["android-36/google_apis/arm64-v8a", "android-36/google_apis/\(linkName)"])
+    }
+
+    @Test func aFolderReachedOnlyThroughALinkWhoseTargetHasNoKeyShapeKeepsTheFirstName() throws {
+        let box = try Sandbox(insideHome: true)
+        let real = try box.write("Stuff/real/source.properties", "x\n").deletingLastPathComponent()
+        try box.dir("Library/Android/sdk/system-images/android-36/google_apis")
+        try FileManager.default.createSymbolicLink(
+            atPath: box.root.appendingPathComponent("Library/Android/sdk/system-images/android-36/google_apis/arm64-v8a").path,
+            withDestinationPath: real.path)
+        let image = try #require(list(box).images.first)
+        #expect(image.key.path == "android-36/google_apis/arm64-v8a", "le dossier réel n'a pas la forme d'une clé : le premier nom")
+        #expect(image.keys == [image.key])
+    }
+
     @Test func anSdkOutsideTheHomeIsNotRead() throws {
         let box = try Sandbox(insideHome: true)
         let outside = try Sandbox(insideHome: false)
