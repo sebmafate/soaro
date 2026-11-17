@@ -97,6 +97,8 @@ final class SimulatorsModel: ObservableObject {
     let home: URL
     private let now: () -> Date
     private let measure: (URL) -> UInt64
+    /// Supprime un fichier ou un dossier d'un AVD (SL11) : `AndroidEmulatorRemover.removeFile` dans l'application, un faux dans les tests.
+    private let removeFile: (URL) throws -> Void
     let demo: Bool
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
@@ -109,6 +111,7 @@ final class SimulatorsModel: ObservableObject {
     ///   - locateTool: trouve un outil par chemin absolu parmi des candidats (`ToolLocator`) : `xcrun`, et `ps` pour Android.
     ///   - environment: variables d'environnement (`ANDROID_SDK_ROOT`, `ANDROID_HOME`) ; sans valeur par défaut.
     ///   - measure: taille allouée d'un dossier.
+    ///   - removeFile: suppression d'un fichier ou d'un dossier d'un AVD (le suppresseur réel par défaut ; jamais appelé en démo).
     ///   - confirm: demande de confirmation avant de supprimer ; sans valeur par défaut (un test ne peut jamais afficher une vraie alerte).
     ///   - deletionGate: la suppression en cours du processus (`nil` : la porte commune de l'application).
     init(runner: CommandRunner,
@@ -118,6 +121,7 @@ final class SimulatorsModel: ObservableObject {
          home: URL = URL(fileURLWithPath: NSHomeDirectory()),
          now: @escaping () -> Date = Date.init,
          measure: @escaping (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) },
+         removeFile: @escaping (URL) throws -> Void = AndroidEmulatorRemover.removeFile,
          demo: Bool = DemoMode.isEnabled,
          confirm: @escaping ConfirmHandler,
          deletionGate: SimulatorDeletionGate? = nil,
@@ -130,6 +134,7 @@ final class SimulatorsModel: ObservableObject {
         self.home = home
         self.now = now
         self.measure = measure
+        self.removeFile = removeFile
         self.demo = demo
         self.notify = notify
         self.confirm = confirm
@@ -150,16 +155,19 @@ final class SimulatorsModel: ObservableObject {
     /// l'autre groupe, et pendant une suppression.
     var canScanAgain: Bool { phase != .listing && androidPhase != .listing && !isDeleting }
 
-    /// « Delete » est disponible : liste iOS affichée, tailles toutes mesurées, au moins un appareil iOS coché, AUCUNE ligne
-    /// Android cochée (rien d'Android ne se supprime avant SL11), aucune suppression en cours.
+    /// « Delete » est disponible : aucune taille en cours de mesure, aucune suppression en cours, et au moins un appareil coché dans un
+    /// groupe affiché (iOS listé avec une ligne iOS cochée, ou Android listé avec une ligne Android cochée). SL11 : une ligne Android
+    /// cochée ne désactive plus Delete.
     var canDelete: Bool {
-        Self.canDelete(phase: phase, isMeasuring: isMeasuring, selectedCount: iosSelectedCount, isDeleting: isDeleting,
-                       androidSelectedCount: androidSelectedCount)
+        Self.canDelete(phase: phase, androidPhase: androidPhase, isMeasuring: isMeasuring, selectedCount: iosSelectedCount,
+                       androidSelectedCount: androidSelectedCount, isDeleting: isDeleting)
     }
 
     /// La règle, pure (testable sans modèle).
-    static func canDelete(phase: Phase, isMeasuring: Bool, selectedCount: Int, isDeleting: Bool, androidSelectedCount: Int) -> Bool {
-        phase == .listed && !isMeasuring && selectedCount > 0 && androidSelectedCount == 0 && !isDeleting
+    static func canDelete(phase: Phase, androidPhase: Phase, isMeasuring: Bool, selectedCount: Int, androidSelectedCount: Int,
+                          isDeleting: Bool) -> Bool {
+        guard !isMeasuring, !isDeleting else { return false }
+        return (phase == .listed && selectedCount > 0) || (androidPhase == .listed && androidSelectedCount > 0)
     }
 
     /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
@@ -338,28 +346,37 @@ final class SimulatorsModel: ObservableObject {
 
     // MARK: Suppression
 
-    /// Bouton « Delete » : demande la confirmation (nombre, taille, ce qui est perdu ; « Delete » est le bouton destructif, `critical`),
-    /// puis supprime les appareils cochés, dans l'ordre d'affichage. Sans effet quand `canDelete` est faux.
-    /// Annuler la confirmation : aucun appel, la sélection reste, pas de toast.
+    /// Bouton « Delete » : demande la confirmation (nombre et taille des DEUX groupes, ce qui est perdu ; « Delete » est le bouton
+    /// destructif, `critical`), puis supprime les appareils cochés : les simulateurs iOS d'abord, puis les AVD Android, chaque groupe dans
+    /// l'ordre d'affichage. Sans effet quand `canDelete` est faux.
+    /// Annuler la confirmation : aucun appel, aucune suppression, la sélection reste, pas de toast.
     func deleteSelected() {
         guard canDelete else { return }
-        // Cibles : les appareils iOS cochés SEULEMENT (`canDelete` garantit qu'aucune ligne Android n'est cochée).
-        let targets = rows.map(\.device.device.udid).filter { selected.contains($0) }
+        // Cibles : les appareils iOS cochés (UDID), puis les AVD cochés (nom et dossier vus au scan).
+        let iosTargets = rows.map(\.device.device.udid).filter { selected.contains($0) }
+        let androidTargets = androidRows.map(\.device.device).filter { androidSelected.contains($0.name) }
+            .map { AndroidRemovalTarget(name: $0.name, folder: $0.folder) }
         guard confirm(
-            String(localized: "Delete the selected devices? (\(targets.count))"),
-            String(localized: "\(Format.fileBytes(iosSelectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
+            String(localized: "Delete the selected devices? (\(iosTargets.count + androidTargets.count))"),
+            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
             String(localized: "Delete"), true
         ) else { return }
 
-        // Mode démo : la même confirmation (pour l'écran S3), puis les lignes cochées quittent la liste tout de suite, avec
-        // l'espace inventé de ces appareils. Ni lanceur, ni mesure, ni détection, ni lecture ou écriture de fichier, ni nouveau scan.
+        // Mode démo : la même confirmation (pour l'écran S3), puis les lignes cochées (iOS et Android) quittent la liste tout de suite,
+        // avec l'espace inventé de ces appareils. Ni lanceur, ni mesure, ni détection, ni recherche d'outil, ni suppression de fichier,
+        // ni lecture ou écriture de fichier, ni nouveau scan.
         if demo {
-            let gone = Set(targets)
-            let freed = targets.reduce(UInt64(0)) { $0 + (sizes[$1] ?? 0) }
-            devices.removeAll { gone.contains($0.udid) }
-            for udid in gone { sizes[udid] = nil }
-            selected.subtract(gone)
+            let goneIOS = Set(iosTargets)
+            let goneAndroid = Set(androidTargets.map(\.name))
+            let freed = iosTargets.reduce(UInt64(0)) { $0 + (sizes[$1] ?? 0) } + goneAndroid.reduce(UInt64(0)) { $0 + (androidSizes[$1] ?? 0) }
+            devices.removeAll { goneIOS.contains($0.udid) }
+            for udid in goneIOS { sizes[udid] = nil }
+            selected.subtract(goneIOS)
             recomputeIOS(selection: .prune)
+            androidDevices.removeAll { goneAndroid.contains($0.name) }
+            for name in goneAndroid { androidSizes[name] = nil }
+            androidSelected.subtract(goneAndroid)
+            recomputeAndroid(selection: .prune)
             notify(String(localized: "\(Format.fileBytes(freed)) freed"))
             return
         }
@@ -368,18 +385,26 @@ final class SimulatorsModel: ObservableObject {
         guard gate.begin() else { return }
         let token = CancelToken()
         deleteToken = token
-        let runner = runner, detect = detect, locateTool = locateTool, measure = measure, home = home
+        let runner = runner, detect = detect, locateTool = locateTool, measure = measure, home = home, removeFile = removeFile
         // Le toast et la porte ne dépendent PAS du modèle : si l'écran disparaît (changement d'onglet), le lot va quand même
         // jusqu'à son toast et libère la porte. Seul le nouveau scan, qui ne sert qu'à un écran encore là, passe par `self` (faible).
         let notify = notify, gate = gate
         deleteTask = Task { [weak self] in
-            // Hors de l'acteur principal. La détection et la porte de `xcrun` sont réévaluées MAINTENANT : si l'outil a disparu,
-            // rien n'est lancé et chaque cible compte comme un échec (`remove` rend « impossible de vérifier »).
-            let summary = await Task.detached(priority: .userInitiated) { () -> SimulatorRemovalSummary in
-                let xcrun = ToolLocator.simulatorXcrunPath(detection: detect(), locate: locateTool)
-                return SimulatorRemovalSummary.run(targets: targets, isCancelled: { token.isCancelled }) { udid in
-                    SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
-                }
+            // Hors de l'acteur principal. Chaque outil n'est cherché que s'il sert : la détection et la porte de `xcrun` seulement
+            // quand il y a une cible iOS (si l'outil a disparu, rien n'est lancé et chaque cible compte comme un échec), le chemin de
+            // `ps` seulement quand il y a une cible Android (absent : chaque cible Android compte comme un échec, rien n'est supprimé).
+            let summary = await Task.detached(priority: .userInitiated) { () -> DeviceRemovalSummary in
+                let xcrun = iosTargets.isEmpty ? nil : ToolLocator.simulatorXcrunPath(detection: detect(), locate: locateTool)
+                let psPath = androidTargets.isEmpty ? nil : locateTool(ToolLocator.processListCandidates)
+                return DeviceRemovalSummary.run(
+                    iosTargets: iosTargets, androidTargets: androidTargets, isCancelled: { token.isCancelled },
+                    removeIOS: { udid in
+                        SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
+                    },
+                    removeAndroid: { target in
+                        AndroidEmulatorScanner.remove(runner: runner, psPath: psPath, home: home, measure: measure,
+                                                      removeFile: removeFile, target: target)
+                    })
             }.value
             // Retour avant la moindre tentative : rien à dire (texte vide).
             let text = summary.toast()

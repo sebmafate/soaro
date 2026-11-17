@@ -136,7 +136,7 @@ final class RecordingConfirm {
         (.failed(.couldNotRead), false, 1, false, false),
     ])
     func theDeleteRuleIsAPureFunction(phase: SimulatorsModel.Phase, measuring: Bool, selected: Int, deleting: Bool, expected: Bool) {
-        #expect(SimulatorsModel.canDelete(phase: phase, isMeasuring: measuring, selectedCount: selected, isDeleting: deleting, androidSelectedCount: 0) == expected)
+        #expect(SimulatorsModel.canDelete(phase: phase, androidPhase: .hidden, isMeasuring: measuring, selectedCount: selected, androidSelectedCount: 0, isDeleting: deleting) == expected)
     }
 
     // MARK: Confirmation (R8)

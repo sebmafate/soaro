@@ -169,7 +169,7 @@ import Testing
         #expect(!text.contains("/Users/") && !text.contains(".android"))
     }
 
-    @Test func androidDeletionIsNeverOfferedInDemo() async {
+    @Test func aCheckedDemoAndroidRowCanBeDeletedAndTheRowLeavesTheList() async {
         let runner = FakeCommandRunner()
         let measure = ScriptedMeasure([:])
         let confirm = RecordingConfirm(answer: true)
@@ -177,20 +177,15 @@ import Testing
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
         #expect(m.androidSelected.isEmpty, "rien d'Android n'est coché d'office")
-        #expect(m.canDelete, "la démo ouvre Delete utilisable pour iOS")
-        // Cocher une ligne Android (non en cours d'exécution) à la main désactive Delete : aucune confirmation, aucun effet.
         let checkable = try! #require(m.androidRows.first { !$0.isRunning })
         m.toggle(checkable)
-        #expect(!m.canDelete)
+        #expect(m.canDelete, "SL11 : une ligne Android cochée laisse Delete utilisable")
+        let size = m.selectedSize                  // les lignes iOS pré-sélectionnées de la démo et la ligne Android cochée
+        #expect(size >= (m.size(of: checkable) ?? 0))
         m.deleteSelected()
-        #expect(confirm.asks.isEmpty, "aucune confirmation, aucun effet")
-        #expect(toasts.messages.isEmpty)
-        // Décochée : la suppression iOS de démo marche et ne touche pas aux lignes Android.
-        m.toggle(checkable)
-        let android = m.androidRows
-        #expect(m.canDelete)
-        m.deleteSelected()
-        #expect(m.androidRows == android)
+        #expect(confirm.asks.count == 1)
+        #expect(!m.androidRows.contains { $0.device.device.name == checkable.device.device.name })
+        #expect(toasts.messages == ["\(Format.fileBytes(size)) freed"])
         #expect(runner.calls.isEmpty && measure.calls.isEmpty)
     }
 

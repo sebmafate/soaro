@@ -234,7 +234,7 @@ import Testing
         #expect(m.androidSelected.isEmpty, "un changement de limite ne coche rien non plus")
     }
 
-    @Test func byDefaultDeleteStaysUsableForIosAndOnlyACheckByHandOnAnAndroidRowDisablesIt() async throws {
+    @Test func byDefaultDeleteIsUsableForIosAndStaysUsableWhenAnAndroidRowIsCheckedByHand() async throws {
         let box = try home([phone])
         let m = model(runner(ios: [Self.u1], ps: ""), home: box,
                       measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
@@ -245,9 +245,11 @@ import Testing
         let android = try #require(m.androidRows.first)
         m.toggle(android)
         #expect(m.androidSelected == ["Test_Phone_A"], "l'utilisateur peut cocher une ligne Android à la main")
-        #expect(!m.canDelete, "la règle est gardée : Delete désactivé")
+        #expect(m.canDelete, "SL11 : une ligne Android cochée ne désactive plus Delete")
+        m.toggle(ios)
+        #expect(m.canDelete, "Android seul coché : Delete reste utilisable")
         m.toggle(android)
-        #expect(m.canDelete)
+        #expect(!m.canDelete, "plus rien de coché")
     }
 
     @Test func aRunningAvdStaysUnselectableWhateverTheSwitch() async throws {
@@ -314,9 +316,9 @@ import Testing
         #expect(m.androidPhase == .listed)
     }
 
-    // MARK: Suppression : iOS seulement
+    // MARK: Suppression : les deux groupes (SL11)
 
-    @Test func deleteIsDisabledWhileAnAndroidRowIsCheckedAndEnabledOnceUnchecked() async throws {
+    @Test func deleteStaysUsableWhileAnAndroidRowIsChecked() async throws {
         let box = try home([phone])
         let m = model(runner(ios: [Self.u1], ps: ""), home: box,
                       preselect: true, measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
@@ -325,7 +327,7 @@ import Testing
         m.toggle(ios)
         #expect(m.selected == [Self.u1])
         #expect(m.androidSelected == ["Test_Phone_A"], "l'AVD inactif est pré-sélectionné")
-        #expect(!m.canDelete, "une ligne Android cochée désactive Delete")
+        #expect(m.canDelete, "SL11 : une ligne Android cochée ne désactive plus Delete")
         let android = try #require(m.androidRows.first)
         m.toggle(android)
         #expect(m.androidSelected.isEmpty)
@@ -334,16 +336,17 @@ import Testing
 
     @Test(arguments: [
         (SimulatorsModel.Phase.listed, false, 1, false, 0, true),
-        (.listed, false, 1, false, 1, false),
+        (.listed, false, 1, false, 1, true),       // SL11 : une ligne Android cochée ne désactive plus Delete
         (.listed, false, 0, false, 0, false),
         (.listed, true, 1, false, 0, false),
         (.listed, false, 1, true, 0, false),
-        (.hidden, false, 0, false, 2, false),
+        (.hidden, false, 0, false, 2, false),      // Android non listé (ici : `androidPhase` caché) : ses cases ne comptent pas
     ])
     func theStaticRuleTakesTheAndroidSelectedCount(phase: SimulatorsModel.Phase, measuring: Bool, selected: Int, deleting: Bool,
                                                     android: Int, expected: Bool) {
-        #expect(SimulatorsModel.canDelete(phase: phase, isMeasuring: measuring, selectedCount: selected, isDeleting: deleting,
-                                          androidSelectedCount: android) == expected)
+        let androidPhase: SimulatorsModel.Phase = phase == .listed ? .listed : .hidden
+        #expect(SimulatorsModel.canDelete(phase: phase, androidPhase: androidPhase, isMeasuring: measuring, selectedCount: selected,
+                                          androidSelectedCount: android, isDeleting: deleting) == expected)
     }
 
     // MARK: Retour, nouveau scan
