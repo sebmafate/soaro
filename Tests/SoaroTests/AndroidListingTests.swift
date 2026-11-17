@@ -67,6 +67,17 @@ import Testing
         #expect(runner.calls.first?.executable == "/bin/ps")
     }
 
+    @Test func aDifferentCaseInThePsLineStillMarksTheDeviceRunning() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeSDK(box)
+        try makeAVD(box, "Test_Phone_A")
+        try makeAVD(box, "Test_Phone_AB")
+        let runner = FakeCommandRunner()
+        runner.script(.finished(stdout: "emulator -avd test_phone_a\n"), executable: "/bin/ps", arguments: psArguments)
+        let listing = list(box, runner: runner)
+        #expect(listing.devices.map(\.isRunning) == [true, false])
+    }
+
     @Test func aTimedOutPsMakesTheGroupUnreadable() throws {
         let box = try Sandbox(insideHome: true)
         try makeSDK(box)

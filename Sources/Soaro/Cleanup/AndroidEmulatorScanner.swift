@@ -235,7 +235,7 @@ extension AndroidEmulatorScanner {
     /// Les noms d'AVD en cours d'exécution, d'après le texte de `ps -axww -o command=` (ADR 0009, règle 3).
     /// Chaque ligne est coupée sur les blancs : un mot `-avd` suivi d'un mot donne ce nom ; un mot `@<nom>` (forme courte
     /// `emulator @nom`) compte aussi (prudent : un faux positif rend seulement une ligne non sélectionnable).
-    /// Comparaison exacte, sensible à la casse ; seuls les noms valides sont gardés.
+    /// Le nom est gardé tel qu'écrit (la comparaison avec un AVD, `isRunning`, ignore la casse) ; seuls les noms valides sont gardés.
     static func runningNames(fromProcessList text: String) -> Set<String> {
         var names = Set<String>()
         for line in text.split(whereSeparator: \.isNewline) {
@@ -249,6 +249,13 @@ extension AndroidEmulatorScanner {
             }
         }
         return names
+    }
+
+    /// Le nom d'AVD est-il parmi les noms en cours d'exécution ? Comparaison SANS tenir compte de la casse : APFS ne la distingue
+    /// pas (un faux positif rend seulement une ligne non sélectionnable ; jamais de préfixe, le nom entier doit être égal).
+    static func isRunning(_ name: String, in running: Set<String>) -> Bool {
+        let lowered = name.lowercased()
+        return running.contains { $0.lowercased() == lowered }
     }
 
     /// Lance `<psPath> -axww -o command=` et rend les noms en cours d'exécution, ou `nil` (« indisponible ») : chemin absent
@@ -311,7 +318,7 @@ extension AndroidEmulatorScanner {
         guard let running = runningAVDNames(runner: runner, psPath: psPath) else {
             return AndroidListing(status: .couldNotRead, sdk: sdk)
         }
-        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(running.contains($0.name)) }, sdk: sdk)
+        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(isRunning($0.name, in: running)) }, sdk: sdk)
     }
 }
 

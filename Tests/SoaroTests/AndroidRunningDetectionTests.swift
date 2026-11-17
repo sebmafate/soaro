@@ -25,11 +25,18 @@ import Testing
         #expect(names("/sbin/launchd\n\(studioLine)\n/usr/bin/some-tool --flag\n\(shortFormLine)\n") == ["Test_Phone_A", "Test_Phone_B"])
     }
 
-    @Test func matchingIsExactAndCaseSensitive() {
+    @Test func parsingKeepsTheNameAsWrittenAndNeverMatchesAPrefix() {
         let found = names("emulator -avd Test_Phone_AB")
         #expect(found == ["Test_Phone_AB"])
         #expect(!found.contains("Test_Phone_A"))
-        #expect(!names("emulator -avd test_phone_a").contains("Test_Phone_A"))
+        #expect(names("emulator -avd test_phone_a") == ["test_phone_a"], "le nom est gardé tel qu'écrit dans la ligne")
+    }
+
+    @Test func theMatchWithAnAvdNameIgnoresCaseBecauseApfsDoes() {
+        #expect(AndroidEmulatorScanner.isRunning("Pixel_A", in: names("emulator -avd pixel_a")))
+        #expect(AndroidEmulatorScanner.isRunning("pixel_a", in: names("emulator @PIXEL_A")))
+        #expect(!AndroidEmulatorScanner.isRunning("Test_Phone_A", in: names("emulator -avd Test_Phone_AB")), "toujours exact, jamais un préfixe")
+        #expect(!AndroidEmulatorScanner.isRunning("Test_Phone_AB", in: names("emulator -avd Test_Phone_A")))
     }
 
     @Test func aLineMentioningAnIniWithoutAvdMatchesNothing() {
