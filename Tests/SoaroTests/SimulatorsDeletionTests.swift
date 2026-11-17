@@ -420,7 +420,8 @@ final class RecordingConfirm {
         let deletes = blocking.calls.filter { $0.arguments.contains("delete") }
         #expect(deletes.count == 1, "le premier appareil est fini, le second n'est pas commencé")
         #expect(blocking.calls.count == 3, "scan, revérification, suppression : pas de nouveau scan")
-        #expect(toasts.messages == [freed(Self.half)], "le toast dit ce qui a été fait")
+        #expect(toasts.messages == ["\(freed(Self.half)) · Devices that could not be removed: 1"],
+                "le toast dit ce qui a été fait, sans laisser croire que tout a été supprimé")
         #expect(m.phase == .notScanned, "la prochaine ouverture relance le scan, jamais de liste périmée")
         #expect(!m.isDeleting)
         #expect(m.rows.isEmpty)
@@ -527,6 +528,34 @@ final class RecordingConfirm {
     @Test func theSharedGateIsTheDefaultOfTheApplicationModels() {
         let m = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         #expect(m.isDeleting == SimulatorDeletionGate.shared.isBusy)
+    }
+
+    @Test func backBeforeTheFirstDeviceStartsGivesNoToastAndNoCall() async {
+        let blocking = BlockingRunner(Self.list([Self.device(1), Self.device(2)]))
+        let sizes = PerDeviceSizes([Self.a: [Self.half, Self.half, 0], Self.b: [Self.half, Self.half, 0]])
+        let entered = AsyncSignal(), proceed = DispatchSemaphore(value: 0)
+        var detections = 0
+        // La 2e détection est celle du lot : elle attend, pour que Retour arrive avant le premier appareil.
+        let m = model(blocking, sizes: sizes, detect: {
+            detections += 1
+            if detections == 2 { entered.signal(); proceed.wait() }
+        })
+        m.scan()
+        await blocking.started.wait()
+        blocking.release.signal()
+        await m.scanTask?.value
+        for row in m.rows where !m.selected.contains(row.device.device.udid) { m.toggle(row) }
+
+        m.deleteSelected()
+        await entered.wait()
+        m.cancel()
+        proceed.signal()
+        await m.deleteTask?.value
+
+        #expect(blocking.calls.count == 1, "seulement le scan : aucune revérification, aucune suppression")
+        #expect(toasts.messages.isEmpty, "rien n'a été tenté : rien à dire")
+        #expect(!gate.isBusy)
+        #expect(m.phase == .notScanned)
     }
 
     @Test func backThenReopeningDuringTheBatchRescansWhenItEnds() async {

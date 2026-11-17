@@ -127,12 +127,43 @@ import Testing
 
     // MARK: Annulation (bouton Retour)
 
-    @Test func cancellationIsCheckedBeforeEachTargetAndTheRestIsNotCounted() {
+    @Test func cancellationIsCheckedBeforeEachTargetAndTheUntriedOnesAreNotClaimedAsRemoved() {
         let (summary, tried) = batch([.removed(freed: Self.gb), .removed(freed: Self.gb), .removed(freed: Self.gb)], cancelAfter: 1)
         #expect(tried == ["u1"])
         #expect(summary.removedCount == 1)
-        #expect(summary.failureCount == 0, "les appareils non essayés après un Retour ne sont pas des échecs")
-        #expect(summary.toast(locale: locale) == freed(Self.gb))
+        #expect(summary.untriedCount == 2)
+        #expect(summary.failureCount == 0, "pas des échecs, mais pas supprimés non plus")
+        #expect(summary.toast(locale: locale) == "\(freed(Self.gb)) · Devices that could not be removed: 2")
+    }
+
+    @Test func backBeforeAnyTargetAttemptsNothingAndHasNothingToSay() {
+        let (summary, tried) = batch([.removed(freed: Self.gb), .removed(freed: Self.gb)], cancelAfter: 0)
+        #expect(tried.isEmpty)
+        #expect(summary.untriedCount == 2 && summary.attemptedCount == 0)
+        #expect(summary.toast(locale: locale).isEmpty, "ni « Zero KB freed » ni un compte : rien n'a été tenté")
+    }
+
+    @Test func backAfterAFailureCountsTheFailedAndTheUntriedTogether() {
+        let (summary, _) = batch([.failed, .removed(freed: Self.gb), .removed(freed: Self.gb)], cancelAfter: 1)
+        #expect(summary.toast(locale: locale) == "Devices that could not be removed: 3")
+    }
+
+    @Test func backAfterARunningDeviceWithAnUntriedOneShowsTheCountNotTheName() {
+        let (summary, _) = batch([.running(name: "iPhone 15"), .removed(freed: Self.gb)], cancelAfter: 1)
+        #expect(summary.toast(locale: locale) == "Devices that could not be removed: 2")
+    }
+
+    @Test func backAfterOnlyAlreadyGoneDevicesDoesNotClaimSuccess() {
+        let (summary, _) = batch([.alreadyGone, .removed(freed: Self.gb), .removed(freed: Self.gb)], cancelAfter: 1)
+        #expect(summary.attemptedCount == 1)
+        #expect(summary.toast(locale: locale) == "Devices that could not be removed: 2")
+    }
+
+    @Test func aTimeoutDoesNotCountTheUntriedAndAFullRunHasNone() {
+        let (timedOut, _) = batch([.timedOut, .removed(freed: Self.gb)])
+        #expect(timedOut.untriedCount == 0)
+        let (full, _) = batch([.removed(freed: Self.gb), .failed])
+        #expect(full.untriedCount == 0)
     }
 
     @Test func noTargetNeverCallsTheRemover() {

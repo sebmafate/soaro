@@ -80,7 +80,7 @@ final class SimulatorsModel: ObservableObject {
     ///   - locateXcrun: trouve `xcrun` par chemin absolu (`ToolLocator`).
     ///   - measure: taille allouée d'un dossier.
     ///   - confirm: demande de confirmation avant de supprimer ; sans valeur par défaut (un test ne peut jamais afficher une vraie alerte).
-    ///   - deletionGate: la suppression en cours du processus (par défaut la porte commune de l'application).
+    ///   - deletionGate: la suppression en cours du processus (`nil` : la porte commune de l'application).
     init(runner: CommandRunner,
          detect: @escaping () -> SimulatorToolDetection = { SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory())) },
          locateXcrun: @escaping ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
@@ -89,7 +89,7 @@ final class SimulatorsModel: ObservableObject {
          measure: @escaping (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) },
          demo: Bool = DemoMode.isEnabled,
          confirm: @escaping ConfirmHandler,
-         deletionGate: SimulatorDeletionGate = .shared,
+         deletionGate: SimulatorDeletionGate? = nil,
          notify: @escaping (String) -> Void) {
         self.runner = runner
         self.detect = detect
@@ -100,7 +100,7 @@ final class SimulatorsModel: ObservableObject {
         self.demo = demo
         self.notify = notify
         self.confirm = confirm
-        self.gate = deletionGate
+        self.gate = deletionGate ?? .shared
         gate.register(self)
         // Les vues voient la porte comme une propriété de ce modèle.
         gateObservation = gate.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
@@ -279,7 +279,9 @@ final class SimulatorsModel: ObservableObject {
                     SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
                 }
             }.value
-            notify(summary.toast())
+            // Retour avant la moindre tentative : rien à dire (texte vide).
+            let text = summary.toast()
+            if !text.isEmpty { notify(text) }
             self?.deleteToken = nil
             gate.end()
             // Retour pendant la suppression : pas de nouveau scan ; l'écran est déjà « non scanné » et se relancera à l'ouverture.
