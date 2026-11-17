@@ -213,7 +213,8 @@ import Testing
 
     @Test func theActionBarSummaryUsesTheSupportingToken() throws {
         let body = try typeBody("struct ActionBar", in: "Sources/Soaro/Views/SelectionComponents.swift")
-        #expect(body.contains("supportingText"))
+        #expect(body.contains(".foregroundStyle(.supportingText)"), "une seule écriture : la forme style, comme le reste de l'app")
+        #expect(!body.contains("supportingText()"))
         #expect(!body.contains(".secondary"))
         #expect(!body.contains(".tertiary"))
     }
@@ -251,5 +252,23 @@ import Testing
         let cleanupRow = try typeBody("struct CleanupRow", in: "Sources/Soaro/Views/Components.swift")
         #expect(cleanupRow.contains("supportingText"))
         #expect(cleanupRow.contains("Image(systemName: kind.systemImage).frame(width: 20).foregroundStyle(.secondary)"), "l'icône du type reste .secondary")
+    }
+
+    // MARK: Étiquette d'onglet du panneau (SL4 T7)
+
+    @Test func thePanelTabLabelIsAccentWhenSelectedAndTheTokenOtherwise() throws {
+        let text = try source("Sources/Soaro/Views/PopoverView.swift")
+        let start = try #require(text.range(of: "VStack(spacing: 2)"), "l'étiquette d'onglet (VStack(spacing: 2)) est introuvable")
+        let end = try #require(text.range(of: ".contentShape(Rectangle())", range: start.upperBound..<text.endIndex))
+        let label = String(text[start.lowerBound..<end.lowerBound])
+        let line = try #require(label.components(separatedBy: "\n").first { $0.contains(".foregroundStyle(state.activeTab == tab ?") },
+                                "la ligne `.foregroundStyle(state.activeTab == tab ? …)` est introuvable")
+        let parts = line.components(separatedBy: " ? ")
+        let branches = try #require(parts.count == 2 ? parts[1].components(separatedBy: " : ") : nil, "forme attendue : condition ? sélectionné : sinon")
+        #expect(branches.count == 2)
+        #expect(branches[0].contains("Color.accentColor"), "sélectionné : accent, trouvé `\(branches[0])`")
+        #expect(branches[1].contains(".supportingText"), "non sélectionné : le jeton, trouvé `\(branches[1])`")
+        #expect(!label.contains(".primary"), "ni .primary dans l'étiquette d'onglet")
+        #expect(!label.contains(".secondary") && !label.contains(".tertiary"))
     }
 }
