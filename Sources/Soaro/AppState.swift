@@ -129,7 +129,26 @@ final class AppState: ObservableObject {
     /// Instance de l'app (créée au premier accès, donc après la migration des anciennes données).
     static let shared = AppState(history: DemoMode.isEnabled ? Snapshot.demoStore() : HistoryStore())
 
-    init(history: HistoryStore? = HistoryStore()) { self.history = history }
+    /// Mode démo, et les actions qui touchent au vrai système : remplaçables pour que les tests vérifient
+    /// qu'en démo rien n'est nettoyé et aucune vraie app n'est quittée. Par défaut, le comportement réel.
+    private let demo: Bool
+    private let confirm: ConfirmHandler
+    private let cleanAction: @Sendable (CleanupKind) -> CleanupResult
+    private let terminateApp: @MainActor (String) -> Bool
+
+    init(history: HistoryStore? = HistoryStore(),
+         demo: Bool = DemoMode.isEnabled,
+         confirm: @escaping ConfirmHandler = SystemConfirmation.ask,
+         clean: @escaping @Sendable (CleanupKind) -> CleanupResult = { CleanupService.clean($0) },
+         terminateApp: @escaping @MainActor (String) -> Bool = { path in
+             NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }?.terminate() == true
+         }) {
+        self.history = history
+        self.demo = demo
+        self.confirm = confirm
+        self.cleanAction = clean
+        self.terminateApp = terminateApp
+    }
 
     // Mesures
     private let sampler = SystemSampler()
@@ -604,8 +623,12 @@ final class AppState: ObservableObject {
     }
 
     func quitApp(path: String, name: String) {
-        let app = NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }
-        if app?.terminate() == true {
+        if demo {
+            // Démo : les chemins (Safari, Xcode…) sont ceux de vraies apps qui tournent peut-être : on n'en quitte aucune.
+            showToast(String(localized: "Quit request sent to \(name)"))
+            return
+        }
+        if terminateApp(path) {
             showToast(String(localized: "Quit request sent to \(name)"))
             Task { try? await Task.sleep(for: .seconds(2)); refreshProcesses() }
         } else {
@@ -616,7 +639,7 @@ final class AppState: ObservableObject {
     // MARK: Nettoyage
 
     func scanCleanup() {
-        guard !DemoMode.isEnabled else { return }
+        guard !demo else { return }
         lastCleanupScan = Date()
         Task { [weak self] in
             let sizes = await Task.detached(priority: .utility) { () -> [CleanupKind: UInt64?] in
@@ -639,9 +662,9 @@ final class AppState: ObservableObject {
         guard !kinds.isEmpty, busyKinds.isDisjoint(with: kinds) else { return }
 
         guard let outcome = CacheCleanupFlow.run(
-            kinds: kinds, sizes: cleanupSizes, demo: DemoMode.isEnabled,
-            confirm: SystemConfirmation.ask,
-            clean: { CleanupService.clean($0) },
+            kinds: kinds, sizes: cleanupSizes, demo: demo,
+            confirm: confirm,
+            clean: cleanAction,
             willStart: { [weak self] in self?.busyKinds.formUnion(kinds) }
         ) else { return }
 
