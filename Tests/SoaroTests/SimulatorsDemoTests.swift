@@ -116,9 +116,88 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: missing.path))
     }
 
+    // MARK: Android en démo (SL10 T10)
+
+    @Test func demoAndroidAppearsAtOnceWithoutRunnerMeasureOrDetection() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        var detections = 0
+        let m = demoModel(runner: runner, measure: measure, detect: { detections += 1 })
+        m.scan()                                   // sans attendre : tout est déjà là
+        #expect(m.androidPhase == .listed)
+        #expect(m.androidMessage == nil)
+        #expect(m.androidRows.allSatisfy { m.size(of: $0) != nil }, "toutes les tailles sont connues")
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+        #expect(detections == 0)
+    }
+
+    @Test func demoAndroidHasTheThreeCases() {
+        let m = demoModel(runner: FakeCommandRunner())
+        m.scan()
+        #expect(m.androidRows.count == 2, "l'appareil de moins de 100 Mo est dans le pied de page")
+        let inactive = m.androidRows.first { $0.isInactive }
+        #expect((inactive?.daysSinceLastUse ?? 0) > 60)
+        #expect(inactive.map { m.size(of: $0) ?? 0 } ?? 0 >= DeviceSuggestions.smallDeviceThreshold)
+        #expect(m.androidSelected == Set(inactive.map { [$0.device.device.name] } ?? []), "seul l'appareil inactif est pré-sélectionné")
+        let running = m.androidRows.first { $0.isRunning }
+        #expect(running != nil, "un appareil en cours d'exécution")
+        #expect(running.map { !m.androidSelected.contains($0.device.device.name) } == true)
+        #expect(m.hiddenSmallCount == 3 + 1, "trois petits iOS et un petit Android")
+        #expect(m.measuredSizeTotal == m.rows.reduce(0) { $0 + (m.size(of: $1) ?? 0) } + m.androidRows.reduce(0) { $0 + (m.size(of: $1) ?? 0) })
+    }
+
+    @Test func demoAndroidDevicesAreMadeUpAndDatesAreRelativeToNow() {
+        let first = DemoData.androidEmulators(now: now)
+        let later = DemoData.androidEmulators(now: now.addingTimeInterval(400 * 86_400))
+        #expect(first.count == 3)
+        #expect(first.map(\.device.name) == later.map(\.device.name))
+        #expect(Set(first.map(\.device.name)).count == 3)
+        for (a, b) in zip(first, later) {
+            #expect(AndroidEmulatorScanner.isValidAVDName(a.device.name))
+            if let x = a.device.lastUsed, let y = b.device.lastUsed { #expect(y.timeIntervalSince(x) == 400 * 86_400) }
+            #expect(a.size == b.size)
+        }
+        #expect(first.filter { $0.size < DeviceSuggestions.smallDeviceThreshold }.count == 1)
+        #expect(first.filter(\.device.isRunning).count == 1)
+    }
+
+    @Test func demoSourceHasNoRealAndroidPaths() throws {
+        let text = try String(contentsOf: RepositoryRoot.url().appendingPathComponent("Sources/Soaro/DemoData.swift"), encoding: .utf8)
+        #expect(!text.contains("/Users/") && !text.contains(".android"))
+    }
+
+    @Test func androidDeletionIsNeverOfferedInDemo() async {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        #expect(!m.androidSelected.isEmpty)
+        #expect(!m.canDelete, "une ligne Android est cochée")
+        m.deleteSelected()
+        #expect(confirm.asks.isEmpty, "aucune confirmation, aucun effet")
+        #expect(toasts.messages.isEmpty)
+        // Décocher l'Android : la suppression iOS de démo marche et ne touche pas aux lignes Android.
+        let android = m.androidRows
+        for row in android where m.androidSelected.contains(row.device.device.name) { m.toggle(row) }
+        #expect(m.canDelete)
+        m.deleteSelected()
+        #expect(m.androidRows == android)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+    }
+
     // MARK: Suppression en démo (SL9 T6)
 
     final class Toasts { var messages: [String] = [] }
+
+    /// SL10 : la démo pré-sélectionne un appareil Android, ce qui désactive « Delete » (rien d'Android ne se supprime avant SL11).
+    /// Les tests de suppression iOS le décochent d'abord.
+    func uncheckAndroid(_ m: SimulatorsModel) {
+        for row in m.androidRows where m.androidSelected.contains(row.device.device.name) { m.toggle(row) }
+    }
 
     func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts) -> SimulatorsModel {
         SimulatorsModel(runner: runner,
@@ -136,6 +215,7 @@ import Testing
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
+        uncheckAndroid(m)
         let chosen = m.rows.filter { m.selected.contains($0.device.device.udid) }
         let chosenIDs = Set(chosen.map(\.device.device.udid))
         let expectedFreed = chosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
@@ -170,6 +250,7 @@ import Testing
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
+        uncheckAndroid(m)
         let rows = m.rows, selection = m.selected
 
         m.deleteSelected()
@@ -187,7 +268,9 @@ import Testing
         let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { detections += 1; return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
                                 environment: [:], home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in true }, notify: { _ in })
         m.scan()
+        uncheckAndroid(m)
         m.deleteSelected()
+        #expect(m.rows.count < DemoData.simulators(now: now).filter { $0.size >= DeviceSuggestions.smallDeviceThreshold }.count, "la suppression de démo a bien eu lieu")
         #expect(detections == 0)
         #expect(!FileManager.default.fileExists(atPath: missing.path))
     }

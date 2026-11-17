@@ -246,4 +246,27 @@ enum DemoData {
             device(52, "iPad Pro 13-inch (M5)", runtime: "iOS-26-2", model: "iPad-Pro-13-M5", days: 8, size: 24 * mb),
         ]
     }
+
+    // MARK: Android emulators
+
+    /// Made-up Android virtual devices for the "Simulators and emulators" tool: generic names, no real path (the folder is
+    /// never read in demo mode), dates relative to `now`, every size known.
+    static func androidEmulators(now: Date = Date()) -> [SizedAndroidDevice] {
+        func device(_ name: String, display: String, version: String, days: Double, running: Bool = false, size: UInt64) -> SizedAndroidDevice {
+            SizedAndroidDevice(
+                device: AndroidDevice(name: name, displayName: display, systemVersion: version,
+                                      folder: URL(fileURLWithPath: "/demo-folder/\(name).avd"),
+                                      lastUsed: now.addingTimeInterval(-days * 86_400), lastUsedSource: "emulator-user.ini",
+                                      isRunning: running),
+                size: size)
+        }
+        return [
+            // Inactive for 70 days and over 100 MB: pre-selected.
+            device("Demo_Phone_A", display: "Demo Phone A", version: "36", days: 70, size: 8_100 * mb),
+            // Used recently and running: not selectable.
+            device("Demo_Tablet_B", display: "Demo Tablet B", version: "35", days: 0.02, running: true, size: 6_400 * mb),
+            // Under 100 MB: counted in the footer, not listed.
+            device("Demo_Wear_C", display: "Demo Wear C", version: "34", days: 20, size: 60 * mb),
+        ]
+    }
 }

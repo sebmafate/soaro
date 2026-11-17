@@ -257,11 +257,14 @@ final class SimulatorsModel: ObservableObject {
         // Mode démo : appareils inventés, tout de suite, sans lanceur, sans détection, sans mesure, sans lire ni écrire de fichier.
         if demo {
             reset()
-            androidPhase = .hidden
             let demoDevices = DemoData.simulators(now: now())
             devices = demoDevices.map(\.device)
             sizes = Dictionary(uniqueKeysWithValues: demoDevices.map { ($0.device.udid, $0.size) })
             phase = .listed
+            let demoAndroid = DemoData.androidEmulators(now: now())
+            androidDevices = demoAndroid.map(\.device)
+            androidSizes = Dictionary(uniqueKeysWithValues: demoAndroid.map { ($0.device.name, $0.size) })
+            androidPhase = .listed
             recompute(selection: .replace)
             scanTask = nil
             return
