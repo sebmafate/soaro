@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Écran « Simulators and emulators » (S2) : deux sections, iOS puis Android (SL10), choisies par `SimulatorsScreen.layout`.
+/// Écran « Simulators and emulators » (S2) : trois sections, iOS, Android (SL10) puis images système Android (SL12a, pour information :
+/// ni case, ni « Select all », ni barre « Delete » quand elles sont seules), choisies par `SimulatorsScreen.layout`.
 /// Un groupe en échec montre son en-tête et son message (l'autre reste utilisable) ; un groupe caché ou vide est absent. Une ligne
 /// Android en cours d'exécution est « indisponible » (jamais cochable). Le bouton « Delete » (barre d'action « danger ») est disponible quand `canDelete`
 /// l'autorise (une ligne cochée dans l'un ou l'autre groupe, un lot peut mêler iOS et Android) ; il demande d'abord la confirmation (S3, injectée dans le modèle). Pendant la suppression : barre occupée,
@@ -70,7 +71,7 @@ struct SimulatorsView: View {
     // MARK: Corps
 
     @ViewBuilder private var content: some View {
-        switch SimulatorsScreen.layout(ios: model.phase, android: model.androidPhase) {
+        switch SimulatorsScreen.layout(ios: model.phase, android: model.androidPhase, images: model.imagesPhase) {
         case .spinner:
             VStack(spacing: 10) {
                 ProgressView()
@@ -83,9 +84,11 @@ struct SimulatorsView: View {
             hint(model.message ?? "", systemImage: "exclamationmark.triangle")
         case .failedOnly(.android):
             hint(model.androidMessage ?? "", systemImage: "exclamationmark.triangle")
-        case let .sections(ios, android):
-            sections(ios: ios, android: android)
-            if SimulatorsScreen.showsActionBar(.sections(ios: ios, android: android)) { actionBar }
+        case .failedOnly(.images):
+            hint(model.imagesMessage ?? "", systemImage: "exclamationmark.triangle")
+        case let .sections(ios, android, images):
+            sections(ios: ios, android: android, images: images)
+            if SimulatorsScreen.showsActionBar(.sections(ios: ios, android: android, images: images)) { actionBar }
         }
     }
 
@@ -94,11 +97,12 @@ struct SimulatorsView: View {
             .padding(14).frame(maxHeight: .infinity, alignment: .top)
     }
 
-    @ViewBuilder private func sections(ios: SimulatorsScreen.Section, android: SimulatorsScreen.Section) -> some View {
+    @ViewBuilder private func sections(ios: SimulatorsScreen.Section, android: SimulatorsScreen.Section,
+                                       images: SimulatorsScreen.Section) -> some View {
         if model.showsNothingToSuggest {
             hintBanner
         }
-        let placement = SimulatorsScreen.footers(ios: ios, android: android)
+        let placement = SimulatorsScreen.footers(ios: ios, android: android, images: images)
         List {
             switch ios {
             case .listed:
@@ -140,6 +144,26 @@ struct SimulatorsView: View {
                     SectionHeader(title: "Android emulators")
                 } footer: {
                     footer(explanation: false, smallCount: placement.smallCountUnder == .android)
+                }
+            case .absent:
+                EmptyView()
+            }
+            switch images {
+            case .listed:
+                Section {
+                    ForEach(model.imageRows, id: \.key.path) { image in
+                        imageRow(image)
+                    }
+                } header: {
+                    SectionHeader(title: "Android system images")
+                } footer: {
+                    imagesFooter
+                }
+            case .failed:
+                Section {
+                    failedGroup(model.imagesMessage ?? "")
+                } header: {
+                    SectionHeader(title: "Android system images")
                 }
             case .absent:
                 EmptyView()
@@ -200,6 +224,18 @@ struct SimulatorsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 6)
+        }
+    }
+
+    /// Le pied de page des images : seulement quand une ligne dit « cannot tell » (même disposition que les autres pieds de page).
+    @ViewBuilder private var imagesFooter: some View {
+        if model.imagesUsageIncomplete {
+            Text(verbatim: AndroidSystemImagePresentation.incompleteFooter)
+                .font(.caption)
+                .supportingText()
+                .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 6)
         }
     }
 
@@ -269,5 +305,35 @@ struct SimulatorsView: View {
                 .lineLimit(1).fixedSize()
                 .layoutPriority(2)
         }
+    }
+
+    /// Une ligne d'image système, EN DERNIER dans ce fichier (un test de source lit tout ce qui suit) : pour information, ni case, ni bouton.
+    /// Titre « API 36 », puis « · variante · ABI », la ligne d'usage, la taille à droite. Un seul élément pour VoiceOver.
+    private func imageRow(_ image: AndroidSystemImage) -> some View {
+        let size = model.size(of: image)
+        let locale = Locale.current
+        return HStack(alignment: .center, spacing: SelectionMetrics.rowSpacing) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(verbatim: AndroidSystemImagePresentation.title(image: image, locale: locale))
+                        .font(.callout).lineLimit(1)
+                    Text(verbatim: "· \(AndroidSystemImagePresentation.detail(image: image))")
+                        .font(.caption).supportingText().lineLimit(1).truncationMode(.tail)
+                        .layoutPriority(1)
+                }
+                Text(verbatim: AndroidSystemImagePresentation.usageLine(image: image, locale: locale))
+                    .font(.caption).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Text(verbatim: SimulatorPresentation.sizeText(size, locale: locale))
+                .font(.caption.monospacedDigit()).supportingText()
+                .lineLimit(1).fixedSize()
+                .layoutPriority(2)
+        }
+        // Le texte s'aligne sur les noms des appareils : la largeur de la case, plus l'espace qui la suit.
+        .padding(.leading, SelectionMetrics.minimumTargetSize + SelectionMetrics.rowSpacing)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(AndroidSystemImagePresentation.accessibilityLabel(image: image, size: size, locale: locale))
     }
 }

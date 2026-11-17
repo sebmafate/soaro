@@ -215,6 +215,55 @@ import Testing
         #expect(SimulatorsScreen.footers(ios: .absent, android: .absent) == .init(explanationUnderIos: false, smallCountUnder: nil))
     }
 
+    // MARK: Section des images système (SL12a T7)
+
+    @Test(arguments: [(Phase.hidden, Phase.hidden, Phase.notScanned), (.hidden, .hidden, .listing), (.listed, .listed, .notScanned),
+                      (.listed, .hidden, .listing), (.failed(.couldNotRead), .hidden, .listing)])
+    func aSpinnerWhileTheImagesAreNotScannedOrListing(ios: Phase, android: Phase, images: Phase) {
+        #expect(SimulatorsScreen.layout(ios: ios, android: android, images: images) == .spinner)
+    }
+
+    @Test func imagesListedAloneAreASectionWithoutAnActionBar() {
+        let layout = SimulatorsScreen.layout(ios: .hidden, android: .hidden, images: .listed)
+        #expect(layout == .sections(ios: .absent, android: .absent, images: .listed))
+        #expect(!SimulatorsScreen.showsActionBar(layout), "une barre Delete sans rien à supprimer serait fausse")
+        let withEmpty = SimulatorsScreen.layout(ios: .empty, android: .empty, images: .listed)
+        #expect(withEmpty == layout)
+    }
+
+    @Test func imagesFailedAloneTakeTheWholeScreen() {
+        #expect(SimulatorsScreen.layout(ios: .hidden, android: .hidden, images: .failed(.couldNotRead)) == .failedOnly(.images))
+        #expect(SimulatorsScreen.layout(ios: .empty, android: .empty, images: .failed(.couldNotRead)) == .failedOnly(.images))
+    }
+
+    @Test func imagesFailedBesideAListedDeviceGroupStayASection() {
+        let layout = SimulatorsScreen.layout(ios: .hidden, android: .listed, images: .failed(.couldNotRead))
+        #expect(layout == .sections(ios: .absent, android: .listed, images: .failed))
+        #expect(SimulatorsScreen.showsActionBar(layout))
+    }
+
+    @Test func aFailedDeviceGroupBesideListedImagesIsASectionNotTheWholeScreen() {
+        #expect(SimulatorsScreen.layout(ios: .failed(.couldNotRead), android: .hidden, images: .listed)
+                == .sections(ios: .failed, android: .absent, images: .listed))
+    }
+
+    @Test func allThreeGroupsAbsentIsNothingFound() {
+        #expect(SimulatorsScreen.layout(ios: .hidden, android: .hidden, images: .hidden) == .nothingFound)
+        #expect(SimulatorsScreen.layout(ios: .empty, android: .empty, images: .hidden) == .nothingFound)
+    }
+
+    @Test func allThreeSectionsKeepTheOrderIosAndroidImagesAndTheActionBar() {
+        let layout = SimulatorsScreen.layout(ios: .listed, android: .listed, images: .listed)
+        #expect(layout == .sections(ios: .listed, android: .listed, images: .listed))
+        #expect(SimulatorsScreen.showsActionBar(layout))
+    }
+
+    @Test func theSmallDevicesCountStaysUnderTheLastDeviceSectionNeverUnderTheImages() {
+        #expect(SimulatorsScreen.footers(ios: .listed, android: .listed, images: .listed) == .init(explanationUnderIos: true, smallCountUnder: .android))
+        #expect(SimulatorsScreen.footers(ios: .listed, android: .absent, images: .listed) == .init(explanationUnderIos: true, smallCountUnder: .ios))
+        #expect(SimulatorsScreen.footers(ios: .absent, android: .absent, images: .listed) == .init(explanationUnderIos: false, smallCountUnder: nil))
+    }
+
     @Test func theViewUsesTheFooterRuleAndReusesOnlyExistingStrings() throws {
         let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
         #expect(text.contains("SimulatorsScreen.footers(ios:"))
@@ -233,7 +282,7 @@ import Testing
         let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
         #expect(text.contains("SectionHeader(title: \"iOS Simulators\")"))
         #expect(text.contains("SectionHeader(title: \"Android emulators\")"))
-        #expect(text.contains("SimulatorsScreen.layout(ios: model.phase, android: model.androidPhase)"))
+        #expect(text.contains("SimulatorsScreen.layout(ios: model.phase, android: model.androidPhase, images: model.imagesPhase)"))
         #expect(text.contains("AndroidEmulatorPresentation.systemLabel"))
         let ios = try #require(text.range(of: "SectionHeader(title: \"iOS Simulators\")"))
         let android = try #require(text.range(of: "SectionHeader(title: \"Android emulators\")"))
