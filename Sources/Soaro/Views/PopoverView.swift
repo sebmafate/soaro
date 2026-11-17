@@ -30,6 +30,7 @@ struct PopoverView: View {
 
 struct PopoverContent: View {
     @EnvironmentObject private var state: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSettings = false
 
     private var tabs: [AppTab] {
@@ -61,7 +62,7 @@ struct PopoverContent: View {
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .frame(maxWidth: .infinity)
                     .background(.thinMaterial)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .toastTransition(reduceMotion: reduceMotion)
             }
         }
         .frame(width: PanelMetrics.size.width, height: PanelMetrics.size.height)

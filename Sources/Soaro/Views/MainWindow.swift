@@ -124,6 +124,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 
 struct MainWindowView: View {
     @EnvironmentObject private var state: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: WindowSection?
     @AppStorage(MainWindowController.pinnedKey) private var pinned = false
 
@@ -240,7 +241,7 @@ struct MainWindowView: View {
                 .padding(.horizontal, 14).padding(.vertical, 8)
                 .cardBackground()
                 .padding(.bottom, 14)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .toastTransition(reduceMotion: reduceMotion)
         }
     }
 }

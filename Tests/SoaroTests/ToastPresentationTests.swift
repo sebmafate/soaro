@@ -24,4 +24,25 @@ import Testing
     @Test func visibleDurationIsFourSeconds() {
         #expect(ToastPresentation.visibleDuration == .seconds(4))
     }
+
+    // MARK: Câblage dans les vues (gardes au niveau du source ; l'animation elle-même se vérifie à la main)
+
+    private func viewSource(_ name: String) throws -> String {
+        let url = RepositoryRoot.url().appendingPathComponent("Sources/Soaro/Views/\(name)")
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    @Test func panelAndWindowReadReduceMotionAndNoLongerHardCodeTheSlide() throws {
+        for file in ["PopoverView.swift", "MainWindow.swift"] {
+            let text = try viewSource(file)
+            #expect(text.contains("accessibilityReduceMotion"), "\(file) doit lire Réduire les animations")
+            #expect(!text.contains(".move(edge:"), "\(file) ne doit plus fixer le glissement lui-même")
+            #expect(text.contains(".easeInOut(duration: 0.2)"), "\(file) garde l'animation de 0,2 s")
+        }
+    }
+
+    @Test func theSlideIsDefinedInOnePlaceOnly() throws {
+        let text = try viewSource("ToastTransition.swift")
+        #expect(text.components(separatedBy: ".move(edge: .bottom)").count - 1 == 1)
+    }
 }
