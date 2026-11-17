@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Écran « Simulators and emulators » (S2, lecture seule : SL8). Rien ne peut être supprimé ici : le bouton « Delete » est
-/// désactivé et sans action (SL9). Aucun raccourci clavier ni action par défaut : Retour ne supprime jamais (R8).
+/// Écran « Simulators and emulators » (S2). Le bouton « Delete » (barre d'action « danger ») est disponible quand `canDelete`
+/// l'autorise ; il demande d'abord la confirmation (S3, injectée dans le modèle). Pendant la suppression : barre occupée,
+/// menu de limite et « Scan again » désactivés. Aucun raccourci clavier ni action par défaut : Retour ne supprime jamais (R8).
 /// Textes d'appoint (tailles, résumés, pieds de page) : jeton « texte de soutien » (`supportingText`), pas de style système estompé.
 struct SimulatorsView: View {
     @ObservedObject var model: SimulatorsModel
@@ -14,6 +15,11 @@ struct SimulatorsView: View {
         }
         // Le scan démarre à l'ouverture ; revenir sur un écran déjà scanné garde ses résultats.
         .onAppear { if model.phase == .notScanned { model.scan() } }
+        // Retour pendant une suppression, puis retour sur l'écran avant la fin : le scan demandé à l'ouverture a été ignoré
+        // (suppression en cours) ; il est relancé à la fin du lot.
+        .onChange(of: model.isDeleting) { _, deleting in
+            if !deleting && model.phase == .notScanned { model.scan() }
+        }
     }
 
     // MARK: En-tête : résumé, menu de limite, « Scan again » (peut passer sur deux lignes dans le panneau)
@@ -52,6 +58,7 @@ struct SimulatorsView: View {
             .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
+            .disabled(model.isDeleting)
         }
     }
 
@@ -102,10 +109,13 @@ struct SimulatorsView: View {
         }
         .listStyle(.plain)
         ActionBar(
-            summary: model.selectedCount == 0
-                ? String(localized: "Nothing selected")
-                : String(localized: "Selected: \(model.selectedCount) · \(Format.fileBytes(model.selectedSize))"),
-            button: String(localized: "Delete"), enabled: false, destructive: true, action: {}
+            summary: model.isDeleting
+                ? String(localized: "Deleting…")
+                : model.selectedCount == 0
+                    ? String(localized: "Nothing selected")
+                    : String(localized: "Selected: \(model.selectedCount) · \(Format.fileBytes(model.selectedSize))"),
+            button: String(localized: "Delete"), enabled: model.canDelete, destructive: true, busy: model.isDeleting,
+            action: { model.deleteSelected() }
         )
     }
 
