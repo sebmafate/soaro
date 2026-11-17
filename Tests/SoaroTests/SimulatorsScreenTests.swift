@@ -203,6 +203,25 @@ import Testing
         #expect(!SimulatorsScreen.showsActionBar(.failedOnly(.android)))
     }
 
+    @Test func theExplanationFooterIsOnlyUnderTheIosGroupWhenItIsListed() {
+        typealias S = SimulatorsScreen.Section
+        #expect(SimulatorsScreen.footers(ios: .listed, android: .absent) == .init(explanationUnderIos: true, smallCountUnder: .ios))
+        #expect(SimulatorsScreen.footers(ios: .listed, android: .listed) == .init(explanationUnderIos: true, smallCountUnder: .android))
+        #expect(SimulatorsScreen.footers(ios: .listed, android: .failed) == .init(explanationUnderIos: true, smallCountUnder: .android))
+        // Android seul : plus d'explication (« are pre-selected » serait faux), le décompte des petits appareils reste.
+        #expect(SimulatorsScreen.footers(ios: .absent, android: .listed) == .init(explanationUnderIos: false, smallCountUnder: .android))
+        // Un groupe iOS en échec n'explique rien non plus.
+        #expect(SimulatorsScreen.footers(ios: .failed, android: .listed) == .init(explanationUnderIos: false, smallCountUnder: .android))
+        #expect(SimulatorsScreen.footers(ios: .absent, android: .absent) == .init(explanationUnderIos: false, smallCountUnder: nil))
+    }
+
+    @Test func theViewUsesTheFooterRuleAndReusesOnlyExistingStrings() throws {
+        let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
+        #expect(text.contains("SimulatorsScreen.footers(ios:"))
+        #expect(text.contains("SimulatorPresentation.explanationFooter"))
+        #expect(text.contains("SimulatorPresentation.smallDevicesFooter"))
+    }
+
     @MainActor
     @Test func theDeleteRuleHoldsBackWhileAnAndroidRowIsChecked() {
         #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 1, isDeleting: false, androidSelectedCount: 0))

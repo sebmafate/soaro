@@ -51,6 +51,19 @@ enum SimulatorsScreen {
         return false
     }
 
+    /// Où vont les pieds de page des sections.
+    struct Footers: Equatable {
+        /// L'explication des règles (« …are pre-selected… ») ne vaut que pour iOS : sous la section iOS, quand elle est listée.
+        let explanationUnderIos: Bool
+        /// Le décompte des petits appareils (des deux groupes) : sous la dernière section présente.
+        let smallCountUnder: Group?
+    }
+
+    static func footers(ios: Section, android: Section) -> Footers {
+        let last: Group? = android != .absent ? .android : (ios != .absent ? .ios : nil)
+        return Footers(explanationUnderIos: ios == .listed, smallCountUnder: last)
+    }
+
     /// « No simulator or emulator found. »
     static var nothingFoundMessage: String { String(localized: "No simulator or emulator found.") }
 }

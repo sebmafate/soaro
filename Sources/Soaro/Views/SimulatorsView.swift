@@ -98,6 +98,7 @@ struct SimulatorsView: View {
         if model.showsNothingToSuggest {
             hintBanner
         }
+        let placement = SimulatorsScreen.footers(ios: ios, android: android)
         List {
             switch ios {
             case .listed:
@@ -108,7 +109,7 @@ struct SimulatorsView: View {
                 } header: {
                     SectionHeader(title: "iOS Simulators")
                 } footer: {
-                    if android == .absent { footer }
+                    footer(explanation: placement.explanationUnderIos, smallCount: placement.smallCountUnder == .ios)
                 }
             case .failed:
                 Section {
@@ -116,7 +117,7 @@ struct SimulatorsView: View {
                 } header: {
                     SectionHeader(title: "iOS Simulators")
                 } footer: {
-                    if android == .absent { footer }
+                    footer(explanation: placement.explanationUnderIos, smallCount: placement.smallCountUnder == .ios)
                 }
             case .absent:
                 EmptyView()
@@ -130,7 +131,7 @@ struct SimulatorsView: View {
                 } header: {
                     SectionHeader(title: "Android emulators")
                 } footer: {
-                    footer
+                    footer(explanation: false, smallCount: placement.smallCountUnder == .android)
                 }
             case .failed:
                 Section {
@@ -138,7 +139,7 @@ struct SimulatorsView: View {
                 } header: {
                     SectionHeader(title: "Android emulators")
                 } footer: {
-                    footer
+                    footer(explanation: false, smallCount: placement.smallCountUnder == .android)
                 }
             case .absent:
                 EmptyView()
@@ -171,16 +172,20 @@ struct SimulatorsView: View {
             .padding(.horizontal, 14).padding(.vertical, 8)
     }
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let small = SimulatorPresentation.smallDevicesFooter(count: model.hiddenSmallCount, size: model.hiddenSmallSize, locale: .current) {
-                Text(verbatim: small)
+    /// Pied de page d'une section : le décompte des petits appareils (des deux groupes) et/ou l'explication des règles (iOS seulement :
+    /// elle parle de pré-sélection, qu'Android n'a pas avant SL11). Textes existants, aucune clé nouvelle.
+    @ViewBuilder private func footer(explanation: Bool, smallCount: Bool) -> some View {
+        let small = smallCount
+            ? SimulatorPresentation.smallDevicesFooter(count: model.hiddenSmallCount, size: model.hiddenSmallSize, locale: .current) : nil
+        if explanation || small != nil {
+            VStack(alignment: .leading, spacing: 4) {
+                if let small { Text(verbatim: small) }
+                if explanation { Text(verbatim: SimulatorPresentation.explanationFooter(limitDays: model.limitDays)) }
             }
-            Text(verbatim: SimulatorPresentation.explanationFooter(limitDays: model.limitDays))
+            .font(.caption)
+            .supportingText()
+            .padding(.top, 6)
         }
-        .font(.caption)
-        .supportingText()
-        .padding(.top, 6)
     }
 
     // MARK: Une ligne
