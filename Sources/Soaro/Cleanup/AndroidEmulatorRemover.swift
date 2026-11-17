@@ -1,7 +1,8 @@
 import Foundation
 
-/// Suppression d'un appareil virtuel Android (SL11, R17, ADR 0009 règles 3, 4, 6, 7, 8).
-/// Cette première partie : retrouver la cible AU MOMENT DE L'ACTION. Lecture seule : rien n'est lancé, mesuré ni supprimé.
+/// Suppression d'un appareil virtuel Android (SL11, R17, ADR 0009 règles 3, 4, 6, 7, 8) : seul fichier Android qui supprime.
+/// Il retrouve la cible AU MOMENT DE L'ACTION (`prepareRemoval`, sans effet), revérifie les processus, mesure, puis supprime
+/// le dossier et les `.ini` par `AndroidEmulatorRemover.removeFile`.
 
 /// Ce que l'utilisateur a confirmé : le nom de l'AVD et le dossier vu au scan (`AndroidDevice.folder`, déjà résolu).
 struct AndroidRemovalTarget: Equatable {
@@ -63,6 +64,20 @@ extension AndroidEmulatorScanner {
         let names = [device.name] + device.aliases
         let registrations = names.map { avdFolder.appendingPathComponent("\($0).ini") }
         guard CleanupService.isSafeToDelete(freshFolder), registrations.allSatisfy(CleanupService.isSafeToDelete) else { return .refused }
+        // Le dossier ne passe par aucun lien symbolique côté inscription (le dernier composant du chemin enregistré, pour chaque nom) :
+        // sinon on supprimerait le dossier visé et on laisserait un lien cassé.
+        for (name, registration) in zip(names, registrations) {
+            let registered = deviceFolder(name: name, registration: readINI(registration) ?? [:],
+                                          androidFolder: home.appendingPathComponent(".android", isDirectory: true), avdFolder: avdFolder)
+            var info = stat()
+            guard let registered, lstat(registered.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return .refused }
+        }
+        // Le dossier ne contient ni un autre AVD du listage ni le dossier des inscriptions (le supprimer les emporterait).
+        let inside = freshFolder.path + "/"
+        let avdPath = avdFolder.resolvingSymlinksInPath().standardizedFileURL.path
+        let others = listing.devices.filter { $0.name != device.name }
+        guard !avdPath.hasPrefix(inside), !others.contains(where: { $0.folder.resolvingSymlinksInPath().standardizedFileURL.path.hasPrefix(inside) })
+        else { return .refused }
         // Chaque inscription est un fichier ordinaire (ou un lien vers un fichier) : un DOSSIER nommé `<nom>.ini` serait supprimé
         // récursivement.
         guard registrations.allSatisfy(isRegistrationFile) else { return .refused }

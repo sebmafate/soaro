@@ -208,6 +208,65 @@ import Testing
         #expect(plan.names == ["Test_Phone_A", "Test_Phone_B"])
     }
 
+    // MARK: Un dossier lié, un dossier qui en contient d'autres
+
+    @Test func aFolderRegisteredThroughASymlinkIsRefusedAtRemovalTime() throws {
+        let box = try Sandbox(insideHome: true)
+        // Un vrai dossier d'AVD, et `Test_Phone_A.avd` en est un lien : le listage l'accepte (résolu), la suppression le refuse
+        // (elle supprimerait le dossier vers lequel le lien pointe et laisserait un lien cassé).
+        try box.write("Real.avd/config.ini", "AvdId=Real\n")
+        try box.dir(".android/avd")
+        try FileManager.default.createSymbolicLink(at: box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd"),
+                                                   withDestinationURL: box.root.appendingPathComponent("Real.avd"))
+        try box.write(".android/avd/Test_Phone_A.ini", "path.rel=avd/Test_Phone_A.avd\n")
+        let target = try scanTarget(box, "Test_Phone_A")
+        #expect(realPath(target.folder) == realPath(box.root.appendingPathComponent("Real.avd")), "le listage accepte le lien")
+
+        #expect(prepare(box, target) == .refused)
+        #expect(box.exists("Real.avd/config.ini"))
+    }
+
+    @Test func anAliasRegisteredThroughASymlinkIsRefusedToo() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        let link = box.root.appendingPathComponent("Link.avd")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: folder)
+        try box.write(".android/avd/Test_Phone_B.ini", "path=\(link.path)\n")
+        let target = try scanTarget(box, "Test_Phone_A")
+        #expect(AndroidEmulatorScanner.listAVDs(home: box.root).devices.first?.aliases == ["Test_Phone_B"])
+
+        #expect(prepare(box, target) == .refused)
+        #expect(box.exists(".android/avd/Test_Phone_A.avd/config.ini"))
+    }
+
+    @Test func aFolderThatContainsAnotherListedAvdFolderIsRefusedButTheInnerOneIsNot() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("Big.avd/config.ini", "AvdId=Big\n")
+        try box.write("Big.avd/inner/Test_Tablet_B.avd/config.ini", "AvdId=Test_Tablet_B\n")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/Big.avd\n")
+        try box.write(".android/avd/Test_Tablet_B.ini", "path=\(box.root.path)/Big.avd/inner/Test_Tablet_B.avd\n")
+        let outer = try scanTarget(box, "Test_Phone_A")
+        let inner = try scanTarget(box, "Test_Tablet_B")
+
+        #expect(prepare(box, outer) == .refused)
+        guard case .plan = prepare(box, inner) else { Issue.record("le dossier intérieur n'en contient aucun autre : un plan était attendu"); return }
+        #expect(box.exists("Big.avd/inner/Test_Tablet_B.avd/config.ini"))
+    }
+
+    @Test func aFolderThatContainsTheAvdRegistrationFolderIsRefused() throws {
+        let box = try Sandbox(insideHome: true)
+        // `~/.android` est un lien vers un dossier DANS `Big.avd` : le dossier des inscriptions est sous le dossier de l'AVD.
+        try box.write("Big.avd/config.ini", "AvdId=Big\n")
+        try box.dir("Big.avd/dot/avd")
+        try FileManager.default.createSymbolicLink(at: box.root.appendingPathComponent(".android"),
+                                                   withDestinationURL: box.root.appendingPathComponent("Big.avd/dot"))
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/Big.avd\n")
+        let target = try scanTarget(box, "Test_Phone_A")
+
+        #expect(prepare(box, target) == .refused)
+        #expect(box.exists("Big.avd/dot/avd/Test_Phone_A.ini"))
+    }
+
     // MARK: Illisible
 
     @Test func anUnreadableAvdFolderMeansCouldNotCheck() throws {
