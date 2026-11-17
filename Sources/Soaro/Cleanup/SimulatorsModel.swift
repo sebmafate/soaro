@@ -213,6 +213,56 @@ final class SimulatorsModel: ObservableObject {
         if selected.contains(udid) { selected.remove(udid) } else { selected.insert(udid) }
     }
 
+    // MARK: « Select all » (une case à trois états par section)
+
+    /// Un des deux groupes de lignes : chaque section a sa propre case « Select all ».
+    enum Group: Equatable {
+        case ios, android
+    }
+
+    /// Les lignes sélectionnables d'un groupe : celles qui ne tournent pas (une ligne en cours d'exécution ne se coche jamais).
+    func selectableCount(_ group: Group) -> Int {
+        switch group {
+        case .ios: rows.filter { !$0.isRunning }.count
+        case .android: androidRows.filter { !$0.isRunning }.count
+        }
+    }
+
+    /// Les lignes sélectionnables du groupe qui sont cochées.
+    func selectedSelectableCount(_ group: Group) -> Int {
+        switch group {
+        case .ios: rows.filter { !$0.isRunning && selected.contains($0.device.device.udid) }.count
+        case .android: androidRows.filter { !$0.isRunning && androidSelected.contains($0.device.device.name) }.count
+        }
+    }
+
+    func selectAllState(_ group: Group) -> SelectAllState {
+        SelectAll.state(selectable: selectableCount(group), selected: selectedSelectableCount(group))
+    }
+
+    /// Active : au moins une ligne sélectionnable et aucune suppression en cours (ici ou ailleurs : la porte commune). La mesure des
+    /// tailles ne la bloque pas, comme `toggle` ; c'est Delete qui attend la fin des mesures.
+    func canSelectAll(_ group: Group) -> Bool {
+        SelectAll.isEnabled(selectable: selectableCount(group), locked: isDeleting)
+    }
+
+    /// Coche (ou décoche) toutes les lignes sélectionnables d'UN groupe ; l'autre groupe n'est jamais touché. Sans effet quand
+    /// `canSelectAll` est faux. Un changement de limite remplace ensuite la sélection, comme avant.
+    func setAllSelected(_ on: Bool, group: Group) {
+        guard canSelectAll(group) else { return }
+        switch group {
+        case .ios:
+            let ids = rows.filter { !$0.isRunning }.map(\.device.device.udid)
+            if on { selected.formUnion(ids) } else { selected.subtract(rows.map(\.device.device.udid)) }
+        case .android:
+            let names = androidRows.filter { !$0.isRunning }.map(\.device.device.name)
+            if on { androidSelected.formUnion(names) } else { androidSelected.subtract(androidRows.map(\.device.device.name)) }
+        }
+    }
+
+    /// Le clic sur la case d'un groupe : mixte ou aucune → tout cocher ; tout → tout décocher.
+    func toggleAll(_ group: Group) { setAllSelected(SelectAll.turnsOn(from: selectAllState(group)), group: group) }
+
     /// Même chose pour une ligne Android (clé : nom d'AVD).
     func toggle(_ row: DeviceSuggestions.AndroidRow) {
         guard !row.isRunning, !isDeleting else { return }
