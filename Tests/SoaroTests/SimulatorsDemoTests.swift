@@ -340,6 +340,34 @@ import Testing
                         notify: { toasts.messages.append($0) })
     }
 
+    @Test func aDemoDeletionRecomputesWhoUsesEachDemoImage() async throws {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        func usage(_ path: String) -> AndroidSystemImage.Usage? { m.imageRows.first { $0.key.path == path }?.usage }
+        let phone = "android-36/google_apis_playstore/arm64-v8a"
+        if case .usedBy(let devices)? = usage(phone) { #expect(devices.map(\.displayName) == ["Demo Phone A"]) } else { Issue.record("la 36 est utilisée au départ") }
+        let row = try #require(m.androidRows.first { $0.device.device.name == "Demo_Phone_A" })
+        m.toggle(row)
+
+        m.deleteSelected()
+
+        #expect(!m.androidRows.contains { $0.device.device.name == "Demo_Phone_A" })
+        #expect(usage(phone) == .notUsed, "l'image dont le seul utilisateur est parti devient « not used by any listed device »")
+        for image in m.imageRows {
+            if case .usedBy(let devices) = image.usage { #expect(!devices.contains { $0.name == "Demo_Phone_A" }, "\(image.key.path)") }
+        }
+        if case .usedBy? = usage("android-35/google_apis/arm64-v8a") {} else { Issue.record("la 35 reste utilisée par la tablette") }
+        if case .usedBy? = usage("android-34/default/arm64-v8a") {} else { Issue.record("la 34 reste utilisée par la montre (petit appareil non listé)") }
+        #expect(m.imageRows.count == 4, "aucune image ne disparaît")
+        #expect(m.imageRows.allSatisfy { m.size(of: $0) != nil })
+        #expect(m.imagesPhase == .listed)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+    }
+
     @Test func confirmedDeletionInDemoRemovesTheRowsAtOnceWithoutRunnerNorMeasureNorRescan() async {
         let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
         let measure = ScriptedMeasure([:])

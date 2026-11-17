@@ -474,6 +474,9 @@ final class SimulatorsModel: ObservableObject {
             for name in goneAndroid { androidSizes[name] = nil }
             androidSelected.subtract(goneAndroid)
             recomputeAndroid(selection: .prune)
+            // Les images de la démo : qui les utilise est recalculé (l'appareil supprimé n'apparaît plus dans « used by »). Mêmes lignes, mêmes tailles.
+            imageRows = AndroidSystemImageScanner.usage(images: imageRows.map { AndroidSystemImageFolder(key: $0.key, folder: $0.folder) },
+                                                        devices: androidDevices, incompleteness: AndroidSystemImageIncompleteness(reasons: []))
             notify(String(localized: "\(Format.fileBytes(freed)) freed"))
             return
         }
