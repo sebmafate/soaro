@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// Règles pures du toast (SL5) : aucune dépendance à SwiftUI ni à l'état de l'app, donc testables telles quelles.
@@ -21,5 +22,21 @@ enum ToastPresentation {
     /// Texte lu par VoiceOver : le message tel quel (déjà traduit), sans préfixe. `nil` si le message est vide ou blanc.
     static func announcement(for message: String) -> String? {
         message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : message
+    }
+}
+
+/// Annonceur réel : demande à VoiceOver de lire le message, avec une priorité haute pour qu'un changement de focus
+/// ne la coupe pas. Voie AppKit (`NSAccessibility`), la même dans le panneau et dans la fenêtre.
+enum ToastAnnouncer {
+    @MainActor static func announce(_ text: String) {
+        // Sans application (processus de tests), il n'y a personne à qui parler.
+        guard let app = NSApp else { return }
+        NSAccessibility.post(
+            element: app,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: text,
+                .priority: NSAccessibilityPriorityLevel.high.rawValue,
+            ])
     }
 }
