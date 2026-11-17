@@ -51,7 +51,8 @@ enum CleanupService {
         return items.reduce(0) { $0 + allocatedSize(of: $1) }
     }
 
-    static func clean(_ kind: CleanupKind, home: URL = realHome) -> CleanupResult {
+    /// `measure` : la mesure de taille, remplaçable par les tests pour prouver le « avant moins après » sans dépendre du disque.
+    static func clean(_ kind: CleanupKind, home: URL = realHome, measure: (URL) -> UInt64 = { allocatedSize(of: $0) }) -> CleanupResult {
         if kind == .trash { return emptyTrash() }
 
         guard let items = items(for: kind, home: home) else {
@@ -61,14 +62,14 @@ enum CleanupService {
         var failures = 0
         for item in items {
             guard isSafeToDelete(item) else { failures += 1; continue }
-            let before = allocatedSize(of: item)
+            let before = measure(item)
             do {
                 try FileManager.default.removeItem(at: item)
                 freed += before
             } catch {
                 failures += 1   // fichier en cours d'utilisation, protégé, etc.
                 // Suppression interrompue : on compte ce qui a vraiment disparu (avant moins après, jamais négatif).
-                let after = allocatedSize(of: item)
+                let after = measure(item)
                 if before > after { freed += before - after }
             }
         }

@@ -101,4 +101,40 @@ import Testing
         #expect(result.freed == before)
         #expect(result.failures == 0)
     }
+
+    /// Crédit partiel prouvé sans dépendre de l'ordre de lecture du dossier : la suppression de « a » échoue à coup sûr
+    /// (son seul contenu est un dossier verrouillé) et la mesure est scriptée : 1 000 avant, 400 après, soit 600 libérés.
+    @Test func partialCreditIsBeforeMinusAfterForTheFailingItem() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.file(".nuget/packages/a/locked/inside.bin", bytes: 1_000)
+        try box.file(".nuget/packages/b/c.dll", bytes: 1_000)
+        let locked = box.root.appendingPathComponent(".nuget/packages/a/locked")
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
+
+        var scripted: [String: [UInt64]] = ["a": [1_000, 400], "b": [5_000]]
+        let result = CleanupService.clean(.nugetCache, home: box.root, measure: { url in
+            scripted[url.lastPathComponent]?.removeFirst() ?? 0
+        })
+
+        #expect(result.failures == 1)
+        #expect(!box.exists(".nuget/packages/b"))
+        #expect(box.exists(".nuget/packages/a/locked/inside.bin"))
+        #expect(result.freed == 5_000 + 600)
+    }
+
+    /// Une mesure d'après supérieure à celle d'avant (un fichier apparu entre-temps) ne donne jamais un crédit négatif.
+    @Test func aFailingItemThatGrewIsNeverCountedNegative() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.file(".nuget/packages/a/locked/inside.bin", bytes: 1_000)
+        let locked = box.root.appendingPathComponent(".nuget/packages/a/locked")
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: locked.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: locked.path) }
+
+        var scripted: [UInt64] = [400, 1_000]
+        let result = CleanupService.clean(.nugetCache, home: box.root, measure: { _ in scripted.removeFirst() })
+
+        #expect(result.failures == 1)
+        #expect(result.freed == 0)
+    }
 }
