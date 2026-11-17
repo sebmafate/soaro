@@ -42,6 +42,17 @@ enum Diagnostics {
         return SimulatorScanner.scan(runner: runner, xcrunPath: ToolLocator.simulatorXcrunPath(detection: detection, locate: locate), home: home)
     }
 
+    /// Scan Android de `--scan` : SDK, AVD et `ps` (même listage que l'application), puis la taille allouée de chaque dossier.
+    /// Sans SDK : rien n'est lu ni lancé. LECTURE SEULE.
+    static func androidScan(runner: CommandRunner, home: URL, environment: [String: String],
+                            locate: ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
+                            measure: (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) }) -> AndroidScan {
+        let listing = AndroidEmulatorScanner.list(runner: runner, psPath: locate(ToolLocator.processListCandidates),
+                                                  environment: environment, home: home)
+        let sized = listing.devices.map { SizedAndroidDevice(device: $0, size: measure($0.folder)) }
+        return AndroidScan(status: listing.status, sdk: listing.sdk, devices: sized)
+    }
+
     /// `Soaro --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.
     static func scan() -> Never {
         func timed<T>(_ label: String, _ block: () -> T) -> T {
@@ -85,6 +96,15 @@ enum Diagnostics {
         for line in SimulatorReport.lines(scan: simulators, suggestions: suggestions, locale: .current,
                                           limitDays: DeviceSuggestions.defaultLimitDays) { print(line) }
         print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(simulatorStart)))
+
+        // Émulateurs Android : lecture seule (dossier des AVD, puis `/bin/ps`), tailles allouées sur disque. Le vrai lanceur est
+        // construit ici (endroit déjà permis) ; l'environnement est celui du processus (lancé depuis un terminal pour `ANDROID_SDK_ROOT`).
+        let androidStart = Date()
+        let android = Self.androidScan(runner: RealCommandRunner(), home: URL(fileURLWithPath: NSHomeDirectory()),
+                                       environment: ProcessInfo.processInfo.environment)
+        let androidSuggestions = DeviceSuggestions.suggestAndroid(android.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
+        for line in AndroidEmulatorReport.lines(scan: android, suggestions: androidSuggestions, locale: .current) { print(line) }
+        print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(androidStart)))
 
         print("== Installed apps")
         let apps = AppUninstaller.installedApps()

@@ -301,3 +301,12 @@ extension AndroidEmulatorScanner {
         return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(running.contains($0.name)) }, sdk: sdk)
     }
 }
+
+// MARK: - Scan avec tailles (pour `--scan`)
+
+/// Un listage Android avec la taille réelle (espace alloué) de chaque dossier.
+struct AndroidScan: Equatable {
+    let status: AndroidListing.Status
+    let sdk: AndroidSDKLocation?
+    let devices: [SizedAndroidDevice]
+}

@@ -1,0 +1,141 @@
+import Foundation
+import Testing
+@testable import Soaro
+
+/// Section « Android emulators » de `Soaro --scan` : mise en forme pure (anglais brut, non localisé) et `Diagnostics.androidScan`
+/// avec le faux lanceur, un dossier personnel de bac à sable et un environnement injecté.
+@Suite(.serialized) struct AndroidEmulatorReportTests {
+    private let now = ISO8601DateFormatter().date(from: "2026-11-16T12:00:00Z")!
+    private let locale = Locale(identifier: "en_US")
+    private let utc = TimeZone(identifier: "UTC")!
+
+    private func ago(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
+
+    private func sized(_ name: String, display: String? = nil, version: String? = "36", days: Double?, source: String? = "hardware-qemu.ini",
+                       running: Bool = false, size: UInt64) -> SizedAndroidDevice {
+        SizedAndroidDevice(
+            device: AndroidDevice(name: name, displayName: display ?? name, systemVersion: version,
+                                  folder: URL(fileURLWithPath: "/Users/test/.android/avd/\(name).avd"),
+                                  lastUsed: days.map(ago), lastUsedSource: days == nil ? nil : source, isRunning: running),
+            size: size)
+    }
+
+    private func report(_ scan: AndroidScan, limit: Int = 60) -> [String] {
+        let suggestions = DeviceSuggestions.suggestAndroid(scan.devices, now: now, limitDays: limit)
+        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, locale: locale, timeZone: utc)
+    }
+
+    private func size(_ bytes: UInt64) -> String { Format.fileBytes(bytes, locale: locale) }
+
+    // MARK: Mise en forme
+
+    @Test func exactLinesForTwoListedDevicesAndOneSmallOne() {
+        let sdk = AndroidSDKLocation(path: "/Users/test/Library/Android/sdk", source: .androidHome)
+        let scan = AndroidScan(status: .ok, sdk: sdk, devices: [
+            sized("Old_Phone_C", display: "Old Phone C", days: 90, size: 3_000_000_000),
+            sized("Test_Phone_A", version: nil, days: 2, running: true, size: 1_000_000_000),
+            sized("Test_Tablet_B", days: nil, size: 50_000_000),
+        ])
+        #expect(report(scan) == [
+            "== Android emulators",
+            "\(size(3_000_000_000))  Old_Phone_C  Old Phone C (API 36)  last used 2026-08-18 (90 d, from hardware-qemu.ini)  pre-selected: inactive",
+            "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from hardware-qemu.ini)  running",
+            "1 small device (\(size(50_000_000))) not listed",
+            "SDK source: ANDROID_HOME",
+        ])
+    }
+
+    @Test func anUnknownDateIsPrintedAsUnknown() {
+        let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .defaultLocation),
+                               devices: [sized("Test_Phone_A", days: nil, size: 500_000_000)])
+        #expect(report(scan)[1] == "\(size(500_000_000))  Test_Phone_A  Test_Phone_A (API 36)  last used unknown")
+        #expect(report(scan).last == "SDK source: default")
+    }
+
+    @Test func manySmallDevicesArePluralAndTheFileSourceIsPrinted() {
+        let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .androidSDKRoot), devices: [
+            sized("Test_Phone_A", days: 5, source: "snapshots/default_boot/snapshot.pb", size: 400_000_000),
+            sized("Test_Tablet_B", days: 5, size: 1), sized("Test_Tablet_C", days: 5, size: 2)])
+        let lines = report(scan)
+        #expect(lines[1].contains("from snapshots/default_boot/snapshot.pb"))
+        #expect(lines.contains("2 small devices (\(size(3))) not listed"))
+    }
+
+    @Test func linesFollowTheSuggestionOrder() {
+        let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .androidHome), devices: [
+            sized("Small_First", days: 1, size: 200_000_000), sized("Big_Second", days: 1, size: 900_000_000)])
+        let lines = report(scan)
+        #expect(lines[1].contains("Big_Second"))
+        #expect(lines[2].contains("Small_First"))
+    }
+
+    @Test func statusLines() {
+        #expect(report(AndroidScan(status: .sdkNotFound, sdk: nil, devices: [])) == ["== Android emulators", "Android SDK not found"])
+        #expect(report(AndroidScan(status: .couldNotRead, sdk: AndroidSDKLocation(path: "/x", source: .androidHome), devices: []))
+                == ["== Android emulators", "could not read the Android emulators"])
+        #expect(report(AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .androidHome), devices: []))
+                == ["== Android emulators", "no Android virtual device"])
+    }
+
+    @Test func noPathAndNoLocalisedKeyInTheReport() {
+        let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/Users/test/Library/Android/sdk", source: .defaultLocation),
+                               devices: [sized("Test_Phone_A", days: 70, size: 500_000_000)])
+        #expect(!report(scan).joined(separator: "\n").contains("/Users/test"))
+    }
+
+    // MARK: Diagnostics.androidScan
+
+    private func makeAVD(_ box: Sandbox, _ name: String) throws {
+        try box.dir(".android/avd/\(name).avd")
+        try box.write(".android/avd/\(name).ini", "path.rel=avd/\(name).avd\n")
+        try box.write(".android/avd/\(name).avd/config.ini", "avd.ini.displayname=\(name) display\n")
+    }
+
+    @Test func androidScanListsAndMeasuresWithTheFakeRunner() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Library/Android/sdk")
+        try makeAVD(box, "Test_Phone_A")
+        try makeAVD(box, "Test_Tablet_B")
+        let runner = FakeCommandRunner()
+        runner.script(.finished(stdout: "emulator -avd Test_Tablet_B\n"), executable: "/bin/ps", arguments: AndroidEmulatorScanner.processListArguments)
+        let measured = MeasureLog()
+        let scan = Diagnostics.androidScan(runner: runner, home: box.root, environment: [:], locate: { _ in "/bin/ps" },
+                                           measure: { url in measured.add(url.lastPathComponent); return 300_000_000 })
+        #expect(scan.status == .ok)
+        #expect(scan.sdk?.source == .defaultLocation)
+        #expect(scan.devices.map(\.device.name) == ["Test_Phone_A", "Test_Tablet_B"])
+        #expect(scan.devices.map(\.device.isRunning) == [false, true])
+        #expect(scan.devices.map(\.size) == [300_000_000, 300_000_000])
+        #expect(measured.names == ["Test_Phone_A.avd", "Test_Tablet_B.avd"])
+        #expect(runner.calls.count == 1)
+    }
+
+    @Test func androidScanWithoutAnSdkLaunchesAndMeasuresNothing() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, "Test_Phone_A")
+        let runner = FakeCommandRunner()
+        let measured = MeasureLog()
+        let scan = Diagnostics.androidScan(runner: runner, home: box.root, environment: [:], locate: { _ in "/bin/ps" },
+                                           measure: { _ in measured.add("x"); return 1 })
+        #expect(scan.status == .sdkNotFound)
+        #expect(runner.calls.isEmpty)
+        #expect(measured.names.isEmpty)
+    }
+
+    @Test func theRealRunnerIsBuiltOnlyWhereItIsAllowed() throws {
+        let sources = RepositoryRoot.url().appendingPathComponent("Sources")
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)!.compactMap { $0 as? URL }
+            .filter { $0.pathExtension == "swift" }
+        var found = Set<String>()
+        for file in files where try String(contentsOf: file, encoding: .utf8).contains("RealCommandRunner(") {
+            found.insert(file.lastPathComponent)
+        }
+        #expect(found.isSubset(of: ["Diagnostics.swift", "CleanupTab.swift", "RealCommandRunner.swift"]), "\(found)")
+    }
+}
+
+/// Journal des dossiers mesurés (la mesure s'exécute dans la même tâche : pas de concurrence ici).
+private final class MeasureLog: @unchecked Sendable {
+    private(set) var names: [String] = []
+    func add(_ name: String) { names.append(name) }
+}
