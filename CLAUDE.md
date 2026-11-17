@@ -46,7 +46,7 @@ Releases are built by GitHub Actions on a `macos-26` runner when a tag `vX.Y.Z` 
 ## Conventions
 
 - Stack: Swift 6 tools, Swift 5 language mode, SwiftUI plus AppKit, one dependency (Sparkle). See ADR 0001.
-- Branches and commits (observed in git history, confidence medium): short feature branches merged by pull request (squash up to pull request #5, merge commit from #6 on); commit subjects in French, in the imperative ("Ajouter...", "Renommer..."); commits are signed (SSH key). `main` is protected by a ruleset (pull request required, signed commits, no force push).
+- Branches and commits (observed in git history, confidence medium): short feature branches merged by pull request (merge commit for pull request #1, squash for #2 to #5, merge commit from #6 on); commit subjects in French, in the imperative ("Ajouter...", "Renommer..."); commits are signed (SSH key). `main` is protected by a ruleset (pull request required, signed commits, no force push).
 - Documentation and the user interface are in English first; French is the second language (README.fr.md, site `/fr/`). Code comments are mostly French.
 - Version: `VERSION` file; the build number is the commit count (`git rev-list --count HEAD`), so a release build needs the full git history.
 - Safety rule for anything that deletes: see ADR 0006. A path must pass `CleanupService.isSafeToDelete`, and the action is confirmed by the user first.
@@ -55,8 +55,8 @@ Releases are built by GitHub Actions on a `macos-26` runner when a tag `vX.Y.Z` 
 
 ## Lessons learned
 
-- **The CI compiler can be stricter than the local one.** CI runs on `macos-26` (Xcode 26.6); the author's Mac has a newer toolchain. In SL12a, a local constant named like the function called in its own initializer (`let key = try #require(key(...))`, the same pattern with `version`) compiled locally and failed on CI; the commit that renames such constants is the fix. The CI failure only shows after the push: name a local differently from any function you call in the same statement.
-- **Demo mode (`SOARO_DEMO=1`) must stay inert.** No destructive path may run in demo: no delete, trash, `launchctl`, quitting a real app or removal through a tool, from any row, tool, switch or button. Until the SL6 review round it did run some of them. Any new action that touches the disk or another process gets a demo guard and a test (see `TESTING.md`).
+- **The CI compiler is older than the local one and can reject code that compiles locally.** The CI runner (`macos-26`; Xcode 26.6 per `TESTING.md`, not re-checked: `ci.yml` does not pin Xcode) has an older toolchain than the author's Mac (Swift 6.4, Xcode 27), so it may reject code the local compiler accepts. In SL12a, a local constant named like the function called in its own initializer (`let key = try #require(key(...))`, the same pattern with `version`) compiled locally and failed on CI (fixed by renaming the constants in commit `b5d4aa3`). The CI failure only shows after the push: name a local differently from any function you call in the same statement.
+- **Demo mode (`SOARO_DEMO=1`) must stay inert.** No destructive path may run in demo: no delete, trash, `launchctl`, quitting a real app or removal through a tool, from any row, tool, switch or button. Until the SL6 review round it did run some of them. Every new model has a demo-mode branch: nothing measured or written in demo mode (see the definition of done in `TESTING.md`).
 
 ## Working here with Trellis
 
