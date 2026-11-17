@@ -219,7 +219,7 @@ struct MainWindowView: View {
     private var statusFooter: some View {
         HStack(spacing: 6) {
             Circle().fill(state.worstSeverity?.color ?? .green).frame(width: 8, height: 8)
-            Text(statusText).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Text(statusText).font(.caption).foregroundStyle(.supportingText).lineLimit(1)
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -291,9 +291,9 @@ struct MachineView: View {
             Text(info.computerName ?? (info.title.isEmpty ? "Mac" : info.title)).font(.title2.weight(.semibold))
                 .textSelection(.enabled)
             if info.computerName != nil, !info.title.isEmpty {
-                Text(info.title).font(.callout).foregroundStyle(.secondary)
+                Text(info.title).font(.callout).foregroundStyle(.supportingText)
             }
-            Text(info.osVersion).font(.callout).foregroundStyle(.secondary)
+            Text(info.osVersion).font(.callout).foregroundStyle(.supportingText)
             if let pending = state.pendingMacOSUpdate {
                 Button {
                     state.perform(Advice.Action.openSettings(SettingsPane.softwareUpdate))
@@ -367,7 +367,7 @@ struct MachineView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 ForEach(values.compactMap { $0 }, id: \.self) { value in
-                    Text(value).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                    Text(value).font(.callout).foregroundStyle(.supportingText).textSelection(.enabled)
                 }
             }
         }

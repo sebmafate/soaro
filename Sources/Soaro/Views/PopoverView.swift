@@ -81,7 +81,7 @@ struct PopoverContent: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("Soaro").font(.headline)
-                Text(statusLine).font(.caption).foregroundStyle(.secondary)
+                Text(statusLine).font(.caption).foregroundStyle(.supportingText)
             }
             Spacer()
             Button {
@@ -134,7 +134,7 @@ struct PopoverContent: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 5)
                     .background(state.activeTab == tab ? Color.accentColor.opacity(0.16) : .clear, in: RoundedRectangle(cornerRadius: 7))
-                    .foregroundStyle(state.activeTab == tab ? Color.accentColor : .secondary)
+                    .foregroundStyle(state.activeTab == tab ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.supportingText))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

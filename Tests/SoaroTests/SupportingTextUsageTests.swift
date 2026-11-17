@@ -2,9 +2,9 @@ import Foundation
 import Testing
 
 /// Garde au niveau du source (SL4 T2) : le texte d'information n'utilise ni `.secondary` ni `.tertiary`
-/// (DESIGN.md partie 2), il passe par le jeton « texte de soutien ». Un cliquet par fichier :
-/// - `allowed` : l'état final, seules les icônes, glyphes et chevrons gardent `.secondary` / `.tertiary` ;
-/// - `pending` : bornes provisoires des fichiers pas encore migrés (chaque tâche en retire).
+/// (DESIGN.md partie 2), il passe par le jeton « texte de soutien ». Un cliquet par fichier : `allowed` donne
+/// le nombre exact d'occurrences permises, et seules les icônes, glyphes et chevrons gardent `.secondary` / `.tertiary`.
+/// Tous les autres fichiers : zéro.
 @Suite struct SupportingTextUsageTests {
     /// Occurrences autorisées dans l'état final : des icônes seulement (chaque occurrence a un `Image(` à proximité).
     static let allowed: [String: Int] = [
@@ -14,13 +14,6 @@ import Testing
         "Views/MainWindow.swift": 1,
         "Views/CleanupToolViews.swift": 2,
         "Views/CleanupTab.swift": 1,
-    ]
-
-    /// Nombres exacts des fichiers pas encore migrés (commentaires exclus).
-    static let pending: [String: Int] = [
-        "Views/MainWindow.swift": 5,
-        "Views/SettingsView.swift": 9,
-        "Views/PopoverView.swift": 2,
     ]
 
     static let hint = "use `supportingText()` (DesignTokens) for text; icons may stay `.secondary` with an allowlist entry"
@@ -83,11 +76,6 @@ import Testing
         let files = try Self.swiftFiles()
         for (file, lines) in files.sorted(by: { $0.key < $1.key }) {
             let found = Self.hits(in: lines)
-            if let bound = Self.pending[file] {
-                #expect(found.count == bound,
-                        "\(file) : \(found.count) occurrence(s) de .secondary/.tertiary, \(bound) attendue(s) (cliquet provisoire) : \(Self.hint)")
-                continue
-            }
             let expected = Self.allowed[file] ?? 0
             #expect(found.count == expected,
                     "\(file) : \(found.count) occurrence(s) de .secondary/.tertiary, \(expected) autorisée(s) : \(Self.hint)")
@@ -99,7 +87,7 @@ import Testing
 
     @Test func everyRatchetEntryNamesAFileThatExists() throws {
         let files = try Self.swiftFiles()
-        for file in Set(Self.allowed.keys).union(Self.pending.keys) {
+        for file in Self.allowed.keys {
             #expect(files[file] != nil, "\(file) n'existe pas sous Sources/Soaro")
         }
     }

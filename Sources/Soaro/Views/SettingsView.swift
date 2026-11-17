@@ -33,21 +33,21 @@ struct SettingsView: View {
             }
             Section("Value colors") {
                 Text("In the menu bar, a value turns orange, then red, then scarlet when it crosses these thresholds.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
                 ThresholdEditor(title: "Processor and GPU (load)", thresholds: $thresholds.load, ascending: true)
                 ThresholdEditor(title: "Disk (space used)", thresholds: $thresholds.disk, ascending: true)
                 if state.hasBattery {
                     ThresholdEditor(title: "Battery (level left, on battery power)", thresholds: $thresholds.battery, ascending: false)
                 }
                 Text("Memory has no threshold: its color follows the real pressure measured by macOS (orange: high pressure; red: with swap of at least half the RAM; scarlet: critical pressure).")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
                 Button("Reset thresholds to defaults") { thresholds = .default }
                     .disabled(thresholds == .default)
             }
             .onChange(of: thresholds) { _, new in new.save() }
             Section("Settings tips") {
                 Text("Soaro reads some macOS settings to suggest tips (battery, sleep, startup, storage, updates, backup). It never changes a setting: it opens the right System Settings pane.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
                 Button(state.dismissedAdviceCount == 0 ? "No dismissed tips" : "Show dismissed tips again (\(state.dismissedAdviceCount))") {
                     state.restoreDismissedAdvice()
                 }
@@ -66,15 +66,15 @@ struct SettingsView: View {
                         if enabled { state.refreshPublicIP(force: true) } else { state.forgetPublicIP() }
                     }
                 Text("Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. At most one request every 5 minutes, only while the Network tab is open. Nothing is stored. VPN detection is entirely local.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
                 Toggle("Measure latency (ping to 1.1.1.1)", isOn: $latency)
                 Text("Off by default: this option sends a small packet to a Cloudflare server every 10 seconds, only while the Network tab is open.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
             }
             Section("Data") {
                 Button("Clear history") { state.clearHistory() }
                 Text("Soaro sends no data: history stays in ~/Library/Application Support/Soaro.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
             }
             if updater.isAvailable {
                 Section("Updates") {
@@ -82,20 +82,20 @@ struct SettingsView: View {
                     Button("Check for updates…") { updater.checkForUpdates() }
                         .disabled(!updater.canCheckForUpdates)
                     Text("Once a day, Soaro downloads a small public file from soaro.app to see if a new version exists. It sends no personal data.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.supportingText)
                 }
             }
             Section("About") {
                 Text("Soaro monitors CPU, GPU, memory, disk, network and battery. It only deletes caches, logs and rebuildable folders in your home folder, or moves items to the Trash (recoverable), always after confirmation.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.supportingText)
                 // Opens the browser: the app itself sends nothing.
                 Link(destination: SupportLink.url) {
                     Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
                 }
                 Text("Soaro is free and open source. Supporting it is optional.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.supportingText)
             }
         }
         .formStyle(.grouped)
