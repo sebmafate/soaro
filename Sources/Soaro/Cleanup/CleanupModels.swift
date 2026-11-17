@@ -36,12 +36,16 @@ final class LargeFilesModel: ObservableObject {
     private var token: CancelToken?
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
+    /// Mode démo : les chemins sont inventés à partir du vrai dossier personnel, donc rien ne doit être mis à la corbeille.
+    private let demo: Bool
 
     /// `files` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
-    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, files: [LargeFile] = []) {
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, files: [LargeFile] = [],
+         demo: Bool = DemoMode.isEnabled) {
         self.notify = notify
         self.confirm = confirm
         self.files = files
+        self.demo = demo
     }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
@@ -49,7 +53,7 @@ final class LargeFilesModel: ObservableObject {
     var selectedSize: UInt64 { selectedFiles.reduce(0) { $0 + $1.size } }
 
     func scan() {
-        if DemoMode.isEnabled {
+        if demo {
             files = DemoData.largeFiles.filter { $0.size >= UInt64(minSizeMB) * 1_000_000 }
             selected = []
             hasScanned = true
@@ -86,6 +90,15 @@ final class LargeFilesModel: ObservableObject {
             String(localized: "\(Format.fileBytes(selectedSize)) will be freed once the Trash is emptied. You can still recover them from the Trash."),
             String(localized: "Move to Trash"), false
         ) else { return }
+        if demo {
+            // Démo : la confirmation est demandée, mais rien n'est mis à la corbeille ; on retire seulement les lignes.
+            let size = selectedSize
+            let gone = Set(items.map(\.id))
+            files.removeAll { gone.contains($0.id) }
+            selected = []
+            notify(String(localized: "\(Format.fileBytes(size)) moved to the Trash"))
+            return
+        }
         let result = LargeFileScanner.trash(items)
         let gone = Set(items.map(\.id))
         files.removeAll { gone.contains($0.id) }
@@ -106,12 +119,16 @@ final class DevArtifactsModel: ObservableObject {
     private var token: CancelToken?
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
+    /// Mode démo : aucun dossier n'est supprimé (les chemins inventés partent du vrai dossier personnel).
+    private let demo: Bool
 
     /// `artifacts` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
-    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, artifacts: [DevArtifact] = []) {
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, artifacts: [DevArtifact] = [],
+         demo: Bool = DemoMode.isEnabled) {
         self.notify = notify
         self.confirm = confirm
         self.artifacts = artifacts
+        self.demo = demo
     }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
@@ -120,7 +137,7 @@ final class DevArtifactsModel: ObservableObject {
     var totalSize: UInt64 { artifacts.reduce(0) { $0 + $1.size } }
 
     func scan() {
-        if DemoMode.isEnabled {
+        if demo {
             artifacts = DemoData.devArtifacts
             selected = Set(artifacts.filter { ($0.daysInactive() ?? 0) >= DevArtifactScanner.staleAfterDays }.map(\.id))
             hasScanned = true
@@ -158,6 +175,16 @@ final class DevArtifactsModel: ObservableObject {
             String(localized: "Delete"), false
         ) else { return }
 
+        if demo {
+            // Démo : rien n'est supprimé ; on retire les lignes et on annonce la taille inventée.
+            let freed = selectedSize
+            let gone = Set(items.map(\.id))
+            artifacts.removeAll { gone.contains($0.id) }
+            selected.subtract(gone)
+            notify(String(localized: "\(Format.fileBytes(freed)) freed"))
+            return
+        }
+
         Task { [weak self] in
             let removed = await Task.detached(priority: .userInitiated) {
                 items.filter { DevArtifactScanner.remove($0) }
@@ -189,14 +216,17 @@ final class UninstallerModel: ObservableObject {
     private var token: CancelToken?
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
+    /// Mode démo : rien n'est mis à la corbeille (les restes inventés partent du vrai dossier personnel).
+    private let demo: Bool
 
     /// `apps` et `current` : état initial (vide en production ; sert aux tests, qui ne scannent pas le disque).
     init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask,
-         apps: [InstalledApp] = [], current: InstalledApp? = nil) {
+         apps: [InstalledApp] = [], current: InstalledApp? = nil, demo: Bool = DemoMode.isEnabled) {
         self.notify = notify
         self.confirm = confirm
         self.apps = apps
         self.current = current
+        self.demo = demo
     }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
@@ -213,7 +243,7 @@ final class UninstallerModel: ObservableObject {
     }
 
     func load() {
-        if DemoMode.isEnabled { apps = DemoData.apps; return }
+        if demo { apps = DemoData.apps; return }
         guard !isLoading else { return }
         token?.cancel()
         let token = CancelToken()
@@ -240,7 +270,7 @@ final class UninstallerModel: ObservableObject {
         current = app
         leftovers = []
         excluded = []
-        if DemoMode.isEnabled {
+        if demo {
             leftovers = DemoData.leftovers(for: app)
             return
         }
@@ -268,6 +298,15 @@ final class UninstallerModel: ObservableObject {
             String(localized: "Uninstall"), true
         ) else { return }
 
+        if demo {
+            // Démo : rien n'est mis à la corbeille ; l'app disparaît de la liste avec la taille inventée.
+            let freed = totalToFree
+            apps.removeAll { $0.id == app.id }
+            deselect()
+            notify(String(localized: "“\(app.name)” uninstalled · \(Format.fileBytes(freed)) freed"))
+            return
+        }
+
         let result = AppUninstaller.uninstall(app, leftovers: items)
         if result.failures.isEmpty {
             apps.removeAll { $0.id == app.id }
@@ -289,17 +328,28 @@ final class StartupModel: ObservableObject {
     @Published private(set) var isLoading = false
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
+    /// Mode démo : ni `launchctl` ni AppleScript ; seul l'état en mémoire change.
+    private let demo: Bool
+    private let removeLoginItem: @Sendable (LoginItem) -> Bool
+    private let setAgentEnabled: @Sendable (LaunchAgentItem, Bool) -> Bool
 
     /// `loginItems` : état initial (nil en production ; sert aux tests, qui n'interrogent pas System Events).
-    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, loginItems: [LoginItem]? = nil) {
+    /// `removeLoginItem` et `setAgentEnabled` : les actions réelles ; les tests les remplacent pour vérifier qu'elles ne sont pas appelées.
+    init(notify: @escaping (String) -> Void, confirm: @escaping ConfirmHandler = SystemConfirmation.ask, loginItems: [LoginItem]? = nil,
+         demo: Bool = DemoMode.isEnabled,
+         removeLoginItem: @escaping @Sendable (LoginItem) -> Bool = { StartupItemsService.removeLoginItem($0) },
+         setAgentEnabled: @escaping @Sendable (LaunchAgentItem, Bool) -> Bool = { StartupItemsService.setEnabled($0, enabled: $1) }) {
         self.notify = notify
         self.confirm = confirm
         self.loginItems = loginItems
+        self.demo = demo
+        self.removeLoginItem = removeLoginItem
+        self.setAgentEnabled = setAgentEnabled
     }
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
 
     func load() {
-        if DemoMode.isEnabled { agents = DemoData.agents; return }
+        if demo { agents = DemoData.agents; return }
         isLoading = true
         Task { [weak self] in
             let list = await Task.detached(priority: .utility) { () -> [LaunchAgentItem] in
@@ -312,7 +362,7 @@ final class StartupModel: ObservableObject {
 
     /// Déclenche la demande d'autorisation d'automatisation (System Events) : à lancer sur action de l'utilisateur.
     func loadLoginItems() {
-        if DemoMode.isEnabled { loginItems = DemoData.loginItems; return }
+        if demo { loginItems = DemoData.loginItems; return }
         Task { [weak self] in
             let items = await Task.detached(priority: .userInitiated) { StartupItemsService.loginItems() }.value
             self?.loginItems = items
@@ -321,8 +371,14 @@ final class StartupModel: ObservableObject {
     }
 
     func setEnabled(_ agent: LaunchAgentItem, enabled: Bool) {
+        if demo {
+            // Démo : `launchctl` n'est pas appelé ; l'interrupteur change seulement à l'écran.
+            for index in agents.indices where agents[index].label == agent.label { agents[index].isDisabled = !enabled }
+            return
+        }
+        let setAgentEnabled = self.setAgentEnabled
         Task { [weak self] in
-            let ok = await Task.detached(priority: .userInitiated) { StartupItemsService.setEnabled(agent, enabled: enabled) }.value
+            let ok = await Task.detached(priority: .userInitiated) { setAgentEnabled(agent, enabled) }.value
             guard let self else { return }
             if ok {
                 for index in self.agents.indices where self.agents[index].label == agent.label {
@@ -340,8 +396,14 @@ final class StartupModel: ObservableObject {
             String(localized: "The app will no longer open at login. It is not deleted."),
             String(localized: "Remove"), false
         ) else { return }
+        if demo {
+            // Démo : AppleScript n'est pas lancé ; l'élément disparaît seulement de la liste.
+            loginItems?.removeAll { $0.id == item.id }
+            return
+        }
+        let removeLoginItem = self.removeLoginItem
         Task { [weak self] in
-            let ok = await Task.detached(priority: .userInitiated) { StartupItemsService.removeLoginItem(item) }.value
+            let ok = await Task.detached(priority: .userInitiated) { removeLoginItem(item) }.value
             guard let self else { return }
             if ok { self.loginItems?.removeAll { $0.id == item.id } } else { self.notify(String(localized: "Could not remove “\(item.name)”")) }
         }
