@@ -7,7 +7,7 @@
 | Status | draft |
 | Version | 0.2 |
 | Date | 2026-11-15 |
-| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 423 tests in 53 suites with SL8; 502 tests in 57 suites with SL9; 559 tests in 63 suites with SL6 on top; 734 tests in 72 suites with SL10; 822 tests in 76 suites with SL11), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
+| Based on | the code at `e4520dd` (135 tests, 30 suites, about 5 s when built; 172 tests after SL1 and SL2; 208 after SL3; 298 tests in 45 suites with SL7; 423 tests in 53 suites with SL8; 502 tests in 57 suites with SL9; 559 tests in 63 suites with SL6 on top; 734 tests in 72 suites with SL10; 822 tests in 76 suites with SL11; 850 tests in 80 suites with the "Select all" addition), `SPEC.md` v0.3, `ARCHITECTURE.md` v0.2 (ADR 0009, 0010), `DESIGN.md` v0.1 |
 
 ## Goals and risks
 
@@ -101,6 +101,8 @@ Levels left out, and why: property-based (no function whose input space needs it
 | Toast: fade with Reduce Motion, VoiceOver announcement | Manual | turn Reduce Motion on and trigger a toast; with VoiceOver, the message is spoken | no |
 | Supporting text color across the app | Manual | `--snapshot` screenshots of every tab compared with the previous ones: only the grey changes | no |
 
+| "Select all" tri-state checkbox in every selection list (added in the SL11 PR, beyond SL11) | Unit, manual | `SelectAllRuleTests` (none / some / all, the click rule, disabled, one glyph per state, VoiceOver label and value, the checkbox source: 24 pt constant, no shortcut, both strings in nine languages), `SimulatorsSelectAllTests` (one group at a time, a running row never checked and not counted, deselect clears one group, ignored during a deletion, works while measuring with Delete waiting, a limit change still replaces the selection, demo), `SelectAllOtherListsTests` (Large files, Inactive projects, Uninstaller related files), `SelectAllViewsTests` (one checkbox per list, a header without selection unchanged); `ActionBarTests.noViewBindsAKeyboardShortcut` still passes | yes. **Manual, pending the author:** the look of the header checkbox in every list, the mixed state, VoiceOver, Full Keyboard Access (Space), light and dark, German and Japanese width |
+
 ### Success criteria measured after release
 
 | Criterion | How it is observed |
@@ -150,7 +152,7 @@ Regression in a measured quality: none is measured automatically. Performance is
 
 ## Definition of done (per slice)
 
-- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 822 tests in 76 suites after SL3, SL6, SL7, SL8, SL9, SL10 and SL11)
+- [ ] Tests written first or alongside, and passing (`swift test`; baseline of the current branch: 850 tests in 80 suites after SL3, SL6, SL7, SL8, SL9, SL10, SL11 and the "Select all" addition)
 - [ ] Acceptance criteria verified; the rows of the matrix updated
 - [ ] No test calls a real simulator, Android or Docker tool, and the destructive paths take their runner as a parameter without a default
 - [ ] Fixtures anonymised (no home path, user name, project or bundle name)
