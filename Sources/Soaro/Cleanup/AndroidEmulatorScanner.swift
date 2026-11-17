@@ -363,7 +363,7 @@ extension AndroidEmulatorScanner {
         guard avds.status == .ok else { return AndroidListing(status: .couldNotRead, sdk: sdk) }
         if avds.devices.isEmpty { return AndroidListing(status: .ok, sdk: sdk, skippedCount: avds.skippedCount) }
         guard let running = runningAVDNames(runner: runner, psPath: psPath) else {
-            return AndroidListing(status: .couldNotRead, sdk: sdk)
+            return AndroidListing(status: .couldNotRead, sdk: sdk, skippedCount: avds.skippedCount)
         }
         return AndroidListing(status: .ok, devices: avds.devices.map { device in
                                   device.withRunning(([device.name] + device.aliases).contains { isRunning($0, in: running) })

@@ -94,6 +94,18 @@ import Testing
         #expect(list(box, runner: other).devices.first?.isRunning == false)
     }
 
+    @Test func theSkippedCountSurvivesAnUnavailablePs() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeSDK(box)
+        try makeAVD(box, "Test_Phone_A")
+        try box.write(".android/avd/Gone.ini", "path.rel=avd/Gone.avd\n")
+        let runner = FakeCommandRunner()
+        runner.script(.timedOut, executable: "/bin/ps", arguments: psArguments)
+        let listing = list(box, runner: runner)
+        #expect(listing.status == .couldNotRead)
+        #expect(listing.skippedCount == 1)
+    }
+
     @Test func aTimedOutPsMakesTheGroupUnreadable() throws {
         let box = try Sandbox(insideHome: true)
         try makeSDK(box)

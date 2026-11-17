@@ -14,6 +14,7 @@ enum AndroidEmulatorReport {
             return out
         case .couldNotRead:
             out.append("could not read the Android emulators")
+            if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
             return out
         case .ok:
             if scan.devices.isEmpty {

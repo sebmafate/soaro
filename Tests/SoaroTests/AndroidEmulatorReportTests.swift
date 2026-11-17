@@ -54,6 +54,12 @@ import Testing
         ])
     }
 
+    @Test func theSkippedCountIsAlsoPrintedWhenTheListCouldNotBeRead() {
+        let scan = AndroidScan(status: .couldNotRead, sdk: AndroidSDKLocation(path: "/x", source: .androidHome), devices: [], skippedCount: 2)
+        #expect(report(scan) == ["== Android emulators", "could not read the Android emulators",
+                                 "2 registrations skipped (folder missing, outside the home or not an AVD folder)"])
+    }
+
     @Test func theNoteIsAbsentWhenNothingIsPreSelectedOrWhenTheAppPreSelects() {
         let sdk = AndroidSDKLocation(path: "/x", source: .androidHome)
         let inactive = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 90, size: 500_000_000)])
