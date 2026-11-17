@@ -13,8 +13,8 @@ import Foundation
 /// - La détection de l'outil ne lance rien ; le lanceur n'est appelé que si `simctl` est sur le disque ET `xcrun` présent.
 /// - Suppression (SL9, SL11) : après confirmation (`ConfirmHandler` injecté, sans valeur par défaut), un lot tourne dans une tâche
 ///   détachée (priorité utilisateur) : pour chaque simulateur, `SimulatorScanner.remove` (revérification de l'état, portée, mesure
-///   avant et après, `xcrun simctl delete`) ; puis pour chaque AVD, `AndroidEmulatorScanner.remove` (listage frais, `ps` frais, portée,
-///   mesure, dossier puis `.ini`). Le toast dit l'espace réellement libéré ; la liste est relue ensuite.
+///   avant et après, `xcrun simctl delete`) ; puis pour chaque AVD, `AndroidEmulatorScanner.remove` (plan : listage frais et portée ;
+///   mesure avant ; `ps` frais ; suppression du dossier puis des `.ini` ; mesure après). Le toast dit l'espace réellement libéré ; la liste est relue ensuite.
 @MainActor
 final class SimulatorsModel: ObservableObject {
     enum Failure: Equatable {

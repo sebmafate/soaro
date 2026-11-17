@@ -1,8 +1,9 @@
 import Foundation
 
 /// Suppression d'un appareil virtuel Android (SL11, R17, ADR 0009 règles 3, 4, 6, 7, 8) : seul fichier Android qui supprime.
-/// Il retrouve la cible AU MOMENT DE L'ACTION (`prepareRemoval`, sans effet), revérifie les processus, mesure, puis supprime
-/// le dossier et les `.ini` par `AndroidEmulatorRemover.removeFile`.
+/// Ordre, par cible : le plan AU MOMENT DE L'ACTION (`prepareRemoval` : listage frais et portée, sans effet), la mesure avant, un `ps`
+/// frais (`runningCheck`), la suppression du dossier puis des `.ini` par `AndroidEmulatorRemover.removeFile` (qui revérifie le chemin),
+/// la mesure après.
 
 /// Ce que l'utilisateur a confirmé : le nom de l'AVD et le dossier vu au scan (`AndroidDevice.folder`, déjà résolu).
 struct AndroidRemovalTarget: Equatable {
@@ -157,9 +158,13 @@ extension AndroidEmulatorScanner {
     ///    ni mesuré ;
     /// 2. taille avant : le dossier, plus chaque `.ini` du plan (lecture seule, et la longue étape : elle précède `ps`) ;
     /// 3. `ps` FRAIS (`runningCheck`), le plus près possible de la suppression : un émulateur lancé pendant la mesure est vu. En cours
-    ///    d'exécution ou impossible à vérifier : on s'arrête, rien n'est supprimé (la mesure d'avant a eu lieu, elle ne change rien) ;
-    /// 4. le DOSSIER d'abord (D3). S'il échoue, ou s'il existe encore : `failed`, AUCUN `.ini` n'est supprimé (le dossier est intact ou
-    ///    en partie supprimé, l'appareil reste listé et peut être réessayé : l'inverse laisserait un dossier orphelin invisible) ;
+    ///    d'exécution ou impossible à vérifier : on s'arrête, rien n'est supprimé (la mesure d'avant a eu lieu, elle ne change rien).
+    ///    Il reste une fenêtre de quelques microsecondes entre la dernière vérification de `removeFile` et `removeItem` (un autre processus
+    ///    du même utilisateur qui écrit dans le dossier personnel) : acceptée, la fermer demanderait une suppression relative à un dossier
+    ///    ouvert ;
+    /// 4. le DOSSIER d'abord (D3). S'il échoue, ou s'il existe encore : `failed`, AUCUN `.ini` n'est supprimé. L'appareil reste listé et
+    ///    réessayable TANT QUE le dossier est encore un dossier d'AVD valide (il contient son `config.ini`) ; un dossier supprimé en partie
+    ///    (`config.ini` déjà parti) n'est plus listé et son `.ini` reste (l'inverse, les `.ini` d'abord, laisserait un dossier orphelin invisible) ;
     /// 5. puis chaque `.ini` du plan (le principal, puis les alias par nom) ; tous sont essayés, un seul échec donne `failed`. Attention :
     ///    si le dossier est parti mais qu'un `.ini` échoue, ce `.ini` reste orphelin (Soaro ne le liste plus, Android Studio le montre cassé) ;
     /// 6. si tout a disparu : taille après, `removed(freed: avant moins après)`, plancher à zéro (R7).
