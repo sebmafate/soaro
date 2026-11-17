@@ -115,4 +115,80 @@ import Testing
         #expect(m.phase == .listed)
         #expect(!FileManager.default.fileExists(atPath: missing.path))
     }
+
+    // MARK: Suppression en démo (SL9 T6)
+
+    final class Toasts { var messages: [String] = [] }
+
+    func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts) -> SimulatorsModel {
+        SimulatorsModel(runner: runner,
+                        detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                        locateXcrun: { _ in nil },
+                        home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
+                        measure: { measure.measure($0) }, demo: true, confirm: confirm.handler,
+                        notify: { toasts.messages.append($0) })
+    }
+
+    @Test func confirmedDeletionInDemoRemovesTheRowsAtOnceWithoutRunnerNorMeasureNorRescan() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        let chosen = m.rows.filter { m.selected.contains($0.device.device.udid) }
+        let chosenIDs = Set(chosen.map(\.device.device.udid))
+        let expectedFreed = chosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
+        let rowsBefore = m.rows.count
+        #expect(chosen.count >= 2 && expectedFreed > 0)
+        #expect(m.canDelete)
+
+        m.deleteSelected()
+
+        // Même confirmation que dans l'application, pour l'écran S3.
+        #expect(confirm.asks.count == 1)
+        #expect(confirm.asks.first?.title == "Delete the selected devices? (\(chosen.count))")
+        #expect(confirm.asks.first?.message.hasPrefix(Format.fileBytes(expectedFreed)) == true)
+        #expect(confirm.asks.first?.button == "Delete" && confirm.asks.first?.critical == true)
+        // Tout de suite : rien à attendre.
+        #expect(m.rows.count == rowsBefore - chosen.count)
+        #expect(m.rows.allSatisfy { !chosenIDs.contains($0.device.device.udid) })
+        #expect(m.selected.isDisjoint(with: chosenIDs))
+        #expect(toasts.messages == ["\(Format.fileBytes(expectedFreed)) freed"])
+        #expect(m.deleteTask == nil, "aucune tâche : rien n'est lancé")
+        #expect(!m.isDeleting)
+        #expect(m.phase == .listed, "pas de nouveau scan")
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+    }
+
+    @Test func cancelledDeletionInDemoChangesNothing() {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: false)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        let rows = m.rows, selection = m.selected
+
+        m.deleteSelected()
+
+        #expect(confirm.asks.count == 1)
+        #expect(m.rows == rows)
+        #expect(m.selected == selection)
+        #expect(toasts.messages.isEmpty)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+    }
+
+    @Test func demoDeletionNeverTouchesTheDiskNorTheDetection() {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("soaro-demo-\(UUID().uuidString)")
+        var detections = 0
+        let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { detections += 1; return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                                home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in true }, notify: { _ in })
+        m.scan()
+        m.deleteSelected()
+        #expect(detections == 0)
+        #expect(!FileManager.default.fileExists(atPath: missing.path))
+    }
 }

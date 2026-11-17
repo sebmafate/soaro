@@ -225,8 +225,18 @@ final class SimulatorsModel: ObservableObject {
             String(localized: "Delete"), true
         ) else { return }
 
-        // Mode démo : traité à part (T6) ; ici rien ne doit jamais être lancé.
-        if demo { return }
+        // Mode démo : la même confirmation (pour l'écran S3), puis les lignes cochées quittent la liste tout de suite, avec
+        // l'espace inventé de ces appareils. Ni lanceur, ni mesure, ni détection, ni lecture ou écriture de fichier, ni nouveau scan.
+        if demo {
+            let gone = Set(targets)
+            let freed = targets.reduce(UInt64(0)) { $0 + (sizes[$1] ?? 0) }
+            devices.removeAll { gone.contains($0.udid) }
+            for udid in gone { sizes[udid] = nil }
+            selected.subtract(gone)
+            recompute(selection: .prune)
+            notify(String(localized: "\(Format.fileBytes(freed)) freed"))
+            return
+        }
 
         isDeleting = true
         let token = CancelToken()
