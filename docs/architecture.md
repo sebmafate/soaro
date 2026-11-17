@@ -17,13 +17,15 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `RecommendationEngine.swift` | Pure function: measurements in, recommendations out |
 | `CleanupService.swift`, `Cleanup/*` | Caches (including the NuGet package cache; `CacheCleanupFlow` is the confirm-then-clean flow), large files, inactive projects, uninstaller, login items |
 | `Cleanup/CommandRunner.swift`, `Cleanup/RealCommandRunner.swift` | Protocol and real runner of external programs (absolute path, no shell, time limit, bounded output). The only new code that uses `Process` |
-| `Cleanup/ToolLocator.swift` | Finds an external tool by absolute path (`/usr/bin/xcrun` for the simulators) |
-| `Cleanup/SimulatorScanner.swift`, `Cleanup/DeviceSuggestions.swift`, `Cleanup/SimulatorReport.swift` | iOS simulators: reads `simctl list devices -j`, measures the allocated size of each device folder, removes one device with `xcrun simctl delete <udid>`, suggests what to pre-select, formats the `--scan` section (the scan itself stays read-only) |
+| `Cleanup/ToolLocator.swift` | Finds an external tool by absolute path (`/usr/bin/xcrun` for the simulators, `/bin/ps` for the running emulators) and the Android SDK (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, then `~/Library/Android/sdk`; pure, launches nothing) |
+| `Cleanup/SimulatorScanner.swift`, `Cleanup/DeviceSuggestions.swift` (shared with Android), `Cleanup/SimulatorReport.swift` | iOS simulators: reads `simctl list devices -j`, measures the allocated size of each device folder, removes one device with `xcrun simctl delete <udid>`, suggests what to pre-select, formats the `--scan` section (the scan itself stays read-only) |
 | `Cleanup/SimulatorRemover.swift`, `Cleanup/SimulatorRemoval.swift` | Removal of one device after its checks (fresh state, home folder only, size before and after), and the summary of a batch with the toast text |
 | `Cleanup/SimulatorToolDetector.swift`, `Cleanup/SimulatorsModel.swift`, `Cleanup/SimulatorPresentation.swift`, `Views/SimulatorsView.swift` | The tool "Simulators and emulators": finds the simulator tool on disk without launching anything, lists then measures the devices progressively, pre-selects, asks the confirmation, removes the checked devices in a background task, and shows the text and the screen |
+| `Cleanup/AndroidEmulatorScanner.swift`, `Cleanup/AndroidEmulatorPresentation.swift`, `Cleanup/AndroidEmulatorReport.swift` | Android emulators (SL10, read-only): name check and INI parsing, the listing of `~/.android/avd` with folder, system and last-used date, the running detection from `/bin/ps -axww -o command=`, one listing (SDK, AVDs, `ps`), the row text, and the `--scan` section |
+| `Cleanup/SimulatorsScreen.swift` | The pure layout of the tool's screen: spinner, nothing found, the only failed group, or the sections iOS then Android |
 | `LegacyMigration.swift` | Imports data from the former names of the app (history, preferences) |
 | `AppState.swift` | Timing (3 s; sensors and battery every 9 s when the panel is closed), history, actions, notifications |
-| `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots, see [website.md](website.md) |
+| `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots (including made-up simulators and Android emulators), see [website.md](website.md) |
 | `Updater.swift` | Sparkle integration. It stays inactive in a development build (see [updates.md](updates.md)) |
 | `Views/MainWindow.swift`, `MachineInfo.swift` | Standalone window (AppKit, created on demand, destroyed on close) and the "This Mac" screen |
 | `Views/MenuBarWidgets.swift` | Compact menu bar label, drawn in a template image |

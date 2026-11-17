@@ -10,10 +10,10 @@ struct SimulatorToolDetection: Equatable {
     /// L'outil est « présent » dès qu'un dossier d'appareils ou un `simctl` existe.
     var isToolPresent: Bool { devicesFolderExists || simctlPath != nil }
 
-    /// La rangée « Simulators and emulators » de la liste des outils : visible si l'outil est présent, ou en mode démo.
-    /// `nil` : la détection n'a pas encore eu lieu (la rangée reste cachée).
-    static func showsToolsRow(detection: SimulatorToolDetection?, demo: Bool) -> Bool {
-        demo || (detection?.isToolPresent ?? false)
+    /// La rangée « Simulators and emulators » de la liste des outils : visible si l'outil iOS est présent, OU si un SDK Android est
+    /// trouvé, ou en mode démo. `nil` : la détection n'a pas encore eu lieu (cette partie ne compte pas encore).
+    static func showsToolsRow(detection: SimulatorToolDetection?, androidSDK: AndroidSDKLocation?, demo: Bool) -> Bool {
+        demo || (detection?.isToolPresent ?? false) || androidSDK != nil
     }
 }
 

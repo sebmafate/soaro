@@ -197,9 +197,11 @@ struct MainWindowView: View {
         case .tab(.battery): page { BatteryTab() }
         case .tab(.network): page { NetworkTab() }
         case .tab(.history): page { HistoryTab() }
-        case .tab(.cleanup): CleanupTab().frame(maxWidth: 640).frame(maxWidth: .infinity)
+        // Cleanup et Réglages défilent sur toute la largeur du volet : la barre de défilement est au bord de la fenêtre. La liste des
+        // outils borne sa colonne à l'intérieur (`CleanupTab`) ; les écrans en liste et le formulaire suivent la largeur du volet.
+        case .tab(.cleanup): CleanupTab()
         case .machine: page { MachineView() }
-        case .settings: SettingsView().frame(maxWidth: 640).frame(maxWidth: .infinity)
+        case .settings: SettingsView()
         }
     }
 

@@ -55,6 +55,8 @@ struct CleanupTab: View {
     @StateObject private var simulators: SimulatorsModel
     /// Résultat de la détection de l'outil des simulateurs (sur le disque, rien n'est lancé) ; `nil` tant qu'elle n'a pas eu lieu.
     @State private var simulatorDetection: SimulatorToolDetection?
+    /// Le SDK Android trouvé (variables d'environnement du processus, sinon le dossier par défaut), `nil` s'il n'y en a pas.
+    @State private var androidSDK: AndroidSDKLocation?
 
     init() {
         // `notify` est rebranché sur l'état au premier affichage (voir `body`).
@@ -63,7 +65,7 @@ struct CleanupTab: View {
         _uninstaller = StateObject(wrappedValue: UninstallerModel(notify: { _ in }))
         _startup = StateObject(wrappedValue: StartupModel(notify: { _ in }))
         // Seul endroit de l'application où le vrai lanceur de commandes est construit (avec `Diagnostics.scan`).
-        _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), confirm: SystemConfirmation.ask, notify: { _ in }))
+        _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), environment: ProcessInfo.processInfo.environment, confirm: SystemConfirmation.ask, notify: { _ in }))
     }
 
     var body: some View {
@@ -99,7 +101,7 @@ struct CleanupTab: View {
                 developerSection
                 SectionHeader(title: "Tools")
                 VStack(spacing: 6) {
-                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, demo: DemoMode.isEnabled))) { item in
+                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, androidSDK: androidSDK, demo: DemoMode.isEnabled))) { item in
                         Button { open(item) } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: item.systemImage).font(.title3).frame(width: 26).foregroundStyle(Color.accentColor)
@@ -119,15 +121,22 @@ struct CleanupTab: View {
                 }
             }
             .padding(14)
+            // La colonne est bornée DANS la zone défilante (comme `page` de la fenêtre) : la barre de défilement reste au bord de la
+            // fenêtre. Sans effet dans le panneau (430 pt de large).
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
         // Détection à l'apparition de la liste (jamais dans `body`, jamais dans le tick) : quelques lectures du disque, hors acteur principal.
         .task {
             // Mode démo : la rangée est toujours visible, rien n'est lu sur le disque.
             guard !DemoMode.isEnabled else { return }
-            let found = await Task.detached(priority: .utility) {
-                SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory()))
+            let (found, sdk) = await Task.detached(priority: .utility) { () -> (SimulatorToolDetection, AndroidSDKLocation?) in
+                let home = URL(fileURLWithPath: NSHomeDirectory())
+                return (SimulatorToolDetector.detect(home: home),
+                        ToolLocator.androidSDK(environment: ProcessInfo.processInfo.environment, home: home))
             }.value
             simulatorDetection = found
+            androidSDK = sdk
         }
     }
 

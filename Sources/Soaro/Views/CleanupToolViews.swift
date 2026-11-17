@@ -139,6 +139,7 @@ struct DevProjectsView: View {
                     } footer: {
                         Text("Projects inactive for more than \(DevArtifactScanner.staleAfterDays) days are pre-selected. These folders can be rebuilt with “npm install”, “swift build”, and so on; your sources are never touched.")
                             .font(.caption2)
+                            .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .listStyle(.plain)
@@ -295,6 +296,7 @@ struct StartupItemsView: View {
             } footer: {
                 Text("Turning an agent off stops it and keeps it from coming back, without deleting its file: just turn it on again. Apple's agents are not listed.")
                     .font(.caption2)
+                    .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
             }
 
             Section {
@@ -322,6 +324,7 @@ struct StartupItemsView: View {
             } footer: {
                 HStack {
                     Text("“Allow in the Background” apps can only be managed in System Settings.").font(.caption2)
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Button("Open System Settings") { model.openSystemSettings() }.controlSize(.mini)
                 }

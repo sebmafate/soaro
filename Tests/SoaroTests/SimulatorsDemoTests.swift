@@ -11,8 +11,8 @@ import Testing
         let measure = measure ?? ScriptedMeasure([:])
         return SimulatorsModel(runner: runner,
                                detect: { detect?(); return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                               locateXcrun: { _ in nil },
-                               home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
+                               locateTool: { _ in nil },
+                               environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
                                measure: { measure.measure($0) }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 
@@ -74,7 +74,7 @@ import Testing
         // Le modèle utilise l'horloge injectée : les jours écoulés restent les mêmes quelle que soit la date « maintenant ».
         func days(at date: Date) -> [Int?] {
             let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                                    home: URL(fileURLWithPath: "/home-fake/user-x"), now: { date }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
+                                    environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"), now: { date }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
             m.scan()
             return m.rows.map(\.daysSinceLastUse)
         }
@@ -110,10 +110,88 @@ import Testing
         // Le dossier personnel de démo n'existe pas : si le modèle y touchait, il échouerait ou créerait quelque chose.
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("soaro-demo-\(UUID().uuidString)")
         let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                                home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
+                                environment: [:], home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
         m.scan()
         #expect(m.phase == .listed)
         #expect(!FileManager.default.fileExists(atPath: missing.path))
+    }
+
+    // MARK: Android en démo (SL10 T10)
+
+    @Test func demoAndroidAppearsAtOnceWithoutRunnerMeasureOrDetection() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        var detections = 0
+        let m = demoModel(runner: runner, measure: measure, detect: { detections += 1 })
+        m.scan()                                   // sans attendre : tout est déjà là
+        #expect(m.androidPhase == .listed)
+        #expect(m.androidMessage == nil)
+        #expect(m.androidRows.allSatisfy { m.size(of: $0) != nil }, "toutes les tailles sont connues")
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+        #expect(detections == 0)
+    }
+
+    @Test func demoAndroidHasTheThreeCases() {
+        let m = demoModel(runner: FakeCommandRunner())
+        m.scan()
+        #expect(m.androidRows.count == 2, "l'appareil de moins de 100 Mo est dans le pied de page")
+        let inactive = m.androidRows.first { $0.isInactive }
+        #expect((inactive?.daysSinceLastUse ?? 0) > 60)
+        #expect(inactive.map { m.size(of: $0) ?? 0 } ?? 0 >= DeviceSuggestions.smallDeviceThreshold)
+        #expect(inactive?.isPreSelected == true, "la règle le pré-sélectionnerait")
+        #expect(m.androidSelected.isEmpty, "mais l'application ne pré-sélectionne pas Android avant SL11 : la démo ouvre Delete utilisable")
+        let running = m.androidRows.first { $0.isRunning }
+        #expect(running != nil, "un appareil en cours d'exécution")
+        #expect(running.map { !m.androidSelected.contains($0.device.device.name) } == true)
+        #expect(m.hiddenSmallCount == 3 + 1, "trois petits iOS et un petit Android")
+        #expect(m.measuredSizeTotal == m.rows.reduce(0) { $0 + (m.size(of: $1) ?? 0) } + m.androidRows.reduce(0) { $0 + (m.size(of: $1) ?? 0) })
+    }
+
+    @Test func demoAndroidDevicesAreMadeUpAndDatesAreRelativeToNow() {
+        let first = DemoData.androidEmulators(now: now)
+        let later = DemoData.androidEmulators(now: now.addingTimeInterval(400 * 86_400))
+        #expect(first.count == 3)
+        #expect(first.map(\.device.name) == later.map(\.device.name))
+        #expect(Set(first.map(\.device.name)).count == 3)
+        for (a, b) in zip(first, later) {
+            #expect(AndroidEmulatorScanner.isValidAVDName(a.device.name))
+            if let x = a.device.lastUsed, let y = b.device.lastUsed { #expect(y.timeIntervalSince(x) == 400 * 86_400) }
+            #expect(a.size == b.size)
+        }
+        #expect(first.filter { $0.size < DeviceSuggestions.smallDeviceThreshold }.count == 1)
+        #expect(first.filter(\.device.isRunning).count == 1)
+    }
+
+    @Test func demoSourceHasNoRealAndroidPaths() throws {
+        let text = try String(contentsOf: RepositoryRoot.url().appendingPathComponent("Sources/Soaro/DemoData.swift"), encoding: .utf8)
+        #expect(!text.contains("/Users/") && !text.contains(".android"))
+    }
+
+    @Test func androidDeletionIsNeverOfferedInDemo() async {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        #expect(m.androidSelected.isEmpty, "rien d'Android n'est coché d'office")
+        #expect(m.canDelete, "la démo ouvre Delete utilisable pour iOS")
+        // Cocher une ligne Android (non en cours d'exécution) à la main désactive Delete : aucune confirmation, aucun effet.
+        let checkable = try! #require(m.androidRows.first { !$0.isRunning })
+        m.toggle(checkable)
+        #expect(!m.canDelete)
+        m.deleteSelected()
+        #expect(confirm.asks.isEmpty, "aucune confirmation, aucun effet")
+        #expect(toasts.messages.isEmpty)
+        // Décochée : la suppression iOS de démo marche et ne touche pas aux lignes Android.
+        m.toggle(checkable)
+        let android = m.androidRows
+        #expect(m.canDelete)
+        m.deleteSelected()
+        #expect(m.androidRows == android)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
     }
 
     // MARK: Suppression en démo (SL9 T6)
@@ -123,8 +201,8 @@ import Testing
     func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts) -> SimulatorsModel {
         SimulatorsModel(runner: runner,
                         detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                        locateXcrun: { _ in nil },
-                        home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
+                        locateTool: { _ in nil },
+                        environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
                         measure: { measure.measure($0) }, demo: true, confirm: confirm.handler,
                         notify: { toasts.messages.append($0) })
     }
@@ -185,9 +263,10 @@ import Testing
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("soaro-demo-\(UUID().uuidString)")
         var detections = 0
         let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { detections += 1; return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                                home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in true }, notify: { _ in })
+                                environment: [:], home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in true }, notify: { _ in })
         m.scan()
         m.deleteSelected()
+        #expect(m.rows.count < DemoData.simulators(now: now).filter { $0.size >= DeviceSuggestions.smallDeviceThreshold }.count, "la suppression de démo a bien eu lieu")
         #expect(detections == 0)
         #expect(!FileManager.default.fileExists(atPath: missing.path))
     }

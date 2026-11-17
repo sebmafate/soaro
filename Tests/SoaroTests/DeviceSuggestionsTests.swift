@@ -268,3 +268,110 @@ import Testing
         #expect(DeviceSuggestions.wholeDays(from: ago(-5), to: now) == 0)
     }
 }
+
+/// Suggestions pour les appareils Android (R16) : mêmes règles d'inactivité et de petite taille que pour iOS, sans règle
+/// « ancienne copie ».
+@Suite struct AndroidDeviceSuggestionsTests {
+    private let now = ISO8601DateFormatter().date(from: "2026-11-16T12:00:00Z")!
+    private let big: UInt64 = 500_000_000
+
+    private func ago(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
+
+    private func avd(_ name: String, days: Double? = nil, size: UInt64? = nil, running: Bool = false, display: String? = nil) -> SizedAndroidDevice {
+        SizedAndroidDevice(
+            device: AndroidDevice(name: name, displayName: display ?? name, systemVersion: "36",
+                                  folder: URL(fileURLWithPath: "/Users/test/.android/avd/\(name).avd"),
+                                  lastUsed: days.map(ago), lastUsedSource: days == nil ? nil : "hardware-qemu.ini", isRunning: running),
+            size: size ?? big)
+    }
+
+    private func selected(_ r: DeviceSuggestions.AndroidResult) -> Set<String> {
+        Set(r.rows.filter(\.isPreSelected).map(\.device.device.name))
+    }
+
+    @Test(arguments: [(59.0, false), (60.0, false), (60.99, false), (61.0, true), (400.0, true)])
+    func inactiveStrictlyBeyondTheLimitOf60Days(days: Double, expected: Bool) {
+        let r = DeviceSuggestions.suggestAndroid([avd("Old_Phone_C", days: days)], now: now, limitDays: 60)
+        #expect(r.rows.first?.isPreSelected == expected)
+        #expect(r.rows.first?.isInactive == expected)
+    }
+
+    @Test func fiftyFourDaysAreListedButNotPreSelectedAt60AndPreSelectedAt30() {
+        let at60 = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 54)], now: now, limitDays: 60)
+        #expect(at60.rows.count == 1)
+        #expect(at60.preSelectedCount == 0)
+        let at30 = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 54)], now: now, limitDays: 30)
+        #expect(selected(at30) == ["Test_Phone_A"])
+        #expect(at30.preSelectedCount == 1)
+        #expect(at30.preSelectedSize == big)
+        #expect(at30.limitDays == 30)
+    }
+
+    @Test func aRunningDeviceIsNeverPreSelected() {
+        let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 200, running: true)], now: now, limitDays: 60)
+        #expect(r.rows.first?.isRunning == true)
+        #expect(r.rows.first?.isInactive == false)
+        #expect(r.rows.first?.isPreSelected == false)
+        #expect(r.preSelectedCount == 0)
+    }
+
+    @Test func anUnknownDateIsNeverPreSelected() {
+        let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A")], now: now, limitDays: 0)
+        #expect(r.rows.first?.daysSinceLastUse == nil)
+        #expect(r.rows.first?.isPreSelected == false)
+    }
+
+    @Test func aFutureDateGivesZeroDays() {
+        let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: -5)], now: now, limitDays: 60)
+        #expect(r.rows.first?.daysSinceLastUse == 0)
+        #expect(r.rows.first?.isPreSelected == false)
+    }
+
+    @Test func smallDevicesAreCountedNotListed() {
+        let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 100, size: 99_999_999),
+                                                  avd("Test_Tablet_B", days: 100, size: 100_000_000)], now: now, limitDays: 60)
+        #expect(r.rows.map(\.device.device.name) == ["Test_Tablet_B"])
+        #expect(r.hiddenSmallCount == 1)
+        #expect(r.hiddenSmallSize == 99_999_999)
+        #expect(selected(r) == ["Test_Tablet_B"])
+        #expect(r.preSelectedSize == 100_000_000)
+        #expect(DeviceSuggestions.smallDeviceThreshold == 100_000_000)
+    }
+
+    @Test func rowsAreOrderedBySizeThenDisplayNameThenName() {
+        let r = DeviceSuggestions.suggestAndroid([
+            avd("N3", size: 200_000_000, display: "Beta"), avd("N2", size: 200_000_000, display: "Alpha"),
+            avd("N1", size: 200_000_000, display: "Alpha"), avd("N4", size: 900_000_000, display: "Zed"),
+            avd("N5", size: 150_000_000, display: "Aaa")], now: now, limitDays: 60)
+        #expect(r.rows.map(\.device.device.name) == ["N4", "N1", "N2", "N3", "N5"])
+    }
+
+    @Test func theTieBreakIgnoresCaseLikeTheListingOrder() {
+        let r = DeviceSuggestions.suggestAndroid([avd("N1", size: 200_000_000, display: "Beta"), avd("N2", size: 200_000_000, display: "alpha")],
+                                                 now: now, limitDays: 60)
+        #expect(r.rows.map(\.device.device.name) == ["N2", "N1"], "« alpha » avant « Beta » : un seul comparateur partagé")
+    }
+
+    @Test func theSharedComparatorOrdersByLowercasedDisplayNameThenName() {
+        func device(_ name: String, _ display: String) -> AndroidDevice {
+            AndroidDevice(name: name, displayName: display, systemVersion: nil, folder: URL(fileURLWithPath: "/x/\(name).avd"),
+                          lastUsed: nil, lastUsedSource: nil)
+        }
+        #expect(AndroidDevice.isOrderedBefore(device("Z", "alpha"), device("A", "Beta")))
+        #expect(!AndroidDevice.isOrderedBefore(device("A", "Beta"), device("Z", "alpha")))
+        #expect(AndroidDevice.isOrderedBefore(device("A", "Same"), device("B", "same")))
+        #expect(!AndroidDevice.isOrderedBefore(device("A", "Same"), device("A", "same")))
+    }
+
+    @Test func thereIsNoOlderCopyRuleForAndroid() {
+        // Deux appareils récents du même système : aucun n'est pré-sélectionné.
+        let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 3), avd("Test_Phone_B", days: 4)], now: now, limitDays: 60)
+        #expect(r.preSelectedCount == 0)
+    }
+
+    @Test func iosSuggestionsAreUnchangedByTheAndroidFunction() {
+        let r = DeviceSuggestions.suggest([], now: now, limitDays: 60)
+        #expect(r.rows.isEmpty)
+        #expect(DeviceSuggestions.defaultLimitDays == 60)
+    }
+}
