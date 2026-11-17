@@ -25,6 +25,8 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `Cleanup/AndroidEmulatorRemover.swift` | Removal of one Android virtual device (SL11): finds the target again in a fresh listing, checks the scope and a fresh process list, then deletes the folder and each `.ini` (the only Android file that calls `removeItem`; no `avdmanager`) and measures the freed space |
 | `Cleanup/DeviceRemovalSummary.swift` | The summary and the toast of a mixed batch of iOS simulators and Android devices (SL11), pure |
 | `Cleanup/SimulatorsScreen.swift` | The pure layout of the tool's screen: spinner, nothing found, the only failed group, or the sections iOS then Android |
+| `ToastPresentation.swift` | The pure rules of the toast (SL5): motion style from Reduce Motion, announcement text, visible duration (4 s), and `ToastAnnouncer`, the real VoiceOver announcement (`NSAccessibility`, high priority) that `AppState` takes as an injected parameter |
+| `Views/ToastTransition.swift` | Maps the toast motion style to a SwiftUI transition in one place, shared by the panel and the window |
 | `LegacyMigration.swift` | Imports data from the former names of the app (history, preferences) |
 | `AppState.swift` | Timing (3 s; sensors and battery every 9 s when the panel is closed), history, actions, notifications |
 | `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots (including made-up simulators and Android emulators), see [website.md](website.md) |
