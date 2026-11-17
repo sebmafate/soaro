@@ -118,6 +118,17 @@ Platform unread  ANDROID EMULATORS
 Deleting         action bar disabled with a spinner; the list updates at the end
 ```
 
+**S2 as built (SL10): the Android group**
+
+- **Two groups, in this order:** "iOS Simulators", then "Android emulators", each a section of one list with its own rows; the limit menu, the header total ("Devices: N · X", both groups), the footer and "Scan again" are shared. An empty or hidden group is absent. The Delete bar shows when at least one group is listed.
+- **Android row:** the device's display name (the AVD name when it has none), "· API 36" after it (or "Unknown system"), then the reason "inactive for N d", "active today" or "activity unknown", then the size ("…" until measured). A device inactive for more than the limit (default 60 days) is pre-selected; nothing else is. There is no "older copy" reason for Android. The "last used" date is an approximation taken from files the emulator writes (proposed, pending the author).
+- **Device running:** the SL3 unavailable row, "Running · quit it first"; it cannot be checked; VoiceOver reads "…, not selectable".
+- **Platform unread:** "Could not read the Android emulators." appears under the "Android emulators" header with a warning icon and the supporting-text colour, and the iOS group stays usable (and the reverse). It covers an unreadable AVD folder and a process list that cannot be read (a running state that cannot be checked is never offered). When the other group is hidden or empty, the message takes the whole screen.
+- **No Android SDK:** the Android group does not exist; iOS works as before. **No Xcode tools:** the iOS group does not exist (no "Could not read the iOS Simulators."); if neither group exists, "No simulator or emulator found.". The tool's row in the Cleanup list shows when iOS or an Android SDK is found, and in demo mode.
+- **Delete with Android checked (until SL11):** Delete is disabled while any Android row is checked, so nothing is believed removed; the action bar still counts both groups ("Selected: N · X"). Android rows pre-selected by the limit therefore disable Delete until unchecked. Removal of Android devices comes with SL11.
+- **Demo (`SOARO_DEMO=1`):** three made-up virtual devices shown at once, one pre-selected, one running, one under 100 MB in the footer.
+- **New text** (3 keys, nine languages, AI-assisted): "API %@", "Android emulators", "Could not read the Android emulators.". The existing "inactive for N d", "active today", "activity unknown", "Running · quit it first" and "Unknown system" are reused.
+
 **S2, interface text as built by SL8 and SL9 (iOS group only)**
 
 - **Older copy:** the reason names the device that is kept, in the device's own name (never a catalog key): "older copy of “iPhone 17”, used 4 d ago", "…, used today" or "…, which is running". It follows the days part with " · " ("inactive for 25 d · older copy of “iPhone 17”, used 4 d ago"). An unavailable device adds "unavailable: system not installed".
@@ -299,3 +310,4 @@ Every screen of Part 1 uses only these. There is no custom component. The two ex
 | 2026-11-17 | SL6: S1 as built (NuGet row after Cargo, confirmation and toast texts unchanged, demo mode deletes nothing). Factual notes, no decision changed |
 | 2026-11-17 | SL9: S2 as built for deletion (when Delete is available, the deleting state, the toast combinations, Back during a deletion, demo deletion) and the confirmation text of S3 for simulators. Factual notes, no decision changed |
 | 2026-11-17 | SL9 fix round: S2 as built for Back (honest toast), reopening during a batch, and leaving the tab. Factual notes, no decision changed |
+| 2026-11-17 | SL10: S2 as built for the Android group (two groups and their order, the Android row text, platform unread, the iOS group hidden without Xcode, Delete with an Android row checked, demo). Factual notes, no decision changed |

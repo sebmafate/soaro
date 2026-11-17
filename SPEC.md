@@ -110,7 +110,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 | A3 | Removing a simulator in the supported way needs no administrator rights. | Needs a privileged step, which the app avoids. | Untested |
 | A4 | Other developers want this and can ignore it if not. | Low: costs only space in the view. | Untested; low impact |
 | A5 | The output of `simctl`, `dotnet`, `docker` and the Android tools stays readable across Xcode, Docker and Android updates. | Cleaner hidden or broken after an update. | Mitigated by R6 |
-| A6 | An Android virtual device can be told apart as disposable well enough. The only signal found is a file date (no "last used" field as with `simctl`), and the five small AVD all show the same date, 2026-10-23. | Weak suggestions; the author decides by hand. | Partly tested: Pixel_9a (11 GB) was last written 2026-09-22, 54 days ago, so it is not suggested at the 60-day default |
+| A6 | An Android virtual device can be told apart as disposable well enough. The only signal found is a file date (no "last used" field as with `simctl`), and the five small AVD all show the same date, 2026-10-23. | Weak suggestions; the author decides by hand. | Partly tested: Pixel_9a (11 GB) was last written 2026-09-22, 54 days ago, so it is not suggested at the 60-day default. SL10: signal proposed (newest date among the emulator-written files listed in `ARCHITECTURE.md`), pending the author; on the SL10 read-only scan of the author's Mac, the six AVDs gave dates 0 to 6 days old, all from `emulator-user.ini` |
 | A7 | Soaro can tell that an emulator is running. | A running device could be removed. | Untested; covered by R17 tests |
 | R-1 | ADR 0006 does not cover non-file actions. | Unsafe or inconsistent rules. | Open; fixed by a new ADR before coding |
 
@@ -131,7 +131,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 - **Simulator runtimes (31.5 GB, outside the home folder):** include them? They are bigger than the devices once cleaned. It would need the "home folder only" rule of ADR 0006 to change. Not decided; the non-goal stands until the author decides.
 - **Default threshold:** is 60 days right? Answered on 2026-11-17: the author's 5-device check confirmed 60 days (factual note; no requirement changed). Note that at 60 days the biggest Android device (Pixel_9a, 54 days) is not suggested; whether that is acceptable is for the author to say.
-- **Android last-used date:** which file date is the best signal (userdata image, snapshots, or the emulator's own records)? To settle in the architecture.
+- **Android last-used date:** which file date is the best signal (userdata image, snapshots, or the emulator's own records)? Signal proposed in SL10 (newest date among the emulator-written files listed in ARCHITECTURE), pending the author.
 - **Where it lives in the interface:** the developer caches section, or a tool of its own like the simulator list. For the `ux` skill.
 - **Docker tool location:** Docker Desktop and OrbStack install their command in different places; to settle in the architecture.
 - **Quick clean:** the default (R13) is "excluded"; confirm.
