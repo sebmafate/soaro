@@ -50,13 +50,13 @@ import Testing
     }
 
     func model(_ runner: CommandRunner, home box: Sandbox, detection: SimulatorToolDetection? = nil, environment: [String: String] = [:],
-               measure: ScriptedMeasure) -> SimulatorsModel {
+               gate: SimulatorDeletionGate? = nil, measure: ScriptedMeasure) -> SimulatorsModel {
         let detection = detection ?? present
         return SimulatorsModel(runner: runner, detect: { detection },
                                locateTool: { $0 == ToolLocator.processListCandidates ? "/bin/ps" : "/usr/bin/xcrun" },
                                environment: environment, home: box.root, now: { self.now },
                                measure: { measure.measure($0) }, demo: false, confirm: { _, _, _, _ in false },
-                               deletionGate: SimulatorDeletionGate(), notify: { _ in })
+                               deletionGate: gate ?? SimulatorDeletionGate(), notify: { _ in })
     }
 
     func run(_ m: SimulatorsModel) async {
@@ -326,6 +326,21 @@ import Testing
         await run(m)
         #expect(fake.calls.map(\.executable) == ["/usr/bin/xcrun", "/bin/ps", "/usr/bin/xcrun", "/bin/ps"])
         #expect(m.androidPhase == .listed)
+    }
+
+    @Test func aScanAskedDuringADeletionTouchesNeitherGroupAndStartsWhenTheBatchEnds() async throws {
+        let box = try home([phone])
+        let fake = runner(ios: [Self.u1], ps: "")
+        let gate = SimulatorDeletionGate()
+        let m = model(fake, home: box, gate: gate, measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
+        #expect(gate.begin(), "un lot de suppression tourne (ici ou ailleurs)")
+        m.scan()
+        #expect(fake.calls.isEmpty, "ni `simctl`, ni `ps` pendant la suppression")
+        #expect(m.phase == .notScanned && m.androidPhase == .notScanned)
+        gate.end()                                   // la porte se libère : le scan retenu part
+        await m.scanTask?.value
+        #expect(m.phase == .listed && m.androidPhase == .listed)
+        #expect(fake.calls.map(\.executable) == ["/usr/bin/xcrun", "/bin/ps"])
     }
 
     @Test func androidMessageIsNilWhenNotFailed() async throws {
