@@ -237,6 +237,17 @@ enum CleanupKind: String, CaseIterable, Identifiable {
 
     static var systemKinds: [CleanupKind] { allCases.filter { !$0.isDeveloper } }
     static var developerKinds: [CleanupKind] { allCases.filter(\.isDeveloper) }
+
+    /// Rangées « Développeur » à afficher, dans l'ordre de `allCases` : taille connue et supérieure à 0.
+    /// Une clé absente, `nil` (dossier absent ou illisible) ou 0 masque la rangée.
+    static func visibleDeveloperKinds(sizes: [CleanupKind: UInt64?]) -> [CleanupKind] {
+        developerKinds.filter { ((sizes[$0] ?? nil) ?? 0) > 0 }
+    }
+
+    /// Octets récupérables par le nettoyage rapide : somme des tailles connues des seuls types inclus.
+    static func quickCleanTotal(sizes: [CleanupKind: UInt64?]) -> UInt64 {
+        allCases.filter(\.includedInQuickClean).reduce(0) { $0 + ((sizes[$1] ?? nil) ?? 0) }
+    }
 }
 
 // MARK: - Recommandations

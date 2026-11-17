@@ -42,8 +42,7 @@ enum RecommendationEngine {
             }
         }
 
-        let quickKinds = CleanupKind.allCases.filter(\.includedInQuickClean)
-        let reclaimable = quickKinds.reduce(UInt64(0)) { $0 + ((input.cleanupSizes[$1] ?? nil) ?? 0) }
+        let reclaimable = CleanupKind.quickCleanTotal(sizes: input.cleanupSizes)
         if reclaimable >= 500_000_000 {
             let urgent = freeFraction < 0.10
             result.append(Recommendation(

@@ -631,7 +631,7 @@ final class AppState: ObservableObject {
 
     /// Octets récupérables par le nettoyage rapide.
     var quickCleanReclaimable: UInt64 {
-        CleanupKind.allCases.filter(\.includedInQuickClean).reduce(0) { $0 + ((cleanupSizes[$1] ?? nil) ?? 0) }
+        CleanupKind.quickCleanTotal(sizes: cleanupSizes)
     }
 
     /// Demande confirmation puis nettoie.
