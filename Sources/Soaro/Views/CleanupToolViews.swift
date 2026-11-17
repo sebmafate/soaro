@@ -20,7 +20,7 @@ struct LargeFilesView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Minimum size").font(.caption).foregroundStyle(.secondary)
+                Text("Minimum size").font(.caption).foregroundStyle(.supportingText)
                 Picker("Minimum size", selection: $model.minSizeMB) {
                     ForEach(LargeFilesModel.thresholds, id: \.self) { mb in
                         Text(Format.fileBytes(UInt64(mb) * 1_000_000)).tag(mb)
@@ -38,8 +38,8 @@ struct LargeFilesView: View {
             if model.isScanning {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text("Scanning your home folder…").font(.caption).foregroundStyle(.secondary)
-                    Text("macOS may ask for access to Documents, Downloads, and so on.").font(.caption2).foregroundStyle(.tertiary)
+                    Text("Scanning your home folder…").font(.caption).foregroundStyle(.supportingText)
+                    Text("macOS may ask for access to Documents, Downloads, and so on.").font(.caption2).foregroundStyle(.supportingText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if !model.hasScanned {
@@ -59,7 +59,7 @@ struct LargeFilesView: View {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
                                     Text(verbatim: fileSubtitle(file))
-                                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                                        .font(.caption2).foregroundStyle(.supportingText).lineLimit(1).truncationMode(.head)
                                 }
                                 Spacer()
                                 Text(Format.fileBytes(file.size)).font(.caption.monospacedDigit())
@@ -100,7 +100,7 @@ struct DevProjectsView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(model.hasScanned ? "Folders found: \(model.artifacts.count) · \(Format.fileBytes(model.totalSize))" : "Project scan")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.caption).foregroundStyle(.supportingText)
                 Spacer()
                 Button(model.hasScanned ? "Scan again" : "Scan") { model.scan() }
                     .controlSize(.small).disabled(model.isScanning)
@@ -111,7 +111,7 @@ struct DevProjectsView: View {
             if model.isScanning {
                 VStack(spacing: 10) {
                     ProgressView()
-                    Text("Looking for node_modules, .build, target, Pods…").font(.caption).foregroundStyle(.secondary)
+                    Text("Looking for node_modules, .build, target, Pods…").font(.caption).foregroundStyle(.supportingText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if model.hasScanned && model.artifacts.isEmpty {
@@ -135,7 +135,7 @@ struct DevProjectsView: View {
                                             .background(.quaternary, in: Capsule())
                                     }
                                     Text("\(item.projectPath) · \(activityText(item))")
-                                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                                        .font(.caption2).foregroundStyle(.supportingText).lineLimit(1).truncationMode(.head)
                                 }
                                 Spacer()
                                 Text(Format.fileBytes(item.size)).font(.caption.monospacedDigit())
@@ -198,10 +198,10 @@ struct UninstallerView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(app.name).font(.callout).lineLimit(1)
                                 Text("Last opened: \(relativeDate(app.lastUsed))")
-                                    .font(.caption2).foregroundStyle(.secondary)
+                                    .font(.caption2).foregroundStyle(.supportingText)
                             }
                             Spacer()
-                            Text(app.size.map { Format.fileBytes($0) } ?? "…").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            Text(app.size.map { Format.fileBytes($0) } ?? "…").font(.caption.monospacedDigit()).foregroundStyle(.supportingText)
                             Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                         }
                         .contentShape(Rectangle())
@@ -221,7 +221,7 @@ struct UninstallerView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(app.name).font(.headline)
                     Text([app.version.map { "v\($0)" }, app.size.map { Format.fileBytes($0) }].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.supportingText)
                 }
                 Spacer()
             }
@@ -231,7 +231,7 @@ struct UninstallerView: View {
             if model.isLoadingLeftovers {
                 VStack(spacing: 8) {
                     ProgressView()
-                    Text("Looking for related files…").font(.caption).foregroundStyle(.secondary)
+                    Text("Looking for related files…").font(.caption).foregroundStyle(.supportingText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -246,7 +246,7 @@ struct UninstallerView: View {
                     }
                     Section {
                         if model.leftovers.isEmpty {
-                            Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.secondary)
+                            Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.supportingText)
                         }
                         ForEach(model.leftovers) { item in
                             SelectionRow(name: item.displayPath, isOn: !model.excluded.contains(item.id),
@@ -289,14 +289,14 @@ struct StartupItemsView: View {
                 if model.isLoading && model.agents.isEmpty {
                     ProgressView()
                 } else if model.agents.isEmpty {
-                    Text("No third-party launch agents.").font(.caption).foregroundStyle(.secondary)
+                    Text("No third-party launch agents.").font(.caption).foregroundStyle(.supportingText)
                 }
                 ForEach(model.agents) { agent in
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(agent.displayName).font(.callout).lineLimit(1)
                             Text(agent.program.map { ($0 as NSString).abbreviatingWithTildeInPath } ?? agent.label)
-                                .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                                .font(.caption2).foregroundStyle(.supportingText).lineLimit(1).truncationMode(.middle)
                         }
                         Spacer()
                         Toggle("", isOn: Binding(
@@ -317,7 +317,7 @@ struct StartupItemsView: View {
 
             Section {
                 if let items = model.loginItems {
-                    if items.isEmpty { Text("No login items.").font(.caption).foregroundStyle(.secondary) }
+                    if items.isEmpty { Text("No login items.").font(.caption).foregroundStyle(.supportingText) }
                     ForEach(items) { item in
                         HStack {
                             AppIconView(path: item.path).frame(width: 20, height: 20)
@@ -331,7 +331,7 @@ struct StartupItemsView: View {
                         Text(model.loginItemsDenied
                              ? "Access denied. Allow Soaro to control “System Events” in System Settings › Privacy & Security › Automation."
                              : "Shows the “Open at Login” list from System Settings. macOS will ask for your permission.")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.supportingText)
                         Button(model.loginItemsDenied ? "Try again" : "Show") { model.loadLoginItems() }.controlSize(.small)
                     }
                 }

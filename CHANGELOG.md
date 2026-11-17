@@ -17,6 +17,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - VoiceOver now reads the name of the item on the selection buttons in Inactive projects, Large files and Uninstaller, and each row is read as one item; “Show in Finder” is offered as an action of the row.
 - The Delete and Uninstall buttons use a deeper red with better contrast.
 - Messages shown at the bottom of the window and the menu bar panel now fade in without sliding when Reduce Motion is on, and VoiceOver reads them aloud when they appear.
+- Supporting text (details, sizes, notes and section headers) uses a slightly darker grey that is easier to read, in light and dark mode and with Increase Contrast; section headers are one step larger.
 
 ### Fixed
 

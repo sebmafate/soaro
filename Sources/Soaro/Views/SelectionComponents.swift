@@ -52,7 +52,7 @@ struct ActionBar: View {
                     ProgressView().controlSize(.small)
                         .accessibilityHidden(true)
                 }
-                Text(summary).font(.caption).foregroundStyle(.secondary)
+                Text(summary).font(.caption).foregroundStyle(.supportingText)
                 Spacer()
                 Button(button, action: action)
                     .buttonStyle(.borderedProminent)

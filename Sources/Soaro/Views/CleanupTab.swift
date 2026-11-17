@@ -107,7 +107,7 @@ struct CleanupTab: View {
                                 Image(systemName: item.systemImage).font(.title3).frame(width: 26).foregroundStyle(Color.accentColor)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(item.title).font(.callout.weight(.medium))
-                                    Text(item.subtitle).font(.caption).foregroundStyle(.secondary)
+                                    Text(item.subtitle).font(.caption).foregroundStyle(.supportingText)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
@@ -148,7 +148,7 @@ struct CleanupTab: View {
                     Text(state.quickCleanReclaimable > 0
                          ? "\(Format.fileBytes(state.quickCleanReclaimable)) can be freed safely"
                          : "Nothing important to clean")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.supportingText)
                 }
                 Spacer()
                 Button("Clean") { state.perform(.quickCleanup) }
@@ -156,7 +156,7 @@ struct CleanupTab: View {
                     .disabled(!state.busyKinds.isEmpty || state.quickCleanReclaimable == 0)
             }
             Text("App caches, logs and DerivedData. The Trash and dependency caches are left for you to decide.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
         }
     }
 

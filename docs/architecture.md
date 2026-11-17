@@ -27,6 +27,7 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `Cleanup/SimulatorsScreen.swift` | The pure layout of the tool's screen: spinner, nothing found, the only failed group, or the sections iOS then Android |
 | `ToastPresentation.swift` | The pure rules of the toast (SL5): motion style from Reduce Motion, announcement text, visible duration (4 s), and `ToastAnnouncer`, the real VoiceOver announcement (`NSAccessibility`, high priority) that `AppState` takes as an injected parameter |
 | `Views/ToastTransition.swift` | Maps the toast motion style to a SwiftUI transition in one place, shared by the panel and the window |
+| `Views/DesignTokens.swift` | The colour and contrast tokens: the destructive fill, the text-supporting colour (black or white at an absolute alpha 0.56, 0.70 with Increase Contrast), the WCAG ratio functions. It also gives the token as a `ShapeStyle` (`.foregroundStyle(.supportingText)`, usable in a ternary) and as the `supportingText()` modifier; `SupportingTextUsageTests` keeps the colour computed in this file only and stops `.secondary` and `.tertiary` from coming back on text |
 | `LegacyMigration.swift` | Imports data from the former names of the app (history, preferences) |
 | `AppState.swift` | Timing (3 s; sensors and battery every 9 s when the panel is closed), history, actions, notifications |
 | `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots (including made-up simulators and Android emulators), see [website.md](website.md) |

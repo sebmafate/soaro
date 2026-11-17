@@ -43,9 +43,9 @@ struct BatteryTab: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(statusTitle(b)).font(.headline)
-                Text(statusDetail(b)).font(.callout).foregroundStyle(.secondary)
+                Text(statusDetail(b)).font(.callout).foregroundStyle(.supportingText)
                 if let w = b.adapterWatts {
-                    Label("Charger \(w) W", systemImage: "powerplug").font(.caption).foregroundStyle(.secondary)
+                    Label("Charger \(w) W", systemImage: "powerplug").font(.caption).foregroundStyle(.supportingText)
                 }
             }
             Spacer(minLength: 0)
@@ -104,7 +104,7 @@ struct BatteryTab: View {
                         }
                     }
                     .tint(h >= 0.8 ? .green : (h >= 0.7 ? .orange : .red))
-                    Text(healthAdvice(h)).font(.caption).foregroundStyle(.secondary)
+                    Text(healthAdvice(h)).font(.caption).foregroundStyle(.supportingText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 KeyValueRow("Charge cycles", "\(b.cycleCount)")
@@ -139,13 +139,13 @@ struct BatteryTab: View {
                             .tint(entry.impact >= 40 ? .red : (entry.impact >= 15 ? .orange : .green))
                             .frame(width: 80)
                         Text(String(format: "%.0f", entry.impact))
-                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .font(.caption.monospacedDigit()).foregroundStyle(.supportingText)
                             .frame(width: 30, alignment: .trailing)
                     }
                 }
             }
             Text("Same scale as the “Energy Impact” column in Activity Monitor: the higher the value, the faster the app drains the battery.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
         }
     }
 }

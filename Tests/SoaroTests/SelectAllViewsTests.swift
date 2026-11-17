@@ -31,14 +31,19 @@ import Testing
         #expect(!text[start.lowerBound...].contains("SelectAll"))
     }
 
-    @Test func aSectionHeaderWithoutSelectionKeepsItsOldLook() throws {
+    @Test func aSectionHeaderWithoutSelectionKeepsItsLayoutAndUsesTheSupportingToken() throws {
         let text = try source("Sources/Soaro/Views/Components.swift")
         let start = try #require(text.range(of: "struct SectionHeader"))
         let body = String(text[start.lowerBound...].prefix(900))
         #expect(body.contains("var selectAll: SelectAllControl? = nil"), "le paramètre est optionnel : les appels existants ne changent pas")
         #expect(body.contains("titleText.padding(.top, 4)"), "sans case : le même titre, le même remplissage")
-        for modifier in [".textCase(.uppercase)", ".font(.caption2.weight(.semibold))", ".foregroundStyle(.secondary)"] {
+        for modifier in [".textCase(.uppercase)", ".font(.caption.weight(.semibold))", "supportingText"] {
             #expect(body.contains(modifier))
         }
+        // Le titre est d'un cran plus grand (`.caption`) et passe par le jeton : plus de `.caption2` ni de `.secondary`.
+        let titleText = try #require(body.range(of: "private var titleText"))
+        let titleBody = String(body[titleText.lowerBound...])
+        #expect(!titleBody.contains(".caption2"))
+        #expect(!titleBody.contains(".secondary"))
     }
 }

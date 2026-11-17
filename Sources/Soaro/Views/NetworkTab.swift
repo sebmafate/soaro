@@ -34,7 +34,7 @@ struct NetworkTab: View {
                 )
             }
             Text("Physical interfaces only (Wi-Fi, Ethernet): VPN traffic is not counted twice.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
         }
     }
 
@@ -57,11 +57,11 @@ struct NetworkTab: View {
             case .full:
                 KeyValueRow("VPN", vpn.name.map { String(localized: "\($0) · all traffic") } ?? String(localized: "Active · all traffic"), color: .green)
                 Text("Your Internet traffic goes through the \(vpn.interface ?? "VPN") tunnel.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(.supportingText)
             case .partial:
                 KeyValueRow("VPN", vpn.name.map { String(localized: "\($0) · partial") } ?? String(localized: "Tunnel · partial"), color: .orange)
                 Text("A tunnel is active, but Internet traffic still leaves through your usual connection.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(.supportingText)
             case .off:
                 KeyValueRow("VPN", String(localized: "None detected"))
             }
@@ -74,7 +74,7 @@ struct NetworkTab: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Public IP and country").font(.caption.weight(.medium))
             Text("To show your IP as the Internet sees it, and its country, Soaro has to ask a third-party service (ipwho.is), which will see your public IP. Nothing is stored.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Show public IP and country") {
                 publicIPEnabled = true
@@ -92,7 +92,7 @@ struct NetworkTab: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(info.ip).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
                     Text([info.country, info.city].compactMap { $0 }.joined(separator: " · "))
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.supportingText)
                 }
                 Spacer()
                 refreshButton
@@ -100,10 +100,10 @@ struct NetworkTab: View {
             if let provider = info.provider { KeyValueRow("Provider", provider) }
             if state.vpn?.mode == .full {
                 Text("This is the VPN exit address, not the address of your real connection.")
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .font(.caption2).foregroundStyle(.supportingText)
             }
             Text("Updated \(info.fetchedAt.formatted(.relative(presentation: .named)))")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption2).foregroundStyle(.supportingText)
         } else {
             switch state.publicIPState {
             case .failed(let message):
@@ -115,7 +115,7 @@ struct NetworkTab: View {
             default:
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text("Looking up the public IP…").font(.caption).foregroundStyle(.secondary)
+                    Text("Looking up the public IP…").font(.caption).foregroundStyle(.supportingText)
                 }
             }
         }
@@ -165,7 +165,7 @@ struct NetworkTab: View {
             }
         } else {
             Text("Latency measurement is off (it sends a ping to 1.1.1.1). Turn it on in Settings.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
         }
     }
 
@@ -199,7 +199,7 @@ struct NetworkTab: View {
                         Text("↑ " + Format.rate(proc.up)).frame(width: 84, alignment: .trailing)
                     }
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.supportingText)
                 }
             }
         }
