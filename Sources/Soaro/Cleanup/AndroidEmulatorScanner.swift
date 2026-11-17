@@ -225,7 +225,8 @@ extension AndroidEmulatorScanner {
         }
     }
 
-    private static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
+    /// Chemin standardisé et sans lien symbolique (interne : partagé avec `AndroidSystemImageScanner`).
+    static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
 
     /// Le dossier ressemble à un dossier d'AVD : son nom (résolu) finit par `.avd` ET il contient un `config.ini` ordinaire.
     /// Le suffixe est `.avd` en minuscules exactement (les outils d'Android l'écrivent ainsi ; une autre casse est rejetée : on se
@@ -244,7 +245,7 @@ extension AndroidEmulatorScanner {
     }
 
     /// Le dossier, standardisé et sans lien symbolique, est STRICTEMENT dans le dossier personnel (jamais le dossier lui-même).
-    private static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {
+    static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {
         let path = resolvedPath(folder)
         let prefix = homePath.hasSuffix("/") ? homePath : homePath + "/"
         return path.count > prefix.count && path.hasPrefix(prefix)
