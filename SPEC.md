@@ -67,7 +67,7 @@ Motivation, stated honestly: a real personal need, and the pleasure of building 
 | --- | --- | --- | --- |
 | R1 | The Cleanup view shows the NuGet package cache with its reclaimable size, and lets the user clean it after confirmation. | Must | Unit test on a fake folder tree; manual run on the author's Mac (13 GB) |
 | R2 | The SwiftPM cache is cleaned. Already met by the existing "App caches" cleaner, which includes `~/Library/Caches/org.swift.swiftpm`. The configuration folder `~/Library/org.swift.swiftpm` is never touched. | Covered by existing | Unit test: the "App caches" cleaner includes the SwiftPM cache folder and never the configuration folder |
-| R3 | The Cleanup view lists every simulator device with its real size on disk, last-used date, runtime and availability. It suggests (pre-selects) devices idle for more than a threshold (default 60 days, adjustable) and older duplicates of the same model and runtime, keeping the most recently used. The other devices stay visible and unselected. | Must | Unit tests on fixture data from `simctl`; the author checks the classification on a sample of 5 devices |
+| R3 | The Cleanup view lists every simulator device with its real size on disk, last-used date, runtime and availability. It suggests (pre-selects) devices idle for more than a threshold (default 60 days, adjustable) and older duplicates of the same model and runtime, keeping the most recently used. The other devices stay visible and unselected. | Must | Unit tests on fixture data from `simctl`; the author checks the classification on a sample of 5 devices (done 2026-11-17) |
 | R4 | A simulator is removed in the way Apple supports, so the simulator system stays consistent, never by deleting its folder by hand. The confirmation says what is lost (the data of test apps). | Must | Unit test with a fake command runner; manual removal of one disposable device |
 | R5 | A running (booted) simulator is never suggested or removed. | Must | Unit test with a booted fixture |
 | R6 | Each new cleaner appears only if its tool or data exists on the Mac. A missing tool, a failing command or an unreadable output never breaks the Cleanup view or the app (ADR 0005). | Must | Unit tests: tool absent, command failing, malformed output |
@@ -130,7 +130,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 ## Open questions
 
 - **Simulator runtimes (31.5 GB, outside the home folder):** include them? They are bigger than the devices once cleaned. It would need the "home folder only" rule of ADR 0006 to change. Not decided; the non-goal stands until the author decides.
-- **Default threshold:** is 60 days right? To confirm with the 5-device check. Note that at 60 days the biggest Android device (Pixel_9a, 54 days) is not suggested; whether that is acceptable is for the author to say.
+- **Default threshold:** is 60 days right? Answered on 2026-11-17: the author's 5-device check confirmed 60 days (factual note; no requirement changed). Note that at 60 days the biggest Android device (Pixel_9a, 54 days) is not suggested; whether that is acceptable is for the author to say.
 - **Android last-used date:** which file date is the best signal (userdata image, snapshots, or the emulator's own records)? To settle in the architecture.
 - **Where it lives in the interface:** the developer caches section, or a tool of its own like the simulator list. For the `ux` skill.
 - **Docker tool location:** Docker Desktop and OrbStack install their command in different places; to settle in the architecture.
