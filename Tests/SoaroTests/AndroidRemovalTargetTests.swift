@@ -226,6 +226,33 @@ import Testing
         #expect(box.exists("Real.avd/config.ini"))
     }
 
+    @Test func aRegisteredPathWithATrailingDotOrDotDotComponentIsRefusedSoALinkIsNeverFollowed() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("Other.avd/config.ini", "AvdId=Other\n")
+        let link = box.root.appendingPathComponent("Link.avd")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: box.root.appendingPathComponent("Other.avd"))
+        try box.dir(".android/avd")
+        try FileManager.default.createSymbolicLink(at: box.root.appendingPathComponent(".android/avd/Rel.avd"),
+                                                   withDestinationURL: box.root.appendingPathComponent("Other.avd"))
+        try box.dir("x")
+        // `lstat` sur `Link.avd/.` suit le lien : sans cette règle, le lien passerait pour un vrai dossier.
+        for registration in ["path=\(link.path)/.\n", "path.rel=avd/Rel.avd/.\n", "path=\(box.root.path)/x/../Other.avd\n",
+                             "path=\(box.root.path)/./Other.avd\n"] {
+            try box.write(".android/avd/Test_Phone_A.ini", registration)
+            let target = try scanTarget(box, "Test_Phone_A")
+            #expect(prepare(box, target) == .refused, "\(registration)")
+            #expect(box.exists("Other.avd/config.ini"))
+        }
+    }
+
+    @Test func aTrailingSlashInTheRegisteredPathIsStillAccepted() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(folder.path)/\n")
+        let target = try scanTarget(box, "Test_Phone_A")
+        guard case .plan = prepare(box, target) else { Issue.record("un plan était attendu : la barre finale se normalise à l'identique"); return }
+    }
+
     @Test func anAliasRegisteredThroughASymlinkIsRefusedToo() throws {
         let box = try Sandbox(insideHome: true)
         let folder = try makeAVD(box, name: "Test_Phone_A")

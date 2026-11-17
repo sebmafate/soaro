@@ -70,7 +70,10 @@ extension AndroidEmulatorScanner {
             let registered = deviceFolder(name: name, registration: readINI(registration) ?? [:],
                                           androidFolder: home.appendingPathComponent(".android", isDirectory: true), avdFolder: avdFolder)
             var info = stat()
-            guard let registered, lstat(registered.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return .refused }
+            // Un chemin enregistré qui n'est pas sous sa forme standard (composant `.` ou `..`, `//`) est refusé : `lstat` sur `Lien.avd/.`
+            // suit le lien et le ferait passer pour un vrai dossier. Une barre finale seule est acceptée (l'URL la normalise à l'identique).
+            guard let registered, registered.path == registered.standardizedFileURL.path,
+                  lstat(registered.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return .refused }
         }
         // Le dossier ne contient ni un autre AVD du listage ni le dossier des inscriptions (le supprimer les emporterait).
         let inside = freshFolder.path + "/"
