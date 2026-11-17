@@ -6,8 +6,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size, pre-selects those inactive for more than 60 days and older copies, and removes the ones you choose the way Xcode does, and Android emulators, removed with their registration, after a confirmation. A running simulator or emulator is never removed.
-- The tool “Simulators and emulators” also lists your Android virtual devices (SL10) with their real size, system and last-use estimate, and shows how long each has been inactive; they are not pre-selected for now. A running emulator cannot be selected. Without an Android SDK nothing Android appears.
+- New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size, pre-selects those inactive for more than 60 days and older copies, and removes the ones you choose the way Xcode does, after a confirmation that names them. A running simulator is never removed.
+- The same tool also lists your Android virtual devices with their real size, system and last-use estimate, and shows how long each has been inactive. Check the ones you want and press Delete: each one is removed with its registration, after the same confirmation, in one batch with any simulators you checked. A running emulator is never removed. Android devices are not pre-selected for now, and without an Android SDK nothing Android appears.
 - New cleaner “NuGet packages” (Cleanup > Developer): frees the NuGet package cache, after a confirmation. It is not part of the quick clean.
 
 ### Changed
@@ -20,7 +20,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The scroll bar of the Cleanup and Settings pages now sits at the right edge of the window; the explanation under the simulators list is no longer cut off.
 - In demo mode (`SOARO_DEMO=1`), confirming in the Cleanup rows, Large files, Inactive projects, the Uninstaller and Startup items no longer deletes, trashes or removes real files or changes real login items, and the Quit buttons no longer quit real apps.
-- French: the battery explanation no longer shows "100 %%" (SL2; AI-assisted wording, to review by the author).
+- French: the battery explanation no longer shows "100 %%".
 
 ## [1.0.1] - 2026-11-15
 
