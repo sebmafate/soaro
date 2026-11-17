@@ -47,8 +47,9 @@ enum Diagnostics {
     static func androidScan(runner: CommandRunner, home: URL, environment: [String: String],
                             locate: ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
                             measure: (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) }) -> AndroidScan {
-        let listing = AndroidEmulatorScanner.list(runner: runner, psPath: locate(ToolLocator.processListCandidates),
-                                                  environment: environment, home: home)
+        // Comme dans le modèle : `ps` n'est cherché que si un SDK existe (sans SDK, rien d'Android n'est lu ni lancé).
+        let psPath = ToolLocator.androidSDK(environment: environment, home: home) == nil ? nil : locate(ToolLocator.processListCandidates)
+        let listing = AndroidEmulatorScanner.list(runner: runner, psPath: psPath, environment: environment, home: home)
         let sized = listing.devices.map { SizedAndroidDevice(device: $0, size: measure($0.folder)) }
         return AndroidScan(status: listing.status, sdk: listing.sdk, devices: sized, skippedCount: listing.skippedCount)
     }

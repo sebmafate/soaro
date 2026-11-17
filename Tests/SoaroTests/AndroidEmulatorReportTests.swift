@@ -147,6 +147,19 @@ import Testing
         #expect(measured.names.isEmpty)
     }
 
+    @Test func androidScanChecksTheSdkBeforeLookingForPs() throws {
+        let box = try Sandbox(insideHome: true)
+        var lookups = 0
+        let none = Diagnostics.androidScan(runner: FakeCommandRunner(), home: box.root, environment: [:],
+                                           locate: { _ in lookups += 1; return "/bin/ps" }, measure: { _ in 1 })
+        #expect(none.status == .sdkNotFound)
+        #expect(lookups == 0, "sans SDK, `ps` n'est même pas cherché (comme dans le modèle)")
+        try box.dir("Library/Android/sdk")
+        _ = Diagnostics.androidScan(runner: FakeCommandRunner(), home: box.root, environment: [:],
+                                    locate: { _ in lookups += 1; return "/bin/ps" }, measure: { _ in 1 })
+        #expect(lookups == 1)
+    }
+
     @Test func theRealRunnerIsBuiltOnlyWhereItIsAllowed() throws {
         let sources = RepositoryRoot.url().appendingPathComponent("Sources")
         let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)!.compactMap { $0 as? URL }
