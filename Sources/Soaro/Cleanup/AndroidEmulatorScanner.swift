@@ -137,7 +137,9 @@ extension AndroidEmulatorScanner {
     /// LECTURE SEULE, synchrone, sans taille. Triés par nom affiché (sans tenir compte de la casse), puis par nom d'AVD.
     /// - Un `.avd` sans son `.ini` est ignoré ; un `.ini` sans dossier utilisable est ignoré.
     /// - Le dossier : le premier existant parmi `path=` (absolu seulement), `path.rel` (contre `<home>/.android`), puis
-    ///   `<home>/.android/avd/<nom>.avd` ; il doit être strictement dans le dossier personnel (ADR 0009, règle 1), sinon l'AVD est ignoré.
+    ///   `<home>/.android/avd/<nom>.avd` ; il doit être strictement dans le dossier personnel (ADR 0009, règle 1) ET ressembler à un
+    ///   dossier d'AVD (`looksLikeAVDFolder`), sinon l'AVD est ignoré (sans essayer un autre candidat). Deux `.ini` vers le même
+    ///   dossier : une seule ligne.
     static func listAVDs(home: URL) -> AndroidAVDListing {
         let androidFolder = home.appendingPathComponent(".android", isDirectory: true)
         let avdFolder = androidFolder.appendingPathComponent("avd", isDirectory: true)
@@ -152,12 +154,15 @@ extension AndroidEmulatorScanner {
 
         let homePath = resolvedPath(home)
         var devices: [AndroidDevice] = []
+        // Dossiers déjà pris (chemin résolu) : deux `.ini` vers le même dossier ne donnent qu'une ligne (le premier par nom).
+        var seenFolders = Set<String>()
         for entry in entries.sorted() where entry.hasSuffix(".ini") {
             let name = String(entry.dropLast(".ini".count))
             guard isValidAVDName(name) else { continue }
             let registration = readINI(avdFolder.appendingPathComponent(entry)) ?? [:]
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
-                  isStrictlyInside(folder, homePath: homePath) else { continue }
+                  isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder),
+                  seenFolders.insert(resolvedPath(folder)).inserted else { continue }
             let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
             let dates = fileDates(in: folder)
             let used = dates.max { $0.date < $1.date }
@@ -189,6 +194,18 @@ extension AndroidEmulatorScanner {
     }
 
     private static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
+
+    /// Le dossier ressemble à un dossier d'AVD : son nom (résolu) finit par `.avd` ET il contient un `config.ini` ordinaire.
+    /// Règle la plus stricte qui reste sûre pour les vraies dispositions : `avdmanager` et Android Studio créent toujours
+    /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fera la cible
+    /// d'une suppression). Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe
+    /// est `<home>/.android/avd`) ; déplacé DANS le dossier personnel, il est accepté s'il respecte cette règle.
+    private static func looksLikeAVDFolder(_ folder: URL) -> Bool {
+        let resolved = folder.resolvingSymlinksInPath().standardizedFileURL
+        guard resolved.lastPathComponent.hasSuffix(".avd"), resolved.lastPathComponent != ".avd" else { return false }
+        var info = stat()
+        return stat(resolved.appendingPathComponent("config.ini").path, &info) == 0 && (info.st_mode & S_IFMT) == S_IFREG
+    }
 
     /// Le dossier, standardisé et sans lien symbolique, est STRICTEMENT dans le dossier personnel (jamais le dossier lui-même).
     private static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {

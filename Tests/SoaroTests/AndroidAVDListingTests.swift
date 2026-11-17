@@ -230,6 +230,58 @@ import Testing
         #expect(list(box).devices.isEmpty)
     }
 
+    // MARK: Le dossier ressemble à un AVD (SL11 en fera la cible d'une suppression)
+
+    @Test func anIniPointingAtAnOrdinaryFolderInsideTheHomeIsSkipped() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Documents")
+        try box.write("Documents/config.ini", "avd.ini.displayname=Not an AVD\n")   // config.ini, mais pas un dossier `.avd`
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/Documents\n")
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func aRelativeValueClimbingOutOfTheAvdFolderIsSkipped() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Documents")
+        try box.write(".android/avd/Test_Phone_A.ini", "path.rel=../Documents\n")
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func anAvdSuffixedFolderWithoutAConfigIniIsSkipped() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Backups/Old.avd")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/Backups/Old.avd\n")
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func aRelocatedAvdFolderWithItsConfigInsideTheHomeIsAccepted() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Dev/avds/Moved_Z.avd")
+        try box.write("Dev/avds/Moved_Z.avd/config.ini", "avd.ini.displayname=Moved Z\n")
+        try box.write(".android/avd/Test_Phone_Z.ini", "path=\(box.root.path)/Dev/avds/Moved_Z.avd\n")
+        let listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_Z"])
+        #expect(listing.devices.map(\.displayName) == ["Moved Z"])
+    }
+
+    @Test func aNonQualifyingFolderDoesNotFallThroughToAnotherCandidate() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Documents")
+        // Le dossier par défaut `<nom>.avd` existerait et serait valide, mais `path=` désigne un dossier ordinaire : AVD ignoré.
+        let folder = try makeAVD(box, name: "Test_Phone_A", registration: "path=\(box.root.path)/Documents\n")
+        #expect(FileManager.default.fileExists(atPath: folder.path))
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func twoInisPointingAtTheSameFolderGiveOneRowKeptByNameOrder() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_B")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(folder.path)\n")
+        try box.write(".android/avd/Test_Phone_C.ini", "path.rel=avd/Test_Phone_B.avd\n")
+        let listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"], "le premier par nom, de façon déterministe")
+    }
+
     // MARK: Inscription
 
     @Test func anOrphanAvdFolderWithoutItsIniIsIgnored() throws {
