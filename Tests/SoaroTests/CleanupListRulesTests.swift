@@ -37,4 +37,19 @@ import Testing
         #expect(CleanupKind.quickCleanTotal(sizes: [.caches: nil, .logs: 0]) == 0)
         #expect(CleanupKind.quickCleanTotal(sizes: [:]) == 0)
     }
+
+    // MARK: Mode démo (SL6 T7)
+
+    @Test func demoDataShowsTheNugetRow() {
+        let nuget = (DemoData.cleanupSizes[.nugetCache] ?? nil) ?? 0
+        #expect(nuget > 0)
+        #expect(CleanupKind.visibleDeveloperKinds(sizes: DemoData.cleanupSizes).contains(.nugetCache))
+    }
+
+    @Test func demoQuickCleanTotalStaysCachesLogsAndDerivedData() {
+        let sizes = DemoData.cleanupSizes
+        let expected = [CleanupKind.caches, .logs, .derivedData].reduce(UInt64(0)) { $0 + ((sizes[$1] ?? nil) ?? 0) }
+        #expect(CleanupKind.quickCleanTotal(sizes: sizes) == expected)
+        #expect(expected == (4_200 + 310 + 8_700) * 1_000_000)
+    }
 }
