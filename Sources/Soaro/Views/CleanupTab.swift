@@ -121,6 +121,10 @@ struct CleanupTab: View {
                 }
             }
             .padding(14)
+            // La colonne est bornée DANS la zone défilante (comme `page` de la fenêtre) : la barre de défilement reste au bord de la
+            // fenêtre. Sans effet dans le panneau (430 pt de large).
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
         // Détection à l'apparition de la liste (jamais dans `body`, jamais dans le tick) : quelques lectures du disque, hors acteur principal.
         .task {
