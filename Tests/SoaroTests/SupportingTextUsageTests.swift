@@ -18,8 +18,6 @@ import Testing
 
     /// Nombres exacts des fichiers pas encore migrés (commentaires exclus).
     static let pending: [String: Int] = [
-        "Views/CleanupTab.swift": 4,
-        "Views/CleanupToolViews.swift": 18,
         "Views/NetworkTab.swift": 10,
         "Views/BatteryTab.swift": 6,
         "Views/MainWindow.swift": 5,
