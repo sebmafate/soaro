@@ -131,8 +131,33 @@ extension AndroidEmulatorScanner {
 /// Le suppresseur réel : le SEUL endroit des fichiers Android qui supprime quoi que ce soit (un test de source le vérifie).
 /// Suppression directe, pas la corbeille (D8 : la corbeille ne libérerait rien ; ADR 0006 supprime directement ce qui se reconstruit).
 enum AndroidEmulatorRemover {
-    /// Supprime un fichier ou un dossier. Le chemin a déjà passé `CleanupService.isSafeToDelete` (voir `prepareRemoval`).
+    /// Le chemin a changé ou sort de ce qui est sûr depuis le plan : rien n'est supprimé.
+    struct Refusal: Error, Equatable {}
+
+    /// Supprime un dossier d'AVD ou un `.ini`, APRÈS avoir revérifié, juste avant (le plan date d'avant la mesure et de `ps`, qui durent) :
+    /// - le chemin passe `CleanupService.isSafeToDelete` (strictement dans le vrai dossier personnel, liens résolus) ;
+    /// - un DOSSIER : un vrai dossier (pas un lien posé depuis), dont le chemin est son propre chemin résolu (le plan donne le dossier
+    ///   résolu : un lien posé sur un parent le change), nommé `*.avd`, avec un `config.ini` ordinaire ;
+    /// - une inscription : un fichier ordinaire (ou un lien vers un fichier ordinaire, `isRegistrationFile`) nommé `*.ini` : jamais un
+    ///   dossier, qui serait supprimé récursivement.
+    /// Sinon il lève `Refusal` et ne supprime rien.
     static func removeFile(_ url: URL) throws {
+        guard CleanupService.isSafeToDelete(url) else { throw Refusal() }
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else { throw Refusal() }
+        let name = url.lastPathComponent
+        switch info.st_mode & S_IFMT {
+        case S_IFDIR:
+            var config = stat()
+            guard name.hasSuffix(".avd"), name != ".avd",
+                  url.resolvingSymlinksInPath().standardizedFileURL.path == url.standardizedFileURL.path,
+                  stat(url.appendingPathComponent("config.ini").path, &config) == 0, (config.st_mode & S_IFMT) == S_IFREG
+            else { throw Refusal() }
+        case S_IFREG, S_IFLNK:
+            guard name.hasSuffix(".ini"), AndroidEmulatorScanner.isRegistrationFile(url) else { throw Refusal() }
+        default:
+            throw Refusal()
+        }
         try FileManager.default.removeItem(at: url)
     }
 }

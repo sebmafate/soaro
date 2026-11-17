@@ -341,6 +341,91 @@ import Testing
         #expect(fake.unscriptedCalls.isEmpty)
     }
 
+    // MARK: Le suppresseur réel revérifie juste avant de supprimer
+
+    @Test func theRealRemoverRemovesAnAvdFolderWithItsConfigAndARegistrationFile() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try #require(folder.path.contains(".soaro-test-"))
+        try AndroidEmulatorRemover.removeFile(folder.resolvingSymlinksInPath())
+        try AndroidEmulatorRemover.removeFile(box.root.appendingPathComponent(".android/avd/Test_Phone_A.ini"))
+        #expect(!box.exists(".android/avd/Test_Phone_A.avd") && !box.exists(".android/avd/Test_Phone_A.ini"))
+    }
+
+    @Test func theRealRemoverRefusesAFolderSwappedForASymlinkAfterThePlan() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try box.write("Other.avd/config.ini", "AvdId=Other\n")
+        let target = try scanTarget(box, "Test_Phone_A")
+        try #require(box.root.path.contains(".soaro-test-"))
+        // Le lien est posé PENDANT la mesure : après le plan, avant la suppression.
+        var swapped = false
+        let swap: (URL) -> UInt64 = { _ in
+            if !swapped {
+                swapped = true
+                try? FileManager.default.removeItem(at: folder)
+                try? FileManager.default.createSymbolicLink(at: folder, withDestinationURL: box.root.appendingPathComponent("Other.avd"))
+            }
+            return 0
+        }
+
+        let result = try remove(box, runner(ps: Self.nothingRunning), measure: swap, removeFile: AndroidEmulatorRemover.removeFile, target: target)
+
+        #expect(result == .failed)
+        #expect(box.exists("Other.avd/config.ini"), "le dossier visé par le lien n'est pas supprimé")
+        #expect(box.exists(".android/avd/Test_Phone_A.ini"), "aucune inscription n'est supprimée quand le dossier échoue")
+    }
+
+    @Test func theRealRemoverRefusesAParentThatIsASymlinkAndAFolderWithoutConfig() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("Real/Test_Phone_A.avd/config.ini", "AvdId=A\n")
+        try FileManager.default.createSymbolicLink(at: box.root.appendingPathComponent("Link"),
+                                                   withDestinationURL: box.root.appendingPathComponent("Real"))
+        try box.write("NoConfig.avd/data.bin", "x")
+        try box.write("Other.dir/config.ini", "x")
+        try #require(box.root.path.contains(".soaro-test-"))
+
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(box.root.appendingPathComponent("Link/Test_Phone_A.avd")) }
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(box.root.appendingPathComponent("NoConfig.avd")) }
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(box.root.appendingPathComponent("Other.dir")) }
+        #expect(box.exists("Real/Test_Phone_A.avd/config.ini") && box.exists("NoConfig.avd/data.bin") && box.exists("Other.dir/config.ini"))
+    }
+
+    @Test func theRealRemoverRefusesAPathOutsideTheRealHome() throws {
+        let outside = try Sandbox(insideHome: false)
+        try outside.write("Test_Phone_A.avd/config.ini", "x")
+        try outside.write("Test_Phone_A.ini", "x")
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(outside.root.appendingPathComponent("Test_Phone_A.avd")) }
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(outside.root.appendingPathComponent("Test_Phone_A.ini")) }
+        #expect(outside.exists("Test_Phone_A.avd/config.ini") && outside.exists("Test_Phone_A.ini"))
+    }
+
+    @Test func theRealRemoverRefusesADirectoryNamedLikeARegistrationAndALinkToAFileOutsideTheHome() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("Test_Phone_A.ini/precious.txt", "x")
+        let outside = try Sandbox(insideHome: false)
+        try outside.write("real.ini", "x")
+        let link = box.root.appendingPathComponent("Test_Phone_B.ini")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside.root.appendingPathComponent("real.ini"))
+        try #require(box.root.path.contains(".soaro-test-"))
+
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(box.root.appendingPathComponent("Test_Phone_A.ini")) }
+        #expect(throws: (any Error).self) { try AndroidEmulatorRemover.removeFile(link) }
+        #expect(box.exists("Test_Phone_A.ini/precious.txt") && outside.exists("real.ini"))
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) != nil, "le lien est toujours là")
+    }
+
+    @Test func theRealRemoverRemovesALinkToAFileInsideTheHomeButNotItsTarget() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("elsewhere/real.ini", "x")
+        let link = box.root.appendingPathComponent("Test_Phone_B.ini")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: box.root.appendingPathComponent("elsewhere/real.ini"))
+        try #require(box.root.path.contains(".soaro-test-"))
+        try AndroidEmulatorRemover.removeFile(link)
+        #expect((try? FileManager.default.destinationOfSymbolicLink(atPath: link.path)) == nil)
+        #expect(box.exists("elsewhere/real.ini"))
+    }
+
     // MARK: Le code source
 
     @Test func theRemoverSourceHasNoOtherWayToDeleteOrLaunchAnything() throws {
