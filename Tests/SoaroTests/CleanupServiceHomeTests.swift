@@ -7,19 +7,30 @@ import Testing
 @Suite struct CleanupServiceHomeTests {
     private let fakeHome = URL(fileURLWithPath: "/Users/test")
 
-    @Test(arguments: [
-        (CleanupKind.caches, "/Users/test/Library/Caches"),
-        (.logs, "/Users/test/Library/Logs"),
-        (.derivedData, "/Users/test/Library/Developer/Xcode/DerivedData"),
-        (.trash, "/Users/test/.Trash"),
-        (.npmCache, "/Users/test/.npm/_cacache"),
-        (.gradleCache, "/Users/test/.gradle/caches"),
-        (.cargoCache, "/Users/test/.cargo/registry/cache"),
-        (.xcodeDeviceSupport, "/Users/test/Library/Developer/Xcode/iOS DeviceSupport"),
-        (.simulatorCaches, "/Users/test/Library/Developer/CoreSimulator/Caches"),
-    ])
-    func directoryFollowsTheGivenHome(kind: CleanupKind, expected: String) {
-        #expect(CleanupService.directory(for: kind, home: fakeHome).path == expected)
+    /// Un chemin attendu par type de nettoyage. Le test échoue si un type de `CleanupKind.allCases` n'a pas de ligne
+    /// (un nouveau type doit être ajouté ici), ou si une ligne ne correspond plus à aucun type.
+    private let expectedPaths: [CleanupKind: String] = [
+        .caches: "/Users/test/Library/Caches",
+        .logs: "/Users/test/Library/Logs",
+        .derivedData: "/Users/test/Library/Developer/Xcode/DerivedData",
+        .trash: "/Users/test/.Trash",
+        .npmCache: "/Users/test/.npm/_cacache",
+        .gradleCache: "/Users/test/.gradle/caches",
+        .cargoCache: "/Users/test/.cargo/registry/cache",
+        .nugetCache: "/Users/test/.nuget/packages",
+        .xcodeDeviceSupport: "/Users/test/Library/Developer/Xcode/iOS DeviceSupport",
+        .simulatorCaches: "/Users/test/Library/Developer/CoreSimulator/Caches",
+    ]
+
+    @Test func everyKindHasItsDirectoryUnderTheGivenHome() {
+        for kind in CleanupKind.allCases {
+            guard let expected = expectedPaths[kind] else {
+                Issue.record("pas de chemin attendu pour \(kind) : ajouter une ligne à la table")
+                continue
+            }
+            #expect(CleanupService.directory(for: kind, home: fakeHome).path == expected, "\(kind)")
+        }
+        #expect(Set(expectedPaths.keys) == Set(CleanupKind.allCases))
     }
 
     @Test func defaultHomeIsTheRealHome() {
