@@ -54,6 +54,16 @@ enum Diagnostics {
         return AndroidScan(status: listing.status, sdk: listing.sdk, devices: sized, skippedCount: listing.skippedCount)
     }
 
+    /// Scan des images système Android de `--scan` : le listage complet (`AndroidSystemImageScanner.list`), puis la taille allouée de
+    /// chaque dossier d'image. Aucun lanceur de commandes, rien n'est écrit. Sans SDK : rien n'est mesuré. LECTURE SEULE.
+    static func androidImageScan(environment: [String: String], home: URL,
+                                 measure: (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) }) -> AndroidSystemImageScan {
+        let listing = AndroidSystemImageScanner.list(environment: environment, home: home)
+        var sizes: [AndroidSystemImageKey: UInt64] = [:]
+        for image in listing.images { sizes[image.key] = measure(image.folder) }
+        return AndroidSystemImageScan(listing: listing, sizes: sizes)
+    }
+
     /// `Soaro --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.
     static func scan() -> Never {
         func timed<T>(_ label: String, _ block: () -> T) -> T {
@@ -106,6 +116,12 @@ enum Diagnostics {
         let androidSuggestions = DeviceSuggestions.suggestAndroid(android.devices, now: Date(), limitDays: DeviceSuggestions.defaultLimitDays)
         for line in AndroidEmulatorReport.lines(scan: android, suggestions: androidSuggestions, now: Date(), locale: .current) { print(line) }
         print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(androidStart)))
+
+        // Images système Android : lecture seule (aucune commande), tailles allouées sur disque. Même environnement que ci-dessus.
+        let imagesStart = Date()
+        let images = Self.androidImageScan(environment: ProcessInfo.processInfo.environment, home: URL(fileURLWithPath: NSHomeDirectory()))
+        for line in AndroidSystemImageReport.lines(scan: images, locale: .current) { print(line) }
+        print(String(format: "(scan: %.1f s)", Date().timeIntervalSince(imagesStart)))
 
         print("== Installed apps")
         let apps = AppUninstaller.installedApps()

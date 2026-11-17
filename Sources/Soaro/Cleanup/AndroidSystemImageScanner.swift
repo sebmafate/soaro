@@ -312,3 +312,12 @@ private extension AndroidSystemImageFolderListing.Status {
         }
     }
 }
+
+// MARK: - Scan avec tailles (pour `--scan`)
+
+/// Un listage d'images système avec la taille réelle (espace alloué) de chaque dossier d'image, par clé.
+struct AndroidSystemImageScan: Equatable {
+    let listing: AndroidSystemImageListing
+    let sizes: [AndroidSystemImageKey: UInt64]
+}
+
