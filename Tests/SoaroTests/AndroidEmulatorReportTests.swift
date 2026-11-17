@@ -28,8 +28,9 @@ import Testing
         return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc)
     }
 
-    /// La ligne qui dit quel fichier compte (SL10b) : présente dès qu'un appareil est listé.
-    private let countsNote = "note: only userdata-qemu.img gives the last-used date; the other files are shown for comparison"
+    /// La ligne qui dit quels fichiers donnent la date (les quatre de `lastUsedFiles`) : présente dès qu'un appareil est listé.
+    private let countsNote = "note: the last-used date is the newest modification date among userdata-qemu.img.qcow2, userdata-qemu.img, "
+        + "snapshots/default_boot/snapshot.pb, hardware-qemu.ini; the other files are shown for comparison"
 
     private func size(_ bytes: UInt64) -> String { Format.fileBytes(bytes, locale: locale) }
 
@@ -39,7 +40,7 @@ import Testing
         let sdk = AndroidSDKLocation(path: "/Users/test/Library/Android/sdk", source: .androidHome)
         let scan = AndroidScan(status: .ok, sdk: sdk, devices: [
             sized("Old_Phone_C", display: "Old Phone C", days: 90, size: 3_000_000_000,
-                  files: [("hardware-qemu.ini", 3), ("userdata-qemu.img", 90), ("userdata-qemu.img.qcow2", 1)]),
+                  files: [("hardware-qemu.ini", 200), ("emulator-user.ini", 1), ("userdata-qemu.img.qcow2", 95), ("userdata-qemu.img", 90)]),
             sized("Test_Phone_A", version: nil, days: 2, running: true, size: 1_000_000_000,
                   files: [("hardware-qemu.ini", 40), ("emulator-user.ini", 2), ("userdata-qemu.img", 2), ("cache.img.qcow2", 41)]),
             sized("Test_Tablet_B", days: nil, size: 50_000_000),
@@ -47,7 +48,7 @@ import Testing
         #expect(report(scan) == [
             "== Android emulators",
             "\(size(3_000_000_000))  Old_Phone_C  Old Phone C (API 36)  last used 2026-08-18 (90 d, from userdata-qemu.img)  pre-selected: inactive",
-            "    files: hardware-qemu.ini 2026-11-13 (3 d), userdata-qemu.img 2026-08-18 (90 d), userdata-qemu.img.qcow2 2026-11-15 (1 d)",
+            "    files: hardware-qemu.ini 2026-04-30 (200 d), emulator-user.ini 2026-11-15 (1 d), userdata-qemu.img.qcow2 2026-08-13 (95 d), userdata-qemu.img 2026-08-18 (90 d)",
             "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from userdata-qemu.img)  running",
             "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), userdata-qemu.img 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
             "1 small device (\(size(50_000_000))) not listed",
@@ -62,7 +63,7 @@ import Testing
                                  "2 registrations skipped (folder missing, outside the home or not an AVD folder)"])
     }
 
-    @Test func theOldDoesNotPreSelectNoteIsGoneAndTheCountingFileIsNamedWhateverTheDevices() {
+    @Test func theOldDoesNotPreSelectNoteIsGoneAndTheCountingFilesAreNamedWhateverTheDevices() {
         let sdk = AndroidSDKLocation(path: "/x", source: .androidHome)
         for days in [3.0, 90.0] {
             let scan = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: days, size: 500_000_000)])

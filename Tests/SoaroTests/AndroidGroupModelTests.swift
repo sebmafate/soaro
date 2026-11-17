@@ -260,13 +260,15 @@ import Testing
         #expect(m.androidSelected == ["Test_Tablet_B"], "60 jours entiers à la limite de 60 : pas pré-sélectionné ; 61 : oui")
     }
 
-    @Test func byDefaultAnAvdWithoutUserdataQemuImgHasNoDateAndIsNeverPreSelected() async throws {
+    @Test func byDefaultAnAvdWithNoSourceFileHasNoDateAndIsNeverPreSelected() async throws {
         let unknown = AVD(name: "Test_Phone_A", display: "Test Phone A", days: nil)
         let box = try home([unknown])
-        // Un autre fichier très ancien ne donne pas la date non plus.
-        let other = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/hardware-qemu.ini")
-        try Data(count: 3).write(to: other)
-        try FileManager.default.setAttributes([.modificationDate: ago(400)], ofItemAtPath: other.path)
+        // Les fichiers exclus du signal, très anciens, ne donnent pas la date non plus.
+        for file in ["emulator-user.ini", "cache.img.qcow2"] {
+            let other = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/\(file)")
+            try Data(count: 3).write(to: other)
+            try FileManager.default.setAttributes([.modificationDate: ago(400)], ofItemAtPath: other.path)
+        }
         let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
         await run(m)
         let row = try #require(m.androidRows.first)
@@ -275,6 +277,25 @@ import Testing
         #expect(m.androidSelected.isEmpty)
         m.setLimit(30)
         #expect(m.androidSelected.isEmpty, "une date inconnue n'est jamais cochée, quelle que soit la limite")
+    }
+
+    /// Le cas réel de l'auteur : fichier brut de 56 jours, surcouche, snapshot et `hardware-qemu.ini` de 3 jours.
+    @Test func byDefaultARecentOverlayKeepsAnOldRawImageUnselectedAtEveryLimit() async throws {
+        let old = AVD(name: "Test_Phone_A", display: "Test Phone A", days: 56)
+        let box = try home([old])
+        for file in ["userdata-qemu.img.qcow2", "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"] {
+            let url = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/\(file)")
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(count: 3).write(to: url)
+            try FileManager.default.setAttributes([.modificationDate: ago(3)], ofItemAtPath: url.path)
+        }
+        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        await run(m)
+        let row = try #require(m.androidRows.first)
+        #expect(row.daysSinceLastUse == 3 && !row.isInactive)
+        #expect(m.androidSelected.isEmpty, "récent : jamais pré-sélectionné")
+        m.setLimit(30)
+        #expect(m.androidSelected.isEmpty)
     }
 
     @Test func byDefaultAnAvdUnder100MbStaysHiddenAndIsNeverPreSelected() async throws {

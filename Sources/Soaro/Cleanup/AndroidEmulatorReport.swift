@@ -44,7 +44,7 @@ enum AndroidEmulatorReport {
             if row.isRunning { parts.append("running") }
             if row.isPreSelected { parts.append("pre-selected: inactive") }
             out.append(parts.joined(separator: "  "))
-            // La date de CHAQUE fichier de diagnostic qui existe : l'auteur compare fichier par fichier ; seul `userdata-qemu.img` compte.
+            // La date de CHAQUE fichier de diagnostic qui existe : l'auteur compare fichier par fichier ; seuls ceux de `lastUsedFiles` comptent (le gagnant est nommé sur la ligne de l'appareil).
             let files = device.fileDates.map { "\($0.file) \(day($0.date)) (\(DeviceSuggestions.wholeDays(from: $0.date, to: now)) d)" }
             out.append("    files: " + (files.isEmpty ? "none" : files.joined(separator: ", ")))
         }
@@ -55,7 +55,7 @@ enum AndroidEmulatorReport {
         }
         // Dit quel fichier donne la date (les autres lignes `files:` ne sont là que pour comparer).
         if !suggestions.rows.isEmpty {
-            out.append("note: only \(AndroidEmulatorScanner.lastUsedFiles.joined(separator: ", ")) gives the last-used date; the other files are shown for comparison")
+            out.append("note: the last-used date is the newest modification date among \(AndroidEmulatorScanner.lastUsedFiles.joined(separator: ", ")); the other files are shown for comparison")
         }
         if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
         if let sdk = scan.sdk { out.append("SDK source: \(sdk.source.rawValue)") }
