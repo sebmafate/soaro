@@ -173,10 +173,15 @@ import Testing
 
     @Test func aRelativeValueInPathIsNotUsed() throws {
         let box = try Sandbox(insideHome: true)
-        try box.dir("elsewhere/Test_Phone_A.avd")
-        try makeAVD(box, name: "Test_Phone_A", registration: "path=avd/Test_Phone_A.avd\n")
-        // `path=` relatif ignoré : on retombe sur le dossier par défaut `<home>/.android/avd/<nom>.avd`, qui existe.
-        #expect(list(box).devices.count == 1)
+        // Un dossier existant que `path=avd/Moved_A.avd` désignerait s'il était résolu contre `<home>/.android` ; ni `path.rel`,
+        // ni dossier par défaut `Test_Phone_A.avd` : accepter une valeur relative trouverait l'AVD.
+        try box.dir(".android/avd/Moved_A.avd")
+        try box.write(".android/avd/Moved_A.avd/config.ini", "avd.ini.displayname=Moved A\n")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=avd/Moved_A.avd\n")
+        #expect(list(box).devices.isEmpty)
+        // Même valeur, écrite en absolu : le dossier est trouvé (le test peut donc échouer si `path=` était ignoré).
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/.android/avd/Moved_A.avd\n")
+        #expect(list(box).devices.map(\.name) == ["Test_Phone_A"])
     }
 
     @Test func theDefaultFolderIsUsedWhenTheIniNamesNothingUsable() throws {
