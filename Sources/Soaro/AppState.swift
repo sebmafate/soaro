@@ -137,6 +137,8 @@ final class AppState: ObservableObject {
     private let confirm: ConfirmHandler
     private let cleanAction: @Sendable (CleanupKind) -> CleanupResult
     private let terminateApp: @MainActor (String) -> Bool
+    /// Annonce vocale des toasts (VoiceOver) : remplaçable pour que les tests n'envoient aucune vraie notification.
+    private let announce: @MainActor (String) -> Void
 
     init(history: HistoryStore? = HistoryStore(),
          demo: Bool = DemoMode.isEnabled,
@@ -144,12 +146,14 @@ final class AppState: ObservableObject {
          clean: @escaping @Sendable (CleanupKind) -> CleanupResult = { CleanupService.clean($0) },
          terminateApp: @escaping @MainActor (String) -> Bool = { path in
              NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }?.terminate() == true
-         }) {
+         },
+         announce: @escaping @MainActor (String) -> Void = ToastAnnouncer.announce) {
         self.history = history
         self.demo = demo
         self.confirm = confirm
         self.cleanAction = clean
         self.terminateApp = terminateApp
+        self.announce = announce
     }
 
     // Mesures
@@ -710,9 +714,11 @@ final class AppState: ObservableObject {
 
     func showToast(_ message: String) {
         toast = message
+        // Une seule annonce par toast, ici et non dans les vues : le panneau et la fenêtre peuvent être ouverts ensemble.
+        if let text = ToastPresentation.announcement(for: message) { announce(text) }
         toastTask?.cancel()
         toastTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: ToastPresentation.visibleDuration)
             if !Task.isCancelled { self?.toast = nil }
         }
     }
