@@ -6,7 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Added
 
-- New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size and pre-selects those inactive for a long time and older copies. Removal comes in a later version.
+- New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size, pre-selects those inactive for more than 60 days and older copies, and removes the ones you choose the way Xcode does, after a confirmation. A running simulator is never removed.
 - New cleaner “NuGet packages” (Cleanup > Developer): frees the NuGet package cache, after a confirmation. It is not part of the quick clean.
 
 ### Changed

@@ -200,3 +200,49 @@ extension SimulatorScanner {
         return SimulatorScan(status: .ok, devices: sized)
     }
 }
+
+// MARK: - Suppression (une commande par appareil)
+
+/// Résultat de la commande de suppression d'UN appareil (aucune lecture de la sortie d'erreur).
+enum SimulatorDeleteOutcome: Equatable {
+    /// Code de sortie 0, fin ordinaire, sortie non tronquée.
+    case removed
+    /// Tout le reste : UDID invalide (rien n'est lancé), code non nul, signal, sortie tronquée, lancement impossible, refus.
+    case failed
+    /// Le délai est dépassé (le lanceur a tué le processus).
+    case timedOut
+    /// `xcrun` est absent : rien n'est lancé.
+    case toolNotFound
+}
+
+extension SimulatorScanner {
+    /// Délai de `simctl delete`, par appareil (point ouvert de l'ADR 0009, fixé ici et consigné dans ARCHITECTURE).
+    static let deleteTimeLimit: TimeInterval = 60
+    /// Borne de la sortie de `simctl delete` : 1 Mio.
+    static let deleteOutputLimit = 1024 * 1024
+
+    /// Arguments exacts de la suppression : `xcrun simctl delete <udid>`, un seul UDID par appel.
+    static func deleteArguments(udid: String) -> [String] { ["simctl", "delete", udid] }
+
+    /// Supprime UN appareil par `xcrun simctl delete <udid>`, de façon synchrone. C'est la seule voie : un dossier de simulateur
+    /// n'est jamais supprimé à la main (R4, ADR 0009).
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0009) : un test ne lance jamais le vrai outil par mégarde.
+    ///   - xcrunPath: chemin ABSOLU donné par la porte `ToolLocator.simulatorXcrunPath` (jamais le PATH, jamais un shell) ;
+    ///     `nil` quand l'outil est absent (rien n'est lancé).
+    ///   - udid: validé (forme UUID) avant tout lancement.
+    static func delete(runner: CommandRunner, xcrunPath: String?, udid: String) -> SimulatorDeleteOutcome {
+        guard isValidUDID(udid) else { return .failed }
+        guard let xcrunPath else { return .toolNotFound }
+
+        let outcome = runner.run(executable: xcrunPath, arguments: deleteArguments(udid: udid),
+                                 timeLimit: deleteTimeLimit, outputLimit: deleteOutputLimit)
+        switch outcome {
+        case .timedOut: return .timedOut
+        case .failedToLaunch, .refused: return .failed
+        case .completed(let output):
+            // La sortie d'erreur n'est ni lue ni conservée. Seul « code 0, fin ordinaire, sortie entière » vaut succès.
+            return output.exitCode == 0 && output.termination == .exited && !output.truncated ? .removed : .failed
+        }
+    }
+}

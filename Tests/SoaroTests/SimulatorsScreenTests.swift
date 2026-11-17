@@ -30,7 +30,7 @@ import Testing
 
     @Test func allTheNewScreenStringsAreInTheCatalogInNineLanguages() throws {
         let keys = ["Simulators and emulators", "iOS Simulators and Android emulators", "iOS Simulators", "Devices: %lld · %@",
-                    "Measuring sizes…", "Inactive for more than", "%lld days"]
+                    "Measuring sizes…", "Inactive for more than", "%lld days", "Deleting…"]
         for key in keys {
             let entry = try catalogEntry(key)
             #expect(entry["variations"] == nil)
@@ -104,11 +104,43 @@ import Testing
         #expect(!text.contains("revealInFinder"), "pas de « Show in Finder » dans le nouvel écran")
     }
 
-    @Test func theDeleteButtonIsDisabledAndHasAnEmptyAction() throws {
+    @Test func theDeleteButtonIsLiveBoundToTheModelAndBusyWhileDeleting() throws {
         let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
-        #expect(text.contains("destructive: true"))
-        #expect(text.contains("enabled: false"))
-        #expect(text.contains("action: {}"))
+        #expect(text.contains("destructive: true"), "la barre est teintée « danger »")
+        #expect(text.contains("enabled: model.canDelete"))
+        #expect(text.contains("busy: model.isDeleting"))
+        #expect(text.contains("model.deleteSelected()"))
+        #expect(text.contains("Deleting…"))
+        #expect(!text.contains("enabled: false"))
+        #expect(!text.contains("action: {}"))
+        #expect(!text.contains("Delete disabled"), "l'ancien commentaire « Delete désactivé » est mis à jour")
+    }
+
+    @Test func theLimitMenuAndScanAgainAreDisabledWhileDeleting() throws {
+        let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
+        #expect(text.contains(".disabled(model.isDeleting)"), "le menu de limite")
+        #expect(text.contains(".disabled(!model.canScanAgain)"), "« Scan again » (canScanAgain est faux pendant une suppression)")
+    }
+
+    @Test func theRescanAfterABatchLivesInTheModelNotInTheView() throws {
+        // Le scan demandé pendant une suppression est retenu et relancé par le modèle (testé dans SimulatorsDeletionTests).
+        let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
+        #expect(!text.contains("onChange(of: model.isDeleting"))
+        #expect(text.contains("model.progressMessage"), "« Deleting… » pendant une suppression, même sur un écran rouvert")
+    }
+
+    @MainActor
+    @Test func theDeleteRuleIsThePureFunctionOfTheModel() {
+        #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: true, selectedCount: 2, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 0, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: true))
+        #expect(!SimulatorsModel.canDelete(phase: .listing, isMeasuring: false, selectedCount: 2, isDeleting: false))
+    }
+
+    @Test func theViewNoLongerSaysDeleteIsDisabled() throws {
+        let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
+        #expect(!text.contains("lecture seule"), "l'écran n'est plus en lecture seule")
     }
 
     @Test func screenshotsScriptCoversTheNewTool() throws {

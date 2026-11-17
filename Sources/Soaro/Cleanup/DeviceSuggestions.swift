@@ -7,7 +7,7 @@ import Foundation
 /// Jamais présélectionné : un appareil en cours d'exécution, un appareil sans date, un petit appareil (non listé).
 enum DeviceSuggestions {
     /// Limite d'inactivité par défaut, en jours.
-    /// provisoire, à confirmer par le contrôle de l'auteur sur 5 appareils
+    /// confirmée par l'auteur (contrôle sur 5 appareils, 2026-11-17)
     static let defaultLimitDays = 60
 
     /// Sous ce seuil (strictement), un appareil est compté mais pas listé : 100 Mo (100 000 000 octets).
