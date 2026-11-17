@@ -2,7 +2,7 @@ import Foundation
 
 /// Résultat de la suppression d'UN appareil (SL9). Un seul cas à la fois ; le lot (`SimulatorRemovalSummary`) les additionne.
 enum SimulatorRemovalResult: Equatable {
-    /// Supprimé par `simctl` ; `freed` = taille du dossier avant moins taille après (au plus 0 si plus gros), jamais négatif.
+    /// Supprimé par `simctl` ; `freed` = taille du dossier avant moins taille après, 0 si l'après est plus gros (plancher à zéro).
     case removed(freed: UInt64)
     /// Absent de la liste fraîche : quelqu'un l'a déjà supprimé. Ce n'est pas un échec.
     case alreadyGone

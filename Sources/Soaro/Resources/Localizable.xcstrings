@@ -6303,7 +6303,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nicht entfernte Geräte: %lld"
+            "value": "Nicht gelöschte Geräte: %lld"
           }
         },
         "es": {
@@ -6321,7 +6321,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dispositivi non rimossi: %lld"
+            "value": "Dispositivi non eliminati: %lld"
           }
         },
         "ja": {
@@ -6339,7 +6339,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dispositivos que não puderam ser removidos: %lld"
+            "value": "Dispositivos que não puderam ser apagados: %lld"
           }
         },
         "zh-Hans": {
