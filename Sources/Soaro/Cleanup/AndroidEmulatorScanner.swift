@@ -88,9 +88,13 @@ struct AndroidDevice: Equatable {
     /// La date de CHAQUE fichier de `lastUsedFiles` qui existe, dans l'ordre de la constante (pour que l'auteur compare
     /// fichier par fichier avec `--scan`). Vide : aucun de ces fichiers.
     let fileDates: [AndroidFileDate]
+    /// Les AUTRES inscriptions (`<nom>.ini`) qui désignent le même dossier, dans l'ordre des noms : une ligne par dossier, mais un
+    /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 doit refuser toute
+    /// inscription en cours d'exécution).
+    let aliases: [String]
 
     init(name: String, displayName: String, systemVersion: String?, folder: URL, lastUsed: Date?, lastUsedSource: String?,
-         isRunning: Bool = false, fileDates: [AndroidFileDate] = []) {
+         isRunning: Bool = false, fileDates: [AndroidFileDate] = [], aliases: [String] = []) {
         self.name = name
         self.displayName = displayName
         self.systemVersion = systemVersion
@@ -99,6 +103,7 @@ struct AndroidDevice: Equatable {
         self.lastUsedSource = lastUsedSource
         self.isRunning = isRunning
         self.fileDates = fileDates
+        self.aliases = aliases
     }
 
     /// L'ordre des appareils Android, PARTAGÉ (listage, départage des suggestions, lignes pendant la mesure) : nom affiché sans tenir
@@ -110,7 +115,12 @@ struct AndroidDevice: Equatable {
 
     func withRunning(_ running: Bool) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates, aliases: aliases)
+    }
+
+    func withAliases(_ aliases: [String]) -> AndroidDevice {
+        AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: isRunning, fileDates: fileDates, aliases: aliases)
     }
 }
 
@@ -165,18 +175,24 @@ extension AndroidEmulatorScanner {
         let homePath = resolvedPath(home)
         var devices: [AndroidDevice] = []
         // Dossiers déjà pris (chemin résolu) : deux `.ini` vers le même dossier ne donnent qu'une ligne (le premier par nom).
-        var seenFolders = Set<String>()
+        var firstIndexByFolder: [String: Int] = [:]
         var skipped = 0
         for entry in entries.sorted() where entry.hasSuffix(".ini") {
             let name = String(entry.dropLast(".ini".count))
             guard isValidAVDName(name) else { continue }
             let registration = readINI(avdFolder.appendingPathComponent(entry)) ?? [:]
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
-                  isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder),
-                  seenFolders.insert(resolvedPath(folder)).inserted else {
+                  isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder) else {
                 skipped += 1
                 continue
             }
+            // Deux inscriptions vers le même dossier : une seule ligne (la première par nom), l'autre nom devient un alias.
+            if let first = firstIndexByFolder[resolvedPath(folder)] {
+                devices[first] = devices[first].withAliases(devices[first].aliases + [name])
+                skipped += 1
+                continue
+            }
+            firstIndexByFolder[resolvedPath(folder)] = devices.count
             let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
             let dates = fileDates(in: folder)
             let used = dates.max { $0.date < $1.date }
@@ -349,7 +365,9 @@ extension AndroidEmulatorScanner {
         guard let running = runningAVDNames(runner: runner, psPath: psPath) else {
             return AndroidListing(status: .couldNotRead, sdk: sdk)
         }
-        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(isRunning($0.name, in: running)) }, sdk: sdk,
+        return AndroidListing(status: .ok, devices: avds.devices.map { device in
+                                  device.withRunning(([device.name] + device.aliases).contains { isRunning($0, in: running) })
+                              }, sdk: sdk,
                               skippedCount: avds.skippedCount)
     }
 }

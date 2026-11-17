@@ -280,6 +280,7 @@ import Testing
         try box.write(".android/avd/Test_Phone_C.ini", "path.rel=avd/Test_Phone_B.avd\n")
         let listing = list(box)
         #expect(listing.devices.map(\.name) == ["Test_Phone_A"], "le premier par nom, de façon déterministe")
+        #expect(listing.devices.first?.aliases == ["Test_Phone_B", "Test_Phone_C"], "les autres inscriptions du même dossier sont gardées")
     }
 
     @Test func skippedRegistrationsAreCounted() throws {

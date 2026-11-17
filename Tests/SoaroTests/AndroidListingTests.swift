@@ -78,6 +78,22 @@ import Testing
         #expect(listing.devices.map(\.isRunning) == [true, false])
     }
 
+    @Test func aRunningEmulatorStartedUnderTheOtherRegistrationNameMarksTheSharedFolderRunning() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeSDK(box)
+        try makeAVD(box, "Test_Phone_A")
+        try box.write(".android/avd/Test_Phone_Z.ini", "path.rel=avd/Test_Phone_A.avd\n")     // même dossier, autre nom
+        let runner = FakeCommandRunner()
+        runner.script(.finished(stdout: "emulator -avd test_phone_z\n"), executable: "/bin/ps", arguments: psArguments)
+        let listing = list(box, runner: runner)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"], "une ligne par dossier")
+        #expect(listing.devices.first?.aliases == ["Test_Phone_Z"])
+        #expect(listing.devices.first?.isRunning == true, "un émulateur lancé sous l'autre nom compte : jamais proposé")
+        let other = FakeCommandRunner()
+        other.script(.finished(stdout: "emulator -avd Test_Phone_AB\n"), executable: "/bin/ps", arguments: psArguments)
+        #expect(list(box, runner: other).devices.first?.isRunning == false)
+    }
+
     @Test func aTimedOutPsMakesTheGroupUnreadable() throws {
         let box = try Sandbox(insideHome: true)
         try makeSDK(box)
