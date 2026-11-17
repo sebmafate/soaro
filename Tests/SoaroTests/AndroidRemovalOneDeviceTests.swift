@@ -38,27 +38,45 @@ import Testing
         return runner
     }
 
-    private func check(_ box: Sandbox, _ runner: FakeCommandRunner, psPath: String? = "/bin/ps",
-                       target: AndroidRemovalTarget) -> AndroidRemovalCheck {
-        AndroidEmulatorScanner.checkBeforeRemoval(runner: runner, psPath: psPath, home: box.root, target: target)
-    }
-
     private func intact(_ box: Sandbox, _ names: [String]) -> Bool {
         names.allSatisfy { box.exists(".android/avd/\($0).ini") && box.exists(".android/avd/\($0).avd/config.ini") }
     }
 
-    // MARK: T2 : la vérification juste avant d'agir
+    // MARK: T2 : la vérification des processus, juste avant de supprimer
 
-    @Test func nothingRunningLetsTheRemovalGoOnWithThePlanAndOneFreshPs() throws {
+    /// Appelle `remove` avec une mesure et un suppresseur notés ; le suppresseur supprime pour de vrai dans le bac à sable.
+    private func act(_ box: Sandbox, _ fake: FakeCommandRunner, psPath: String? = "/bin/ps", target: AndroidRemovalTarget,
+                     sizes: [UInt64] = [1], recorder: RemoveRecorder = RemoveRecorder())
+        throws -> (result: SimulatorRemovalResult, measure: MeasureSequence, removals: [String]) {
+        let measure = MeasureSequence(sizes, runnerCallCount: { fake.calls.count })
+        let result = try remove(box, fake, psPath: psPath, measure: measure.measure, removeFile: recorder.remove, target: target)
+        return (result, measure, recorder.calls)
+    }
+
+    @Test func nothingRunningLetsTheRemovalGoOnWithOneFreshPs() throws {
         let box = try Sandbox(insideHome: true)
         try makeAVD(box, name: "Test_Phone_A", display: "Test Phone A")
         let target = try scanTarget(box, "Test_Phone_A")
         let fake = runner(ps: Self.nothingRunning)
 
-        guard case .proceed(let plan) = check(box, fake, target: target) else { Issue.record("on devait continuer"); return }
-        #expect(plan.names == ["Test_Phone_A"])
+        let run = try act(box, fake, target: target)
+        guard case .removed = run.result else { Issue.record("attendu : supprimé, reçu \(run.result)"); return }
         // Exactement `/bin/ps -axww -o command=`, 10 s, 4 Mio, une seule fois.
         #expect(fake.calls == [FakeCommandRunner.Call(executable: "/bin/ps", arguments: Self.psArguments, timeLimit: 10, outputLimit: 4 * 1024 * 1024)])
+    }
+
+    @Test func psIsRunAfterTheMeasureBeforeAndBeforeTheDeletionThenTheMeasureAfter() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        let target = try scanTarget(box, "Test_Phone_A")
+        let fake = runner(ps: Self.nothingRunning)
+
+        let run = try act(box, fake, target: target, sizes: [5, 1, 0, 0])
+        // Les deux mesures d'avant (dossier, `.ini`) voient zéro appel à `ps` ; les deux d'après en voient un : un émulateur lancé
+        // PENDANT la mesure est vu par `ps`, qui passe juste avant la suppression.
+        #expect(run.measure.callCountsOfTheRunner == [0, 0, 1, 1])
+        #expect(run.removals == ["Test_Phone_A.avd", "Test_Phone_A.ini"])
+        #expect(run.result == .removed(freed: 6))
     }
 
     @Test func anAvdStartedAfterTheScanIsRunningWithItsFreshDisplayNameAndFilesStayIntact() throws {
@@ -72,8 +90,11 @@ import Testing
         // Le scan : rien ne tourne (consomme le premier résultat du script).
         #expect(AndroidEmulatorScanner.runningAVDNames(runner: fake, psPath: "/bin/ps") == [])
 
-        #expect(check(box, fake, target: target) == .stop(.running(name: "Test Phone A")))
+        let run = try act(box, fake, target: target)
+        #expect(run.result == .running(name: "Test Phone A"))
         #expect(fake.calls.count == 2)
+        #expect(run.removals.isEmpty, "aucune suppression")
+        #expect(run.measure.count == 2, "seule la mesure d'avant (dossier et `.ini`, lecture seule) a eu lieu avant le refus")
         #expect(intact(box, ["Test_Phone_A"]))
     }
 
@@ -83,7 +104,9 @@ import Testing
             let folder = try makeAVD(box, name: "Test_Phone_A", display: "Test Phone A")
             try box.write(".android/avd/Test_Phone_B.ini", "path=\(folder.path)\n")
             let target = try scanTarget(box, "Test_Phone_A")
-            #expect(check(box, runner(ps: .finished(stdout: line)), target: target) == .stop(.running(name: "Test Phone A")))
+            let run = try act(box, runner(ps: .finished(stdout: line)), target: target)
+            #expect(run.result == .running(name: "Test Phone A"))
+            #expect(run.removals.isEmpty)
             #expect(box.exists(".android/avd/Test_Phone_B.ini") && box.exists(".android/avd/Test_Phone_A.ini"))
         }
     }
@@ -92,12 +115,11 @@ import Testing
         let box = try Sandbox(insideHome: true)
         try makeAVD(box, name: "Test_Phone_A", display: "Test Phone A")
         let target = try scanTarget(box, "Test_Phone_A")
-        #expect(check(box, runner(ps: .finished(stdout: Self.emulatorLine("test_phone_a"))), target: target) == .stop(.running(name: "Test Phone A")))
+        let lower = try act(box, runner(ps: .finished(stdout: Self.emulatorLine("test_phone_a"))), target: target)
+        #expect(lower.result == .running(name: "Test Phone A"))
         // Un préfixe ne compte pas : `Test_Phone_AB` est un autre appareil.
-        guard case .proceed = check(box, runner(ps: .finished(stdout: Self.emulatorLine("Test_Phone_AB"))), target: target) else {
-            Issue.record("un préfixe ne doit pas compter comme « en cours d'exécution »")
-            return
-        }
+        let prefix = try act(box, runner(ps: .finished(stdout: Self.emulatorLine("Test_Phone_AB"))), target: target)
+        guard case .removed = prefix.result else { Issue.record("un préfixe ne doit pas compter comme « en cours d'exécution »"); return }
     }
 
     @Test func eachPsFailureMeansCouldNotCheckAndNeverATimeOut() throws {
@@ -109,7 +131,9 @@ import Testing
             let box = try Sandbox(insideHome: true)
             try makeAVD(box, name: "Test_Phone_A")
             let target = try scanTarget(box, "Test_Phone_A")
-            #expect(check(box, runner(ps: outcome), target: target) == .stop(.couldNotCheck), "\(outcome)")
+            let run = try act(box, runner(ps: outcome), target: target)
+            #expect(run.result == .couldNotCheck, "\(outcome)")
+            #expect(run.removals.isEmpty)
             #expect(intact(box, ["Test_Phone_A"]))
         }
     }
@@ -119,12 +143,14 @@ import Testing
         try makeAVD(box, name: "Test_Phone_A")
         let target = try scanTarget(box, "Test_Phone_A")
         let fake = FakeCommandRunner()
-        #expect(check(box, fake, psPath: nil, target: target) == .stop(.couldNotCheck))
+        let run = try act(box, fake, psPath: nil, target: target)
+        #expect(run.result == .couldNotCheck)
         #expect(fake.calls.isEmpty)
+        #expect(run.removals.isEmpty)
         #expect(intact(box, ["Test_Phone_A"]))
     }
 
-    @Test func alreadyGoneOrRefusedStopsBeforePsWithZeroRunnerCalls() throws {
+    @Test func alreadyGoneRefusedOrUnreadableStopsBeforePsAndBeforeAnyMeasure() throws {
         // Déjà disparu.
         let gone = try Sandbox(insideHome: true)
         try makeAVD(gone, name: "Test_Phone_A")
@@ -132,8 +158,9 @@ import Testing
         try FileManager.default.removeItem(at: gone.root.appendingPathComponent(".android/avd/Test_Phone_A.ini"))
         try FileManager.default.removeItem(at: gone.root.appendingPathComponent(".android/avd/Test_Phone_A.avd"))
         let fakeGone = FakeCommandRunner()
-        #expect(check(gone, fakeGone, target: goneTarget) == .stop(.alreadyGone))
-        #expect(fakeGone.calls.isEmpty)
+        let goneRun = try act(gone, fakeGone, target: goneTarget)
+        #expect(goneRun.result == .alreadyGone)
+        #expect(fakeGone.calls.isEmpty && goneRun.measure.count == 0 && goneRun.removals.isEmpty)
 
         // Refusé : le dossier a disparu mais l'inscription reste.
         let refused = try Sandbox(insideHome: true)
@@ -141,16 +168,18 @@ import Testing
         let refusedTarget = try scanTarget(refused, "Test_Phone_A")
         try FileManager.default.removeItem(at: refused.root.appendingPathComponent(".android/avd/Test_Phone_A.avd"))
         let fakeRefused = FakeCommandRunner()
-        #expect(check(refused, fakeRefused, target: refusedTarget) == .stop(.refused))
-        #expect(fakeRefused.calls.isEmpty)
+        let refusedRun = try act(refused, fakeRefused, target: refusedTarget)
+        #expect(refusedRun.result == .refused)
+        #expect(fakeRefused.calls.isEmpty && refusedRun.measure.count == 0 && refusedRun.removals.isEmpty)
 
         // Illisible : rien non plus.
         let unreadable = try Sandbox(insideHome: true)
         try unreadable.write(".android/avd", "pas un dossier")
         let fakeUnreadable = FakeCommandRunner()
         let unreadableTarget = AndroidRemovalTarget(name: "Test_Phone_A", folder: unreadable.root.appendingPathComponent(".android/avd/Test_Phone_A.avd"))
-        #expect(check(unreadable, fakeUnreadable, target: unreadableTarget) == .stop(.couldNotCheck))
-        #expect(fakeUnreadable.calls.isEmpty)
+        let unreadableRun = try act(unreadable, fakeUnreadable, target: unreadableTarget)
+        #expect(unreadableRun.result == .couldNotCheck)
+        #expect(fakeUnreadable.calls.isEmpty && unreadableRun.measure.count == 0 && unreadableRun.removals.isEmpty)
     }
 
     // MARK: T3 : la suppression du couple et l'espace libéré
@@ -297,7 +326,7 @@ import Testing
         #expect(!box.exists(".android/avd/Test_Phone_B.ini"))
     }
 
-    @Test func runningRefusedCouldNotCheckOrAlreadyGoneNeverMeasuresNorDeletes() throws {
+    @Test func runningAndCouldNotCheckNeverDeleteAndRefusedOrAlreadyGoneNeverMeasure() throws {
         // En cours d'exécution.
         let running = try Sandbox(insideHome: true)
         try makeAVD(running, name: "Test_Phone_A", display: "Test Phone A")
@@ -306,13 +335,13 @@ import Testing
         var recorder = RemoveRecorder()
         #expect(try remove(running, runner(ps: .finished(stdout: Self.emulatorLine("Test_Phone_A"))), measure: measure.measure,
                            removeFile: recorder.remove, target: runningTarget) == .running(name: "Test Phone A"))
-        #expect(measure.count == 0 && recorder.calls.isEmpty)
+        #expect(measure.count == 2 && recorder.calls.isEmpty, "la mesure d'avant (lecture seule) précède `ps` ; aucune suppression")
         #expect(intact(running, ["Test_Phone_A"]))
 
         // `ps` indisponible.
         measure = MeasureSequence([1]); recorder = RemoveRecorder()
         #expect(try remove(running, runner(ps: .timedOut), measure: measure.measure, removeFile: recorder.remove, target: runningTarget) == .couldNotCheck)
-        #expect(measure.count == 0 && recorder.calls.isEmpty)
+        #expect(measure.count == 2 && recorder.calls.isEmpty)
 
         // Refusé : le dossier a disparu, l'inscription reste.
         let refused = try Sandbox(insideHome: true)

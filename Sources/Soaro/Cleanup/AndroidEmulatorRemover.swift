@@ -98,31 +98,17 @@ extension AndroidEmulatorScanner {
     }
 }
 
-// MARK: - Vérification juste avant d'agir (processus en cours)
-
-/// Ce qui suit la vérification d'une cible : continuer avec le plan, ou s'arrêter avec un résultat (rien n'est alors mesuré ni supprimé).
-enum AndroidRemovalCheck: Equatable {
-    case proceed(AndroidRemovalPlan)
-    case stop(SimulatorRemovalResult)
-}
+// MARK: - Vérification des processus (juste avant de supprimer)
 
 extension AndroidEmulatorScanner {
-    /// Les deux vérifications qui précèdent toute mesure et toute suppression d'une cible, dans cet ordre (ADR 0009, règles 3 et 4) :
-    /// 1. le listage frais (`prepareRemoval`) : déjà disparu, refusé ou illisible : on s'arrête, SANS lancer `ps` ;
-    /// 2. un `ps` FRAIS (une fois par cible) : indisponible (chemin absent, délai, échec, refus, code non nul, signal, sortie tronquée) :
-    ///    « impossible de vérifier » ; un nom quelconque du plan (le nom ou un alias) en cours d'exécution : `running(nom affiché frais)`.
+    /// Un `ps` FRAIS (une fois par cible), à faire le plus près possible de la suppression (ADR 0009, règles 3 et 4) :
+    /// indisponible (chemin absent, délai, échec, refus, code non nul, signal, sortie tronquée) : `couldNotCheck` ; un nom quelconque du
+    /// plan (le nom ou un alias) en cours d'exécution : `running(nom affiché frais)`. `nil` : rien ne tourne, on peut supprimer.
     /// Un délai de `ps` n'est JAMAIS un « délai dépassé » (ce résultat parle du service des simulateurs iOS) : c'est « impossible de vérifier ».
     /// - Parameter runner: sans valeur par défaut (ADR 0009).
-    static func checkBeforeRemoval(runner: CommandRunner, psPath: String?, home: URL, target: AndroidRemovalTarget) -> AndroidRemovalCheck {
-        switch prepareRemoval(home: home, target: target) {
-        case .alreadyGone: return .stop(.alreadyGone)
-        case .refused: return .stop(.refused)
-        case .couldNotCheck: return .stop(.couldNotCheck)
-        case .plan(let plan):
-            guard let running = runningAVDNames(runner: runner, psPath: psPath) else { return .stop(.couldNotCheck) }
-            if plan.names.contains(where: { isRunning($0, in: running) }) { return .stop(.running(name: plan.displayName)) }
-            return .proceed(plan)
-        }
+    static func runningCheck(runner: CommandRunner, psPath: String?, plan: AndroidRemovalPlan) -> SimulatorRemovalResult? {
+        guard let running = runningAVDNames(runner: runner, psPath: psPath) else { return .couldNotCheck }
+        return plan.names.contains(where: { isRunning($0, in: running) }) ? .running(name: plan.displayName) : nil
     }
 }
 
@@ -164,20 +150,23 @@ enum AndroidEmulatorRemover {
 
 extension AndroidEmulatorScanner {
     /// Supprime UN appareil, dans cet ordre, synchrone (jamais sur l'acteur principal) :
-    /// 1. `checkBeforeRemoval` : listage frais puis `ps` frais ; refusé, déjà disparu, illisible, en cours d'exécution : on s'arrête, rien n'est
-    ///    mesuré ni supprimé ;
-    /// 2. taille avant : le dossier, plus chaque `.ini` du plan ;
-    /// 3. le DOSSIER d'abord (D3). S'il échoue, ou s'il existe encore : `failed`, AUCUN `.ini` n'est supprimé (l'appareil reste visible et
-    ///    peut être réessayé : l'inverse laisserait un dossier orphelin invisible) ;
-    /// 4. puis chaque `.ini` du plan (le principal, puis les alias par nom) ; tous sont essayés, un seul échec donne `failed` ;
-    /// 5. si tout a disparu : taille après, `removed(freed: avant moins après)`, plancher à zéro (R7).
+    /// 1. `prepareRemoval` : listage frais, portée, nature des fichiers ; refusé, déjà disparu, illisible : on s'arrête, rien n'est lancé
+    ///    ni mesuré ;
+    /// 2. taille avant : le dossier, plus chaque `.ini` du plan (lecture seule, et la longue étape : elle précède `ps`) ;
+    /// 3. `ps` FRAIS (`runningCheck`), le plus près possible de la suppression : un émulateur lancé pendant la mesure est vu. En cours
+    ///    d'exécution ou impossible à vérifier : on s'arrête, rien n'est supprimé (la mesure d'avant a eu lieu, elle ne change rien) ;
+    /// 4. le DOSSIER d'abord (D3). S'il échoue, ou s'il existe encore : `failed`, AUCUN `.ini` n'est supprimé (le dossier est intact ou
+    ///    en partie supprimé, l'appareil reste listé et peut être réessayé : l'inverse laisserait un dossier orphelin invisible) ;
+    /// 5. puis chaque `.ini` du plan (le principal, puis les alias par nom) ; tous sont essayés, un seul échec donne `failed`. Attention :
+    ///    si le dossier est parti mais qu'un `.ini` échoue, ce `.ini` reste orphelin (Soaro ne le liste plus, Android Studio le montre cassé) ;
+    /// 6. si tout a disparu : taille après, `removed(freed: avant moins après)`, plancher à zéro (R7).
     /// Un échec n'ajoute rien à l'espace libéré, même si une partie a été supprimée (D7 : on sous-estime, on ne promet jamais trop).
     /// Jamais touchés : l'appareil voisin, le dossier `avd` lui-même, tout autre fichier. Aucun outil du SDK, aucun interpréteur ; le seul
     /// appel au lanceur est `ps`. Un appareil Android ne rend jamais `timedOut`.
     /// - Parameters:
     ///   - runner: sans valeur par défaut (ADR 0009).
     ///   - psPath: chemin absolu de `ps` (`ToolLocator.processListCandidates`), `nil` s'il est absent.
-    ///   - removeFile: sans valeur par défaut ici ; le modèle donne `AndroidEmulatorRemover.removeFile`.
+    ///   - removeFile: sans valeur par défaut ici ; le modèle donne `AndroidEmulatorRemover.removeFile`, qui revérifie le chemin.
     static func remove(runner: CommandRunner,
                        psPath: String?,
                        home: URL,
@@ -185,13 +174,17 @@ extension AndroidEmulatorScanner {
                        removeFile: (URL) throws -> Void,
                        target: AndroidRemovalTarget) -> SimulatorRemovalResult {
         let plan: AndroidRemovalPlan
-        switch checkBeforeRemoval(runner: runner, psPath: psPath, home: home, target: target) {
-        case .stop(let result): return result
-        case .proceed(let found): plan = found
+        switch prepareRemoval(home: home, target: target) {
+        case .alreadyGone: return .alreadyGone
+        case .refused: return .refused
+        case .couldNotCheck: return .couldNotCheck
+        case .plan(let found): plan = found
         }
 
         let paths = [plan.folder] + plan.registrations
         let before = paths.reduce(UInt64(0)) { $0 + measure($1) }
+
+        if let stop = runningCheck(runner: runner, psPath: psPath, plan: plan) { return stop }
 
         do { try removeFile(plan.folder) } catch { return .failed }
         guard !exists(plan.folder) else { return .failed }
