@@ -1,0 +1,68 @@
+import Foundation
+
+/// Suppression d'un appareil virtuel Android (SL11, R17, ADR 0009 règles 3, 4, 6, 7, 8).
+/// Cette première partie : retrouver la cible AU MOMENT DE L'ACTION. Lecture seule : rien n'est lancé, mesuré ni supprimé.
+
+/// Ce que l'utilisateur a confirmé : le nom de l'AVD et le dossier vu au scan (`AndroidDevice.folder`, déjà résolu).
+struct AndroidRemovalTarget: Equatable {
+    let name: String
+    let folder: URL
+}
+
+/// Ce qui sera supprimé pour une cible, d'après un listage FRAIS (jamais le chemin du scan).
+struct AndroidRemovalPlan: Equatable {
+    /// Nom affiché, du listage frais.
+    let displayName: String
+    /// Tous les noms qui désignent ce dossier : le nom de l'appareil, puis ses alias (dans l'ordre des noms).
+    let names: [String]
+    /// Le dossier `.avd`, résolu et standardisé.
+    let folder: URL
+    /// Les `<home>/.android/avd/<nom>.ini` de chaque nom de `names`, dans le même ordre.
+    let registrations: [URL]
+}
+
+/// Résultat de la préparation : un plan, ou une issue sans action.
+enum AndroidRemovalPreparation: Equatable {
+    case plan(AndroidRemovalPlan)
+    /// Plus d'inscription ni d'appareil : quelqu'un l'a déjà supprimé. Ce n'est pas un échec.
+    case alreadyGone
+    /// La cible a changé ou sort du périmètre sûr : rien n'est supprimé.
+    case refused
+    /// Le dossier des AVD n'a pas pu être lu : rien n'est supprimé.
+    case couldNotCheck
+}
+
+extension AndroidEmulatorScanner {
+    /// Retrouve la cible dans un listage FRAIS de `<home>/.android/avd` (le chemin du scan n'est jamais cru). Pur, synchrone, sans effet.
+    /// Règles, dans l'ordre :
+    /// 1. listage illisible : `couldNotCheck` ;
+    /// 2. appareil dont le nom (ou un alias) est exactement celui de la cible. Absent : `alreadyGone` si `<nom>.ini` n'existe plus,
+    ///    sinon `refused` (chemin qui sort du dossier personnel, dossier qui n'est plus un AVD, dossier absent) ;
+    /// 3. dossier frais (résolu, standardisé) différent de celui du scan : `refused` (lien échangé ou `.ini` réécrit) ;
+    /// 4. chaque chemin du plan (le dossier ET tous les `.ini`) passe `CleanupService.isSafeToDelete` (le vrai dossier personnel,
+    ///    ADR 0006) : sinon `refused`.
+    /// - Un nom qui n'est pas un nom d'AVD valide n'est jamais joint à un chemin : `refused`.
+    static func prepareRemoval(home: URL, target: AndroidRemovalTarget) -> AndroidRemovalPreparation {
+        guard isValidAVDName(target.name) else { return .refused }
+        let listing = listAVDs(home: home)
+        guard listing.status == .ok else { return .couldNotCheck }
+
+        let avdFolder = home.appendingPathComponent(".android/avd", isDirectory: true)
+        guard let device = listing.devices.first(where: { ([$0.name] + $0.aliases).contains(target.name) }) else {
+            // Un lien (même cassé) ou un fichier nommé `<nom>.ini` compte comme présent : on se trompe du côté sûr.
+            var info = stat()
+            let registration = avdFolder.appendingPathComponent("\(target.name).ini")
+            return lstat(registration.path, &info) == 0 ? .refused : .alreadyGone
+        }
+
+        let freshFolder = device.folder.resolvingSymlinksInPath().standardizedFileURL
+        // Le dossier du scan est DÉJÀ résolu : le résoudre de nouveau maintenant suivrait un lien posé depuis, et le contrôle ne verrait rien.
+        let seenFolder = target.folder.standardizedFileURL
+        guard freshFolder.path == seenFolder.path else { return .refused }
+
+        let names = [device.name] + device.aliases
+        let registrations = names.map { avdFolder.appendingPathComponent("\($0).ini") }
+        guard CleanupService.isSafeToDelete(freshFolder), registrations.allSatisfy(CleanupService.isSafeToDelete) else { return .refused }
+        return .plan(AndroidRemovalPlan(displayName: device.displayName, names: names, folder: freshFolder, registrations: registrations))
+    }
+}
