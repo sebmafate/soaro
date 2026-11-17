@@ -59,6 +59,18 @@ import Testing
         }
     }
 
+    @Test func theFirstSystemImagesSegmentWinsWhenThereAreTwo() throws {
+        // Le premier `system-images` décide (même règle que `systemVersion`) ; le second est une simple donnée (ici l'ABI).
+        let value = "system-images/android-36/default/system-images"
+        let first = try #require(key(value))
+        #expect(first.path == "android-36/default/system-images")
+        #expect(AndroidEmulatorScanner.systemVersion(imageSysdir: value) == first.version)
+        // Quand les trois segments qui suivent le premier ne font pas une clé, le second n'est PAS essayé : `nil`, comme `systemVersion`.
+        let other = "/Users/test/system-images/Library/Android/sdk/system-images/android-34/default/arm64-v8a"
+        #expect(key(other) == nil)
+        #expect(AndroidEmulatorScanner.systemVersion(imageSysdir: other) == nil)
+    }
+
     @Test func keysDifferingOnlyInCaseAreEqual() throws {
         let a = try #require(key("system-images/android-36/Google_APIs/ARM64-v8a/"))
         let b = try #require(key("system-images/android-36/google_apis/arm64-v8a/"))

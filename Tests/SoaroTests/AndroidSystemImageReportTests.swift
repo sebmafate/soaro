@@ -99,6 +99,16 @@ import Testing
         #expect(output.contains("note: ANDROID_AVD_HOME, ANDROID_EMULATOR_HOME are set: virtual devices kept there are not read, so an image may be in use"))
     }
 
+    @Test func noNoteAndNoSkippedLineWhenTheStatusIsNotOk() {
+        let reasons: [AndroidSystemImageIncompleteness.Reason] = [.customLocation(["ANDROID_AVD_HOME"]), .avdFolderUnreadable,
+                                                                  .skippedRegistrations(2), .unknownImage(1)]
+        #expect(lines(scan(.unreadable, skipped: 3, reasons: reasons, sdk: sdk))
+                == ["== Android system images", "could not read the Android system images", "SDK source: default"])
+        #expect(lines(scan(.sdkOutsideHome, skipped: 3, reasons: reasons, sdk: sdk))
+                == ["== Android system images", "system images not read: the SDK is outside the home folder", "SDK source: default"])
+        #expect(lines(scan(.sdkNotFound, skipped: 3, reasons: reasons)) == ["== Android system images", "Android SDK not found"])
+    }
+
     @Test func theNewVariablesAreNamedLikeTheOthers() {
         let output = lines(scan(.ok, images: [image(oldPath, .cannotTell)], sizes: [1],
                                 reasons: [.customLocation(["ANDROID_SDK_HOME", "ANDROID_PREFS_ROOT"])], sdk: sdk))

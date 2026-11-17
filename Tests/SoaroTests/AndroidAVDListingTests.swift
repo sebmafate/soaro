@@ -74,6 +74,16 @@ import Testing
         #expect(devices.map(\.imageSysdir) == ["system-images/android-36/google_apis_playstore/arm64-v8a/", nil])
     }
 
+    @Test func withRunningAndWithAliasesCarryTheImageSysdir() {
+        let device = AndroidDevice(name: "Test_Phone_A", displayName: "Test Phone A", systemVersion: "36",
+                                   folder: URL(fileURLWithPath: "/Users/test/.android/avd/Test_Phone_A.avd"), lastUsed: nil, lastUsedSource: nil,
+                                   imageSysdir: "system-images/android-36/google_apis/arm64-v8a/")
+        #expect(device.withRunning(true).imageSysdir == device.imageSysdir)
+        #expect(device.withRunning(true).isRunning)
+        #expect(device.withAliases(["Test_Phone_B"]).imageSysdir == device.imageSysdir)
+        #expect(device.withAliases(["Test_Phone_B"]).withRunning(false).imageSysdir == device.imageSysdir)
+    }
+
     // MARK: Date de dernière utilisation
 
     @Test func theNewestListedFileGivesTheDate() throws {

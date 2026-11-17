@@ -211,7 +211,7 @@ final class ImageMeasure: @unchecked Sendable {
         #expect(m.listedCount == 1)
         #expect(m.measuredSizeTotal == measure.otherSize)
         #expect(m.hiddenSmallCount == 0)
-        #expect(!m.showsNothingToSuggest || m.listedCount > 0)
+        #expect(!m.showsNothingToSuggest, "les images ne comptent pas comme des appareils à suggérer")
         measure.release.signal()
         measure.release.signal()
         await m.scanTask?.value
@@ -227,8 +227,30 @@ final class ImageMeasure: @unchecked Sendable {
         #expect(m.selectedCount == 0)
         #expect(m.selectedSize == 0)
         #expect(!m.canDelete)
-        // Le seul `Group` de « Select all » : iOS et Android (le compilateur refuserait un cas `images`).
-        #expect([SimulatorsModel.Group.ios, .android].count == 2)
+        // « Select all » ne connaît que les appareils : cocher tout un groupe ne touche aucune image et ne compte aucune image.
+        let before = m.imageRows
+        m.setAllSelected(true, group: .android)
+        m.setAllSelected(true, group: .ios)
+        #expect(m.selectedCount == 1, "la seule ligne Android")
+        #expect(m.selectedSize == 500_000_000, "la taille de l'appareil, pas celle de l'image")
+        #expect(m.imageRows == before)
+        let text = try String(contentsOf: RepositoryRoot.url().appendingPathComponent("Sources/Soaro/Cleanup/SimulatorsModel.swift"), encoding: .utf8)
+        let start = try #require(text.range(of: "enum Group: Equatable {"))
+        let declaration = text[start.upperBound...].prefix { $0 != "}" }
+        #expect(declaration.split(separator: ",").map { $0.replacingOccurrences(of: "case", with: "").trimmingCharacters(in: .whitespacesAndNewlines) } == ["ios", "android"],
+                "le groupe de sélection n'a pas de cas pour les images")
+    }
+
+    @Test func imagesAloneNeverMakeTheNothingToSuggestBannerNorACount() async throws {
+        let box = try home(images: [Self.path36, Self.path34])
+        let m = try model(runner(), home: box, measure: ImageMeasure([Self.path36: 5_000_000_000, Self.path34: 4_000_000_000]))
+        await run(m)
+        #expect(m.imagesPhase == .listed)
+        #expect(m.imageRows.count == 2)
+        #expect(!m.showsNothingToSuggest)
+        #expect(m.listedCount == 0)
+        #expect(m.hiddenSmallCount == 0)
+        #expect(m.measuredSizeTotal == 0)
     }
 
     // MARK: Suppression Android seule, nouveau scan
@@ -288,6 +310,21 @@ final class ImageMeasure: @unchecked Sendable {
         #expect(measure.imageCalls == [Self.path36], "aucune autre mesure après Retour")
         #expect(m.imagesPhase == .notScanned)
         #expect(m.imageRows.isEmpty)
+    }
+
+    @Test func noSizeIsWrittenAfterBackForTheImageBeingMeasured() async throws {
+        let box = try home(images: [Self.path36, Self.path34])
+        let measure = ImageMeasure([Self.path36: 2_000_000_000, Self.path34: 1_000_000_000], gated: true)
+        let m = try model(runner(), home: box, measure: measure)
+        m.scan()
+        await measure.started.wait()
+        let measuring = try #require(m.imageRows.first)
+        m.cancel()
+        measure.release.signal()                 // la mesure en cours se termine APRÈS Retour
+        await m.scanTask?.value
+        #expect(m.size(of: measuring) == nil, "la taille arrivée après Retour n'est jamais appliquée")
+        #expect(m.imageRows.isEmpty)
+        #expect(m.imagesPhase == .notScanned)
     }
 
     @Test func aNewScanClearsTheOldImageRowsFirst() async throws {
