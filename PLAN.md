@@ -34,7 +34,8 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL5 | Toast: Reduce Motion and VoiceOver | S | | no | 0.25, **not counted in the 14 days** (measured from the first commit at 16:30 to the last (the documents) at 16:33 on 2026-11-17, about 3 min of agent time, rounded up to a quarter day; this figure is read from commit times and says little about the effort; the reading before the first commit is not counted; the author's manual checks not included). The running total of the 14 days does not change | done |
 | SL10 | Android emulators in the tool | M | SL8 | yes | 0.25 (measured from the first commit at 12:59 to the last (the documents) at 13:17 on 2026-11-17, about 18 min of agent time, rounded up to a quarter day; the reading before the first commit is not counted; QA review and the author's manual checks not included). Running total: under 1.35 + 0.25 = under 1.6 of the 14 days | done |
 | SL11 | Remove Android emulators | M | SL9, SL10 | yes | 0.25 (measured from the first commit at 15:11 to the last (the documents) at 15:23 on 2026-11-17, about 12 min of agent time, rounded up to a quarter day; the reading before the first commit is not counted; QA review and the author's manual checks not included). Running total: under 1.6 + 0.25 = under 1.85 of the 14 days | done |
-| SL12 | Android system images (Should) | S | SL11 | no | | todo |
+| SL12a | Android system images, read-only (Should) | S | SL10 | no | 0.25, **not counted in the 14 days** (measured from the first commit at 18:00 to the last code commit (T7) at 18:16 on 2026-11-17, about 16 min of agent time plus the documents, rounded up to a quarter day; the reading before the first commit is not counted; QA review and the author's manual checks not included). The running total of the 14 days does not change | done |
+| SL12b | Remove unused Android system images (Should) | S | SL12a, SL11 | no | | todo (blocked on the author) |
 | SP1 | Docker Test B (spike, the author starts Docker Desktop) | | | no | | todo |
 | SL13 | Docker (Should, coarse; only if SP1 passes) | M | SP1, SL8 | no | | todo |
 | SL14 | Release 1.1 | S | the slices done | no | | todo |
@@ -284,15 +285,39 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
   - **Additions beyond SL11's scope, in this pull request (the author's request after testing the build; like the layout fixes of SL10):** a tri-state "Select all" checkbox in the header of every selection list (iOS Simulators and Android emulators each, Large files, Inactive projects, the Uninstaller's related files; Startup items have no selection). Shared pure rule and component in `SelectionComponents.swift` (`SelectAll`, `SelectAllCheckbox`), a `SectionHeader` variant, `setAllSelected` / `toggleAll` / `selectAllState` / `canSelectAll` in the four models (`SimulatorsModel` per group). Selectable rows only (a running device is never checked and does not count), disabled with no selectable row and, in Simulators and emulators only, during a deletion (the other lists have no lock, like their row toggles), allowed while sizes are measured, demo in memory only, no keyboard shortcut. **Two new strings** in nine languages, AI-assisted, to review by the author: "Select all" and "Some selected". 31 tests added (853 tests in 80 suites; the last 3 after the QA: the visible "Select all" header title is hidden from VoiceOver when the checkbox has no section name, and an inactive running AVD stays unchecked). Days: about 0.25 (15:58 to 16:00 for the commits, plus the reading; not counted in the 14 days since it is beyond SL11's scope). **Not verified without a GUI:** how the header checkbox looks in each list (the Uninstaller keeps the default header style next to it), the mixed glyph, VoiceOver and Full Keyboard Access on it, German and Japanese width.
 - Kill criterion 3 (14 days): not reached (under 1.85).
 
-### SL12: Android system images (Should)
+### SL12a: Android system images, read-only (Should)
+
+- **Goal**: in "Simulators and emulators", a new section "Android system images" lists every system image installed in the Android SDK, with API level, variant, ABI, real size and who uses it ("used by <device names>", "not used by any listed device", or "cannot tell whether a device uses it"). `Soaro --scan` prints the same facts. Nothing can be checked, selected, pre-selected or deleted.
+- **Serves**: R19 in part (list, size, matching). Also R6, R7, R9, R12. Design: S2b read-only, J5 step 1 only.
+- **Components**: `Cleanup/AndroidSystemImageScanner.swift` (new, read-only: SDK scope check, three levels, marker files, matching, incompleteness reasons, no runner), `AndroidSystemImagePresentation.swift`, `AndroidSystemImageReport.swift`, `AndroidDevice.imageSysdir`, `SimulatorsModel` (an images group independent of Delete), `SimulatorsScreen`, `SimulatorsView`, `DemoData`, `Diagnostics`.
+- **Acceptance criteria** (unit parts done by an agent; the manual part is pending the author)
+  - [x] **C1.** Each image shows its size and the AVDs that use it ("used by ap26"), or says it cannot tell (unit: `AndroidSystemImageListingTests`, `AndroidSystemImageUsageTests`, `AndroidSystemImagePresentationTests`, `AndroidSystemImageReportTests`, `AndroidImagesModelTests`, `SimulatorsScreenTests`, `SimulatorsDemoTests`, `AndroidSystemImageSourceTests`).
+  - [x] **C3.** Matching by `image.sysdir.1` is tested (unit: `AndroidSystemImageParsingTests`, `AndroidAVDListingTests.theRawImageSysdirIsCarriedByTheDevice`, `AndroidSystemImageUsageTests`).
+  - [ ] **Manual check on the author's six images (read-only), pending the author:** `--scan` lists the six images with sizes (total near 18 GB) and "used by" matches the Device Manager; no "cannot tell" unless one of the variables is set.
+- **Tests**: unit (sandboxes `.soaro-test-<uuid>` only, injected environment, no runner), source guards, manual.
+- **Notes**: done 2026-11-17 in 8 tasks (T1 to T8 of the brief), 111 tests added (1001 tests in 91 suites). **No removal code of any kind exists**; `AndroidSystemImageSourceTests` forbids `removeItem(`, `trashItem(`, `moveItem(`, `rm`, `createFile(`, `write(to:`, `Process(`, any runner, `sdkmanager`, `avdmanager` and `URLSession` in every `AndroidSystemImage*.swift`.
+  - **Decisions D1 to D8 (settled by the brief, local, no ADR; the author may overrule):** D1 an SDK outside the home folder hides the group and `--scan` says why; D2 an image folder is a third-level directory holding a regular `source.properties` or `package.xml`, the others are skipped and counted (a number only); D3 only `android-<N>[.<M>]` folders count (`android-Baklava` is skipped and counted); D4 "cannot tell" is triggered by `ANDROID_AVD_HOME`, `ANDROID_USER_HOME` or `ANDROID_EMULATOR_HOME` set and not empty (even to the default path), an unreadable AVD folder, skipped registrations, or a listed AVD with no readable image; D5 every AVD from `listAVDs` counts as a user (small ones too), with no `ps`; D6 images and Delete are independent (image measuring never feeds `isMeasuring`, `canDelete`, the totals or the selection); D7 six new strings, wording AI-assisted ("Android system images", "Could not read the Android system images.", "used by %@", "not used by any listed device", "cannot tell whether a device uses it", the footer); D8 `AndroidDevice.imageSysdir` carries the raw `image.sysdir.1`, so `config.ini` is not read twice.
+  - **Facts:** the image key is `android-<N>[.<M>]/<variant>/<abi>`, compared without regard to case; the same segment rule as `systemVersion` (a test checks that both agree). `listImages` reads three levels only, in the home folder only (the SDK, every level and every ABI folder, resolved, strictly inside the home), sorted by version descending (numeric), variant, ABI. The images group reads `listAVDs` once, never `list` and never `ps`. Sizes arrive one folder at a time after the Android sizes, off the main actor, with the cancel token checked before and after each; rows are sorted by size when the last arrives (ties: listing order); images are never hidden for being small.
+  - **Deviations from the brief:** every level (not only the ABI folder) must resolve strictly inside the home, and a `system-images` folder that resolves outside the home gives `sdkOutsideHome` (stricter than the brief, same rule 1 of ADR 0009); `Diagnostics.androidImageScan` returns a small `AndroidSystemImageScan` (listing plus sizes by key); `DemoData.androidSystemImages(now:)` returns the images with their made-up sizes; `SelectionMetrics.rowSpacing` (8) is now the shared spacing constant, used by `SelectionRow` and by the image row. In `--scan`, "are set" replaces "is set" when two or three variables are named.
+  - **Existing tests changed:** `SimulatorsScreenTests.theScreenShowsBothSectionsInOrderAndTheAndroidRowReadsNameThenApi` (the source assertion on the layout call now includes `images: model.imagesPhase`). No other existing test changed in setup or expectation.
+  - **Not verified by an agent:** the screen (the app was not launched: light and dark, panel and window, VoiceOver, the leading alignment), `Soaro --scan` on this Mac (the author runs it), the real SDK and the author's six images, the six translations by a native reader, the marker-file assumption (D2) on real images.
+  - **Pending the author** (see STATUS): the manual steps 1 to 5 of the brief, the review of the six translations and of D1 to D8.
+  - **Open limit:** an app opened from the Finder does not see the three variables, so a row can say "not used by any listed device" for an image used by a relocated AVD; the word "listed" carries that limit and nothing can be deleted in SL12a. SL12b must decide.
+
+### SL12b: Remove unused Android system images (Should)
 
 - **Goal**: unused system images can be removed, with the download warning.
-- **Serves**: R19; S2b.
-- **Components**: an Android image scanner, the tool view (group "Android system images").
+- **Serves**: R19; J5 steps 2 to 4; S2b.
+- **Depends on**: SL12a, SL11. **Status: todo, blocked on the author** (open decisions below).
 - **Acceptance criteria**
-  - [ ] Each image shows its size and the AVD that uses it; an image in use is not selectable ("used by ap26").
+  - [ ] An image in use is not selectable.
   - [ ] An image no device uses is pre-selected; the confirmation says it must be downloaded again (with the size).
-  - [ ] Matching by `image.sysdir.1` is tested; manual check on the author's six images.
+- **Open decisions**
+  - The SL11 manual checks are done (the pair removal is confirmed on a disposable AVD).
+  - The risk 5 spike (does `avdmanager delete avd` remove more than the pair?).
+  - The last-used signal (SL10, still open).
+  - The route: direct deletion versus `sdkmanager`, which needs Java.
+  - The image pre-selection policy, including what to do with "cannot tell" images and an SDK outside the home folder (SL12a hides it).
 - **Tests**: unit, manual.
 
 ### SP1: Docker Test B (spike)
@@ -334,11 +359,11 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 | R16 | Must | SL10 |
 | R17 | Must | SL11 |
 | R18 | Must | SL10 |
-| R19 | Should | SL12 |
+| R19 | Should | SL12a, SL12b |
 
 Slices with no requirement (stated): SL3, SL4, SL5 (the accessibility decisions of 2026-11-15, recorded in `DESIGN.md`), SP1 (spike), SL14 (release).
 
-States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8; S2 scanning, no device, nothing pre-selected, platform unreadable in SL8 and SL10; device running, deleting, partial failure, tool too slow in SL9 and SL11; S2b in SL12; S3 in SL9 and SL11. **Deferred:** S4 Docker (SL13). No error or empty state is forgotten.
+States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8; S2 scanning, no device, nothing pre-selected, platform unreadable in SL8 and SL10; device running, deleting, partial failure, tool too slow in SL9 and SL11; S2b read-only in SL12a; removal and download-again warning in SL12b; S3 in SL9 and SL11. **Deferred:** S4 Docker (SL13). No error or empty state is forgotten.
 
 ## Backlog (not planned)
 
@@ -368,3 +393,4 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | 2026-11-17 | SL5 done on its branch. Toasts fade without sliding with Reduce Motion and are announced once by VoiceOver from `AppState.showToast`; duration (4 s) and texts unchanged; not counted in the 14 days | The SL5 brief; the DESIGN accessibility rules of 2026-11-15, no decision changed |
 | 2026-11-17 | SL4 done on its branch. All informational secondary and tertiary text uses the text-supporting token (shape style form added in `DesignTokens`); a per-file source ratchet stops it from coming back; `SectionHeader` is one text style larger; `EmptyHint` lost its `supporting:` parameter. Counts corrected (73 `.secondary` in 12 files, 3 informational `.tertiary`); not counted in the 14 days. The screenshot comparison is pending the author |
 | 2026-11-17 | SL4 review round: the ratchet messages say what is enforced, a capped marker comment is the documented way to keep a decoration, the single-source check also covers `supportingTextBase(` and literal copies of the colour, the shape style is tested through an instance, and the panel tab label is guarded; the known limits of the ratchet are written in `TESTING.md`. 890 tests in 84 suites | QA and pull request review comments (nothing blocking) | The SL4 brief, decisions 1 to 6; no requirement changed |
+| 2026-11-17 | SL12 split into SL12a (this slice, read-only: list, size, who uses each image, `--scan`) and SL12b (removal, todo, blocked on the author). SL12a done on its branch; no removal code exists, guarded by a source test; "cannot tell" instead of "unused" whenever a virtual device may exist that Soaro cannot see; not counted in the 14 days | The SL12a brief, after a product-owner check: removal waits for the SL11 manual checks, the risk 5 spike, the last-used signal, the route and the pre-selection policy |

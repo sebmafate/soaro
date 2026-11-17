@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - New tool “Simulators and emulators” (Cleanup > Tools): lists your Xcode simulators with their real size, pre-selects those inactive for more than 60 days and older copies, and removes the ones you choose the way Xcode does, after a confirmation that names them. A running simulator is never removed.
 - The same tool also lists your Android virtual devices with their real size, system and last-use estimate, and shows how long each has been inactive. Check the ones you want and press Delete: each one is removed with its registration, after the same confirmation, in one batch with any simulators you checked. A running emulator is never removed. Android devices are not pre-selected for now, and without an Android SDK nothing Android appears.
+- The same tool also lists the Android system images installed in your Android SDK, with their size and the virtual devices that use them, or says when it cannot tell. They are shown for information only: nothing is removed.
 - A “Select all” checkbox in the header of every list where you tick items (simulators, Android emulators, large files, inactive projects, an app's related files): it checks or unchecks every item of that section, shows a dash when only some are ticked, and never ticks a running simulator or emulator.
 - New cleaner “NuGet packages” (Cleanup > Developer): frees the NuGet package cache, after a confirmation. It is not part of the quick clean.
 

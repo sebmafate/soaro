@@ -52,7 +52,7 @@ This design covers only the developer cleanup. It reuses the existing Cleanup ta
 | S1 | Cleanup list (existing, changed) | Adds the NuGet row and the tool row | Cleanup tab | Clean (NuGet); open the tool | first use (new rows); tool absent (rows hidden); busy (spinner); error (short message) | R1, R6, R13 |
 | S2 | Simulators and emulators (new) | Choose and delete devices | Row in S1, or an advice | Delete (action bar) | scanning; no device; nothing pre-selected; device running; platform unreadable; deleting; partial failure; result | R3 to R9, R16 to R18 |
 | S3 | Confirmation (existing alert) | Last guard before deleting | Delete in S2, Clean in S1 | Confirm or cancel | one variant per kind of target | R8 |
-| S2b | "Android system images" group, inside S2 (Should) | Remove an unused image | S2 | Delete | image in use (not selectable); download-again warning | R19 |
+| S2b | "Android system images" group, inside S2 (Should) | Remove an unused image (read-only in SL12a: list, size, who uses it; removal and the download-again warning in SL12b) | S2 | Delete (SL12b) | image in use (not selectable); download-again warning | R19 |
 | S4 | Docker (Should, after Test B) | not designed | S1 | not designed | not designed | R10, R11 |
 
 ### Wireframes
@@ -117,6 +117,17 @@ Platform unread  ANDROID EMULATORS
                        Could not read the Android emulators.   (the iOS group stays usable)
 Deleting         action bar disabled with a spinner; the list updates at the end
 ```
+
+**S2b as built (SL12a, read-only): the "Android system images" group**
+
+- **Section order:** iOS Simulators, Android emulators, then "Android system images" (header `SectionHeader`, no "Select all").
+- **Row:** not a `SelectionRow`: no checkbox, no `minus.circle`, no button trait, nothing to click. The text starts at the same left edge as the device names (the width of the checkbox plus its spacing). Line 1: "API 36" (`.callout`) then "· google_apis_playstore · arm64-v8a" (`.caption`, supporting text); line 2 (`.caption`): the usage; on the right the size (`.caption`, monospaced digits, supporting text; "…" while it is measured). VoiceOver reads one element per row: title, variant, ABI, size (left out until known), usage; no "Selected" value. Rows follow the listing order (newest API first) while sizes arrive, then the biggest first. No image is hidden for being small.
+- **The three usage lines:** "used by Demo Phone A, Demo Tablet B" (display names, comma-separated, verbatim); "not used by any listed device"; "cannot tell whether a device uses it". The word "listed" carries the limit that a relocated virtual device may exist that Soaro cannot see.
+- **Footer:** "Some virtual devices could not be read or are kept in another folder, so Soaro cannot tell whether these images are in use." only when at least one row says "cannot tell".
+- **Failed state:** the section header, then "Could not read the Android system images." with the warning icon, when `system-images` cannot be read; the other groups stay usable. A missing SDK, an SDK outside the home folder or no image: the group does not exist.
+- **No Delete bar on an images-only screen.** Delete acts on devices only; images never enter the header summary, the "Selected" count or the confirmation.
+- **Demo (`SOARO_DEMO=1`):** four made-up images (API 36 to 33) shown at once, three used by the demo devices and the API 33 one "not used by any listed device"; nothing is read or measured.
+- **New text** (6 keys, nine languages, AI-assisted, to review by the author): "Android system images", "Could not read the Android system images.", "used by %@", "not used by any listed device", "cannot tell whether a device uses it", and the footer above. "API %@" and the size text are reused. Vocabulary: "system image" and "device", never "runtime", never "AVD".
 
 **S2 as built (SL10): the Android group**
 
@@ -320,3 +331,4 @@ Every screen of Part 1 uses only these. There is no custom component. The extens
 | 2026-11-17 | SL5: the toast as built (fade with Reduce Motion, slide kept otherwise; VoiceOver announcement from `AppState.showToast`). The known gap of the Reduced motion rule is closed. Factual notes, no decision changed |
 | 2026-11-17 | The SL11 PR adds a tri-state "Select all" checkbox in the header of every selection list (`SectionHeader` variant, `SelectAllCheckbox`), at the author's request, beyond SL11's scope. Factual notes, no decision changed |
 | 2026-11-17 | SL4: the supporting-text rule as built (token applied to all informational text in the app, three `.tertiary` texts including the `ProcessRow` columns, `SectionHeader` one step larger, the `ActionBar` known gap closed, the known gaps kept on purpose). Factual notes, no decision changed |
+| 2026-11-17 | SL12a: S2b as built, read-only (section order, row text, the three usage lines, the footer, the failed state, no checkbox and no Select all, no Delete bar on an images-only screen, demo, six new keys). Removal and the download-again warning stay in SL12b. Factual notes, no decision changed |
