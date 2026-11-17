@@ -18,8 +18,8 @@ import Testing
 
     /// Nombres exacts des fichiers pas encore migrés (mesurés par `scan`, commentaires exclus).
     static let pending: [String: Int] = [
-        "Views/Components.swift": 13,
-        "Views/SelectionComponents.swift": 4,
+        "Views/Components.swift": 11,
+        "Views/SelectionComponents.swift": 3,
         "Views/CleanupTab.swift": 4,
         "Views/CleanupToolViews.swift": 18,
         "Views/NetworkTab.swift": 10,
@@ -72,6 +72,14 @@ import Testing
         try String(contentsOf: RepositoryRoot.url().appendingPathComponent(path), encoding: .utf8)
     }
 
+    /// Le corps d'un type de premier niveau : de sa déclaration jusqu'à l'accolade fermante en colonne 0.
+    private func typeBody(_ declaration: String, in path: String) throws -> String {
+        let text = try source(path)
+        let start = try #require(text.range(of: declaration), "\(declaration) introuvable dans \(path)")
+        let end = text.range(of: "\n}\n", range: start.upperBound..<text.endIndex)?.upperBound ?? text.endIndex
+        return String(text[start.lowerBound..<end])
+    }
+
     // MARK: Cliquet
 
     @Test func theScanReallyReadsTheSources() throws {
@@ -115,5 +123,28 @@ import Testing
                         "\(file):\(index + 1) : la couleur du jeton ne se calcule que dans DesignTokens.swift (utiliser `.supportingText` ou `supportingText()`)")
             }
         }
+    }
+
+    // MARK: Pièces partagées nommées (T3)
+
+    @Test func theActionBarSummaryUsesTheSupportingToken() throws {
+        let body = try typeBody("struct ActionBar", in: "Sources/Soaro/Views/SelectionComponents.swift")
+        #expect(body.contains("supportingText"))
+        #expect(!body.contains(".secondary"))
+        #expect(!body.contains(".tertiary"))
+    }
+
+    @Test func theEmptyHintAlwaysUsesTheSupportingTokenWithoutASupportingParameter() throws {
+        let body = try typeBody("struct EmptyHint", in: "Sources/Soaro/Views/Components.swift")
+        #expect(body.contains("supportingText"))
+        #expect(!body.contains("supporting:"))
+        #expect(!body.contains("let supporting"))
+        #expect(!body.contains(".secondary"))
+    }
+
+    @Test func theSimulatorsScreenNoLongerPassesTheSupportingFlag() throws {
+        let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
+        #expect(!text.contains("supporting: true"))
+        #expect(!text.contains("supporting:"))
     }
 }

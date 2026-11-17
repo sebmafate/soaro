@@ -90,7 +90,7 @@ struct SimulatorsView: View {
     }
 
     private func hint(_ message: String, systemImage: String) -> some View {
-        EmptyHint(verbatim: message, systemImage: systemImage, supporting: true)
+        EmptyHint(verbatim: message, systemImage: systemImage)
             .padding(14).frame(maxHeight: .infinity, alignment: .top)
     }
 
@@ -157,7 +157,7 @@ struct SimulatorsView: View {
 
     /// Un groupe dont la lecture a échoué : message neutre, icône d'avertissement, jeton « texte de soutien » (l'autre groupe reste utilisable).
     private func failedGroup(_ message: String) -> some View {
-        EmptyHint(verbatim: message, systemImage: "exclamationmark.triangle", supporting: true)
+        EmptyHint(verbatim: message, systemImage: "exclamationmark.triangle")
             .font(.caption)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -176,7 +176,7 @@ struct SimulatorsView: View {
 
     private var hintBanner: some View {
         EmptyHint(verbatim: SimulatorPresentation.nothingToSuggest(limitDays: model.limitDays),
-                  systemImage: "info.circle", supporting: true)
+                  systemImage: "info.circle")
             .padding(.horizontal, 14).padding(.vertical, 8)
     }
 
