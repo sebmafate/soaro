@@ -1,6 +1,6 @@
 import Foundation
 
-/// Disposition de l'écran « Simulators and emulators » (S2) : fonction PURE des deux états de groupe, testable sans vue.
+/// Disposition de l'écran « Simulators and emulators » (S2) : fonction PURE des états de groupe, testable sans vue.
 enum SimulatorsScreen {
     /// Un groupe, tel que l'écran le montre à côté de l'autre.
     enum Section: Equatable {
@@ -12,22 +12,23 @@ enum SimulatorsScreen {
         case failed
     }
 
-    enum Group: Equatable { case ios, android }
+    enum Group: Equatable { case ios, android, images }
 
     enum Layout: Equatable {
         /// Attente (« Looking for simulators and emulators… », ou « Deleting… » ailleurs).
         case spinner
-        /// « No simulator or emulator found. » : les deux groupes sont cachés ou vides.
+        /// « No simulator or emulator found. » : les trois groupes sont cachés ou vides.
         case nothingFound
-        /// Le seul groupe en échec, l'autre étant caché ou vide : son message occupe tout l'écran.
+        /// Le seul groupe en échec, les autres étant cachés ou vides : son message occupe tout l'écran.
         case failedOnly(Group)
-        /// Les sections, dans l'ordre iOS puis Android.
-        case sections(ios: Section, android: Section)
+        /// Les sections, dans l'ordre iOS, Android puis images système (SL12a ; `images` vaut `absent` par défaut).
+        case sections(ios: Section, android: Section, images: Section = .absent)
     }
 
-    static func layout(ios: SimulatorsModel.Phase, android: SimulatorsModel.Phase) -> Layout {
+    /// `images` vaut `.hidden` par défaut : les appels qui ne connaissent pas encore le groupe des images ne changent pas.
+    static func layout(ios: SimulatorsModel.Phase, android: SimulatorsModel.Phase, images: SimulatorsModel.Phase = .hidden) -> Layout {
         func isWaiting(_ phase: SimulatorsModel.Phase) -> Bool { phase == .notScanned || phase == .listing }
-        if isWaiting(ios) || isWaiting(android) { return .spinner }
+        if isWaiting(ios) || isWaiting(android) || isWaiting(images) { return .spinner }
 
         func section(_ phase: SimulatorsModel.Phase) -> Section {
             switch phase {
@@ -36,18 +37,20 @@ enum SimulatorsScreen {
             case .notScanned, .listing, .hidden, .empty: .absent
             }
         }
-        let (i, a) = (section(ios), section(android))
-        switch (i, a) {
-        case (.absent, .absent): return .nothingFound
-        case (.failed, .absent): return .failedOnly(.ios)
-        case (.absent, .failed): return .failedOnly(.android)
-        default: return .sections(ios: i, android: a)
+        let (i, a, m) = (section(ios), section(android), section(images))
+        switch (i, a, m) {
+        case (.absent, .absent, .absent): return .nothingFound
+        case (.failed, .absent, .absent): return .failedOnly(.ios)
+        case (.absent, .failed, .absent): return .failedOnly(.android)
+        case (.absent, .absent, .failed): return .failedOnly(.images)
+        default: return .sections(ios: i, android: a, images: m)
         }
     }
 
-    /// La barre d'action (« Delete ») s'affiche quand au moins un groupe est listé.
+    /// La barre d'action (« Delete ») s'affiche quand au moins un groupe d'APPAREILS est listé : un écran qui ne montre que des images
+    /// (rien à cocher ni à supprimer) n'a pas de barre.
     static func showsActionBar(_ layout: Layout) -> Bool {
-        if case .sections(let ios, let android) = layout { return ios == .listed || android == .listed }
+        if case .sections(let ios, let android, _) = layout { return ios == .listed || android == .listed }
         return false
     }
 
@@ -59,7 +62,8 @@ enum SimulatorsScreen {
         let smallCountUnder: Group?
     }
 
-    static func footers(ios: Section, android: Section) -> Footers {
+    /// Le décompte des petits appareils reste sous la dernière section d'APPAREILS ; `images` n'y change rien.
+    static func footers(ios: Section, android: Section, images: Section = .absent) -> Footers {
         let last: Group? = android != .absent ? .android : (ios != .absent ? .ios : nil)
         return Footers(explanationUnderIos: ios == .listed, smallCountUnder: last)
     }

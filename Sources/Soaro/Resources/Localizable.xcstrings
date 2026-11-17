@@ -2814,6 +2814,58 @@
         }
       }
     },
+    "Android system images": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android-Systemabbilder"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imágenes del sistema Android"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Images système Android"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immagini di sistema Android"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android システムイメージ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 시스템 이미지"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imagens do sistema Android"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 系统映像"
+          }
+        }
+      }
+    },
     "App caches": {
       "localizations": {
         "de": {
@@ -5618,6 +5670,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法读取 Android 仿真器。"
+          }
+        }
+      }
+    },
+    "Could not read the Android system images.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Android-Systemabbilder konnten nicht gelesen werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron leer las imágenes del sistema Android."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de lire les images système Android."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere le immagini di sistema Android."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android システムイメージを読み取れませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android 시스템 이미지를 읽을 수 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível ler as imagens do sistema Android."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 Android 系统映像。"
           }
         }
       }
@@ -17582,6 +17686,58 @@
         }
       }
     },
+    "Some virtual devices could not be read or are kept in another folder, so Soaro cannot tell whether these images are in use.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige virtuelle Geräte konnten nicht gelesen werden oder liegen in einem anderen Ordner. Soaro kann deshalb nicht feststellen, ob diese Abbilder verwendet werden."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algunos dispositivos virtuales no se pudieron leer o están en otra carpeta, así que Soaro no puede saber si estas imágenes están en uso."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certains appareils virtuels n'ont pas pu être lus ou sont rangés dans un autre dossier : Soaro ne peut donc pas savoir si ces images sont utilisées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alcuni dispositivi virtuali non si sono potuti leggere o si trovano in un'altra cartella, quindi Soaro non può stabilire se queste immagini sono in uso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部の仮想デバイスを読み取れなかったか、別のフォルダに保存されているため、これらのイメージが使用中かどうかを Soaro は判断できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일부 가상 기기를 읽을 수 없거나 다른 폴더에 있어서 이 이미지가 사용 중인지 Soaro가 알 수 없습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alguns dispositivos virtuais não puderam ser lidos ou estão em outra pasta, então o Soaro não consegue saber se estas imagens estão em uso."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分虚拟设备无法读取或保存在其他文件夹中，因此 Soaro 无法确定这些映像是否正在使用。"
+          }
+        }
+      }
+    },
     "Sort": {
       "localizations": {
         "de": {
@@ -21014,6 +21170,58 @@
         }
       }
     },
+    "cannot tell whether a device uses it": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht feststellbar, ob ein Gerät sie verwendet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no se puede saber si algún dispositivo la usa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "impossible de savoir si un appareil l'utilise"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "impossibile stabilire se un dispositivo la usa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デバイスが使用しているか判断できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기기가 사용하는지 알 수 없음"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "não é possível saber se algum dispositivo a usa"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法确定是否有设备在使用"
+          }
+        }
+      }
+    },
     "critical": {
       "localizations": {
         "de": {
@@ -21638,6 +21846,58 @@
         }
       }
     },
+    "not used by any listed device": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "von keinem aufgeführten Gerät verwendet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no la usa ningún dispositivo de la lista"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "utilisée par aucun appareil listé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "non usata da nessun dispositivo elencato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一覧のデバイスでは使用されていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목록에 있는 어떤 기기에서도 사용하지 않음"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "não usada por nenhum dispositivo listado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "列出的设备均未使用"
+          }
+        }
+      }
+    },
     "npm cache": {
       "localizations": {
         "de": {
@@ -21894,6 +22154,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "不可用：系统未安装"
+          }
+        }
+      }
+    },
+    "used by %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "verwendet von %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "usada por %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "utilisée par %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "usata da %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@에서 사용 중"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "usada por %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由 %@ 使用"
           }
         }
       }

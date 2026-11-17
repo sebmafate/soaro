@@ -22,9 +22,10 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `Cleanup/SimulatorRemover.swift`, `Cleanup/SimulatorRemoval.swift` | Removal of one device after its checks (fresh state, home folder only, size before and after), and the summary of a batch with the toast text |
 | `Cleanup/SimulatorToolDetector.swift`, `Cleanup/SimulatorsModel.swift`, `Cleanup/SimulatorPresentation.swift`, `Views/SimulatorsView.swift` | The tool "Simulators and emulators": finds the simulator tool on disk without launching anything, lists then measures the devices progressively, pre-selects, asks the confirmation, removes the checked devices in a background task, and shows the text and the screen |
 | `Cleanup/AndroidEmulatorScanner.swift`, `Cleanup/AndroidEmulatorPresentation.swift`, `Cleanup/AndroidEmulatorReport.swift` | Android emulators (SL10, read-only): name check and INI parsing, the listing of `~/.android/avd` with folder, system and last-used date, the running detection from `/bin/ps -axww -o command=`, one listing (SDK, AVDs, `ps`), the row text, and the `--scan` section |
+| `Cleanup/AndroidSystemImageScanner.swift`, `Cleanup/AndroidSystemImagePresentation.swift`, `Cleanup/AndroidSystemImageReport.swift` | Android system images (SL12a, read-only, no command launched): the image key from `image.sysdir.1`, the reading of `<sdk>/system-images` (three levels, inside the home folder only), which virtual devices use each image or "cannot tell", the row text (six new strings), and the `--scan` section |
 | `Cleanup/AndroidEmulatorRemover.swift` | Removal of one Android virtual device (SL11): finds the target again in a fresh listing, checks the scope and a fresh process list, then deletes the folder and each `.ini` (the only Android file that calls `removeItem`; no `avdmanager`) and measures the freed space |
 | `Cleanup/DeviceRemovalSummary.swift` | The summary and the toast of a mixed batch of iOS simulators and Android devices (SL11), pure |
-| `Cleanup/SimulatorsScreen.swift` | The pure layout of the tool's screen: spinner, nothing found, the only failed group, or the sections iOS then Android |
+| `Cleanup/SimulatorsScreen.swift` | The pure layout of the tool's screen: spinner, nothing found, the only failed group, or the sections iOS, Android then Android system images |
 | `ToastPresentation.swift` | The pure rules of the toast (SL5): motion style from Reduce Motion, announcement text, visible duration (4 s), and `ToastAnnouncer`, the real VoiceOver announcement (`NSAccessibility`, high priority) that `AppState` takes as an injected parameter |
 | `Views/ToastTransition.swift` | Maps the toast motion style to a SwiftUI transition in one place, shared by the panel and the window |
 | `Views/DesignTokens.swift` | The colour and contrast tokens: the destructive fill, the text-supporting colour (black or white at an absolute alpha 0.56, 0.70 with Increase Contrast), the WCAG ratio functions. It also gives the token as a `ShapeStyle` (`.foregroundStyle(.supportingText)`, usable in a ternary) and as the `supportingText()` modifier; `SupportingTextUsageTests` keeps the colour computed in this file only and stops `.secondary` and `.tertiary` from coming back on text |
@@ -51,7 +52,7 @@ The app binary has a few read-only modes. None of them writes or deletes anythin
 ```bash
 Soaro --diagnostics                 # print all measurements as text (output is in English)
 Soaro --diagnostics --public-ip     # same, plus the public IP lookup (explicit)
-Soaro --scan [--per-root]           # run the cleanup scanners (caches, large files, projects, iOS simulators, apps, startup) on your home folder, read-only
+Soaro --scan [--per-root]           # run the cleanup scanners (caches, large files, projects, iOS simulators, Android emulators and system images, apps, startup) on your home folder, read-only
 Soaro --advice                      # print the settings read and the tips that follow
 Soaro --snapshot <folder> [--dark] [--tools] [--window]   # render each tab to PNG (fake history, in memory)
 ```

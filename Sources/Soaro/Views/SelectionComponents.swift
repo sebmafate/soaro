@@ -68,6 +68,8 @@ struct ActionBar: View {
 enum SelectionMetrics {
     /// Côté minimal de la zone cliquable de la coche (en points).
     static let minimumTargetSize: CGFloat = 24
+    /// Espace entre la coche et le texte d'une ligne de sélection (une ligne sans case, comme une image système, s'aligne dessus).
+    static let rowSpacing: CGFloat = 8
 }
 
 /// Texte lu par VoiceOver pour le bouton de sélection d'une ligne.
@@ -207,7 +209,7 @@ struct SelectionRow<Content: View>: View {
     var body: some View {
         let description = SelectionAccessibility.description(name: name, details: details, isOn: isOn, unavailableReason: unavailableReason)
         let selectable = SelectionAccessibility.isSelectable(unavailableReason: unavailableReason)
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: SelectionMetrics.rowSpacing) {
             if !selectable {
                 Image(systemName: "minus.circle")
                     .foregroundStyle(.secondary)

@@ -66,6 +66,24 @@ import Testing
         #expect(list(box).devices.map(\.name) == ["Zeta", "A_One", "B_Two"])
     }
 
+    @Test func theRawImageSysdirIsCarriedByTheDevice() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        try makeAVD(box, name: "Test_Tablet_B", system: nil)
+        let devices = list(box).devices
+        #expect(devices.map(\.imageSysdir) == ["system-images/android-36/google_apis_playstore/arm64-v8a/", nil])
+    }
+
+    @Test func withRunningAndWithAliasesCarryTheImageSysdir() {
+        let device = AndroidDevice(name: "Test_Phone_A", displayName: "Test Phone A", systemVersion: "36",
+                                   folder: URL(fileURLWithPath: "/Users/test/.android/avd/Test_Phone_A.avd"), lastUsed: nil, lastUsedSource: nil,
+                                   imageSysdir: "system-images/android-36/google_apis/arm64-v8a/")
+        #expect(device.withRunning(true).imageSysdir == device.imageSysdir)
+        #expect(device.withRunning(true).isRunning)
+        #expect(device.withAliases(["Test_Phone_B"]).imageSysdir == device.imageSysdir)
+        #expect(device.withAliases(["Test_Phone_B"]).withRunning(false).imageSysdir == device.imageSysdir)
+    }
+
     // MARK: Date de dernière utilisation
 
     @Test func theNewestListedFileGivesTheDate() throws {
@@ -340,6 +358,20 @@ import Testing
         let listing = list(box)
         #expect(listing.devices.map(\.name) == ["Test_Phone_A"])
         #expect(listing.skippedCount == 4, "Gone, Outside, Docs, Twin")
+    }
+
+    @Test func aliasRegistrationsCountAsSkippedButNotAsUnreadable() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        try box.write(".android/avd/Test_Phone_B.ini", "path.rel=avd/Test_Phone_A.avd\n")       // alias : même dossier, un appareil seulement
+        var listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"])
+        #expect(listing.skippedCount == 1, "le sens de skippedCount ne change pas (SL10, SL11)")
+        #expect(listing.unreadableRegistrationCount == 0, "un alias n'a rien d'illisible : l'appareil est listé")
+        try box.write(".android/avd/Gone.ini", "path.rel=avd/Gone.avd\n")                          // aucun dossier : vraiment illisible
+        listing = list(box)
+        #expect(listing.skippedCount == 2)
+        #expect(listing.unreadableRegistrationCount == 1, "seule l'inscription qui n'a donné aucun appareil compte")
     }
 
     @Test func nothingSkippedWhenEverythingIsListed() throws {

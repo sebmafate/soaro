@@ -93,9 +93,11 @@ struct AndroidDevice: Equatable {
     /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 refuse toute
     /// inscription en cours d'exécution).
     let aliases: [String]
+    /// La valeur brute de `image.sysdir.1` de `config.ini`, `nil` si absente (SL12a : sert à rattacher l'appareil à une image système).
+    let imageSysdir: String?
 
     init(name: String, displayName: String, systemVersion: String?, folder: URL, lastUsed: Date?, lastUsedSource: String?,
-         isRunning: Bool = false, fileDates: [AndroidFileDate] = [], aliases: [String] = []) {
+         isRunning: Bool = false, fileDates: [AndroidFileDate] = [], aliases: [String] = [], imageSysdir: String? = nil) {
         self.name = name
         self.displayName = displayName
         self.systemVersion = systemVersion
@@ -105,6 +107,7 @@ struct AndroidDevice: Equatable {
         self.isRunning = isRunning
         self.fileDates = fileDates
         self.aliases = aliases
+        self.imageSysdir = imageSysdir
     }
 
     /// L'ordre des appareils Android, PARTAGÉ (listage, départage des suggestions, lignes pendant la mesure) : nom affiché sans tenir
@@ -116,12 +119,12 @@ struct AndroidDevice: Equatable {
 
     func withRunning(_ running: Bool) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates, aliases: aliases)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates, aliases: aliases, imageSysdir: imageSysdir)
     }
 
     func withAliases(_ aliases: [String]) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: isRunning, fileDates: fileDates, aliases: aliases)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: isRunning, fileDates: fileDates, aliases: aliases, imageSysdir: imageSysdir)
     }
 }
 
@@ -139,6 +142,10 @@ struct AndroidAVDListing: Equatable {
     /// Inscriptions (`<nom>.ini` de nom valide) qui n'ont donné aucun appareil : dossier absent, hors du dossier personnel,
     /// qui ne ressemble pas à un AVD, ou déjà pris par une autre inscription. Un décompte, jamais de nom ni de chemin.
     var skippedCount = 0
+    /// Parmi `skippedCount`, seulement les inscriptions qui n'ont donné AUCUN appareil (dossier absent, hors du dossier personnel, qui ne
+    /// ressemble pas à un AVD) : les alias (second `.ini` d'un dossier déjà listé) n'y sont PAS, l'appareil est listé. C'est ce décompte
+    /// qui rend la liste des appareils incomplète pour les images système (SL12a) ; `skippedCount` garde son sens pour SL10 et SL11.
+    var unreadableRegistrationCount = 0
 }
 
 extension AndroidEmulatorScanner {
@@ -178,6 +185,7 @@ extension AndroidEmulatorScanner {
         // Dossiers déjà pris (chemin résolu) : deux `.ini` vers le même dossier ne donnent qu'une ligne (le premier par nom).
         var firstIndexByFolder: [String: Int] = [:]
         var skipped = 0
+        var unreadable = 0
         for entry in entries.sorted() where entry.hasSuffix(".ini") {
             let name = String(entry.dropLast(".ini".count))
             guard isValidAVDName(name) else { continue }
@@ -185,6 +193,7 @@ extension AndroidEmulatorScanner {
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
                   isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder) else {
                 skipped += 1
+                unreadable += 1
                 continue
             }
             // Deux inscriptions vers le même dossier : une seule ligne (la première par nom), l'autre nom devient un alias.
@@ -201,10 +210,11 @@ extension AndroidEmulatorScanner {
                                          displayName: displayName(config: config, avdName: name),
                                          systemVersion: systemVersion(imageSysdir: config["image.sysdir.1"]),
                                          folder: folder.resolvingSymlinksInPath().standardizedFileURL,
-                                         lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates))
+                                         lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates,
+                                         imageSysdir: config["image.sysdir.1"]))
         }
         devices.sort(by: AndroidDevice.isOrderedBefore)
-        return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped)
+        return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped, unreadableRegistrationCount: unreadable)
     }
 
     /// Le premier candidat qui est un dossier existant (`path=` absolu, `path.rel`, dossier par défaut). `nil` sinon.
@@ -221,7 +231,8 @@ extension AndroidEmulatorScanner {
         }
     }
 
-    private static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
+    /// Chemin standardisé et sans lien symbolique (interne : partagé avec `AndroidSystemImageScanner`).
+    static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
 
     /// Le dossier ressemble à un dossier d'AVD : son nom (résolu) finit par `.avd` ET il contient un `config.ini` ordinaire.
     /// Le suffixe est `.avd` en minuscules exactement (les outils d'Android l'écrivent ainsi ; une autre casse est rejetée : on se
@@ -240,7 +251,7 @@ extension AndroidEmulatorScanner {
     }
 
     /// Le dossier, standardisé et sans lien symbolique, est STRICTEMENT dans le dossier personnel (jamais le dossier lui-même).
-    private static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {
+    static func isStrictlyInside(_ folder: URL, homePath: String) -> Bool {
         let path = resolvedPath(folder)
         let prefix = homePath.hasSuffix("/") ? homePath : homePath + "/"
         return path.count > prefix.count && path.hasPrefix(prefix)

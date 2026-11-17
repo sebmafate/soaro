@@ -133,6 +133,39 @@ import Testing
         #expect(detections == 0)
     }
 
+    @Test func demoImagesAppearAtOnceOneUsageEachWithoutRunnerOrMeasure() async {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        let m = demoModel(runner: runner, measure: measure)
+        m.scan()                                   // sans attendre : tout est déjà là
+        #expect(m.imagesPhase == .listed)
+        #expect(m.imageRows.map(\.key.path) == ["android-36/google_apis_playstore/arm64-v8a", "android-35/google_apis/arm64-v8a",
+                                               "android-34/default/arm64-v8a", "android-33/default/arm64-v8a"])
+        #expect(m.imageRows.allSatisfy { m.size(of: $0) != nil }, "toutes les tailles sont connues")
+        #expect(m.imageRows.allSatisfy { $0.folder.path.hasPrefix("/demo-folder/") })
+        let used = m.imageRows.filter { if case .usedBy = $0.usage { true } else { false } }
+        #expect(used.count == 3)
+        #expect(m.imageRows.last?.usage == .notUsed, "la 33 : « not used by any listed device »")
+        #expect(!m.imagesUsageIncomplete)
+        await m.scanTask?.value
+        #expect(runner.calls.isEmpty)
+        #expect(measure.calls.isEmpty)
+    }
+
+    @Test func demoImagesAreUsedByTheDemoDevices() {
+        let names = Dictionary(uniqueKeysWithValues: DemoData.androidEmulators(now: now).map { ($0.device.name, $0.device) })
+        let sized = DemoData.androidSystemImages(now: now)
+        let images = sized.map(\.image)
+        #expect(sized.allSatisfy { $0.size > 0 })
+        #expect(images.map(\.key.path) == ["android-36/google_apis_playstore/arm64-v8a", "android-35/google_apis/arm64-v8a",
+                                          "android-34/default/arm64-v8a", "android-33/default/arm64-v8a"])
+        if case .usedBy(let devices) = images[0].usage { #expect(devices.map(\.name) == ["Demo_Phone_A"]) } else { Issue.record("36") }
+        if case .usedBy(let devices) = images[1].usage { #expect(devices.map(\.name) == ["Demo_Tablet_B"]) } else { Issue.record("35") }
+        if case .usedBy(let devices) = images[2].usage { #expect(devices.map(\.name) == ["Demo_Wear_C"]) } else { Issue.record("34") }
+        #expect(names.count == 3)
+        #expect(images[3].usage == .notUsed)
+    }
+
     @Test func demoAndroidHasTheThreeCases() {
         let m = demoModel(runner: FakeCommandRunner())
         m.scan()
@@ -305,6 +338,34 @@ import Testing
                         removeFile: { _ in counts.removals += 1 },
                         demo: true, confirm: confirm.handler,
                         notify: { toasts.messages.append($0) })
+    }
+
+    @Test func aDemoDeletionRecomputesWhoUsesEachDemoImage() async throws {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
+        m.scan()
+        func usage(_ path: String) -> AndroidSystemImage.Usage? { m.imageRows.first { $0.key.path == path }?.usage }
+        let phone = "android-36/google_apis_playstore/arm64-v8a"
+        if case .usedBy(let devices)? = usage(phone) { #expect(devices.map(\.displayName) == ["Demo Phone A"]) } else { Issue.record("la 36 est utilisée au départ") }
+        let row = try #require(m.androidRows.first { $0.device.device.name == "Demo_Phone_A" })
+        m.toggle(row)
+
+        m.deleteSelected()
+
+        #expect(!m.androidRows.contains { $0.device.device.name == "Demo_Phone_A" })
+        #expect(usage(phone) == .notUsed, "l'image dont le seul utilisateur est parti devient « not used by any listed device »")
+        for image in m.imageRows {
+            if case .usedBy(let devices) = image.usage { #expect(!devices.contains { $0.name == "Demo_Phone_A" }, "\(image.key.path)") }
+        }
+        if case .usedBy? = usage("android-35/google_apis/arm64-v8a") {} else { Issue.record("la 35 reste utilisée par la tablette") }
+        if case .usedBy? = usage("android-34/default/arm64-v8a") {} else { Issue.record("la 34 reste utilisée par la montre (petit appareil non listé)") }
+        #expect(m.imageRows.count == 4, "aucune image ne disparaît")
+        #expect(m.imageRows.allSatisfy { m.size(of: $0) != nil })
+        #expect(m.imagesPhase == .listed)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
     }
 
     @Test func confirmedDeletionInDemoRemovesTheRowsAtOnceWithoutRunnerNorMeasureNorRescan() async {
