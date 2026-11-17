@@ -25,7 +25,7 @@ Verified on 2026-11-17 in a fresh worktree of `main` unless marked.
 
 ```sh
 swift build                          # debug build
-swift test                           # 1029 tests in 91 suites; about 40 s from a clean build, about 3 s when already built
+swift test                           # 1034 tests in 91 suites; about 40 s from a clean build, about 3 s when already built
 scripts/build-app.sh                 # builds build/Soaro.app (ad hoc signature); --install copies to /Applications
 SOARO_DEMO=1 build/Soaro.app/Contents/MacOS/Soaro    # run on made-up data (no measurement, nothing written)
 DYLD_FRAMEWORK_PATH=.build/debug .build/debug/Soaro --diagnostics   # print all measurements (read-only)
