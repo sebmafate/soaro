@@ -105,7 +105,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 | # | Assumption or risk | Impact if false | Status |
 | --- | --- | --- | --- |
-| A1 | **Riskiest (Must):** Soaro can show which simulators are disposable clearly enough for the author to dare delete them. | The feature is dangerous or never used. | Partly tested (Test A): 83 % of the space is idle for more than 60 days (29 % at 90 days); 23 % is superseded duplicates; "no app of yours" is useless as a signal (14 devices carry the author's own app). The 5-device check by the author is still to do. |
+| A1 | **Riskiest (Must):** Soaro can show which simulators are disposable clearly enough for the author to dare delete them. | The feature is dangerous or never used. | Partly tested (Test A): 83 % of the space is idle for more than 60 days (29 % at 90 days); 23 % is superseded duplicates; "no app of yours" is useless as a signal (14 devices carry the author's own app). The 5-device check by the author was done on 2026-11-17: confirmed (60 days stays the default). |
 | A2 | **Riskiest (Should):** a Docker cleanup started from Soaro returns real space to the Mac, without touching volumes. | Docker support has no value. | Untested (Test B) |
 | A3 | Removing a simulator in the supported way needs no administrator rights. | Needs a privileged step, which the app avoids. | Untested |
 | A4 | Other developers want this and can ignore it if not. | Low: costs only space in the view. | Untested; low impact |
@@ -116,7 +116,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 ## Cheapest test
 
-- **Test A (simulators), done 2026-11-15, read-only, on the author's Mac.** Criterion: at least 80 % of the space gets a readable reason. Result: met at a 60-day threshold (83 %), not at 90 days (29 %), so the threshold stays adjustable with 60 as default. The check on a sample of 5 devices by the author is still to do.
+- **Test A (simulators), done 2026-11-15, read-only, on the author's Mac.** Criterion: at least 80 % of the space gets a readable reason. Result: met at a 60-day threshold (83 %), not at 90 days (29 %), so the threshold stays adjustable with 60 as default. The check on a sample of 5 devices by the author was done on 2026-11-17: confirmed.
 - **Test A2 (Android), done 2026-11-15, read-only.** Sizes and dates measured (see Problem and A6). Result: the size signal is strong (Pixel_9a alone is 11 GB); the "last used" signal is weak and should be checked against Android Studio on the author's Mac (R16).
 - **Test B (Docker), to do, about one evening.** With Docker Desktop running, measure `df` and the disk image size before and after a build-cache prune and an unused-image prune (no volumes), with and without Docker's own space-reclaim command. Criterion: at least half of what Docker says it freed comes back on the Mac. OrbStack cannot be tested (not installed).
 
