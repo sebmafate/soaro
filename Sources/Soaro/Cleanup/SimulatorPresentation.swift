@@ -16,6 +16,47 @@ enum SimulatorPresentation {
         return platform == "xrOS" ? "visionOS \(version)" : name
     }
 
+    // MARK: Noms dans la confirmation
+
+    /// Combien de noms la confirmation en liste au plus (puis une ligne « … »).
+    static let confirmationNameLimit = 8
+    /// Longueur maximale d'un nom dans la confirmation (caractères) ; au-delà il est coupé et suivi de « … ».
+    static let confirmationNameLength = 60
+
+    /// Un nom prêt pour la confirmation : les sauts de ligne (y compris U+0085, U+2028, U+2029) et les tabulations deviennent des
+    /// espaces, les autres caractères de contrôle (C0, C1) et de format (marques de direction U+200E/F, U+202A-E, U+2066-9, espaces de
+    /// largeur nulle U+200B-D, U+FEFF) sont supprimés, les espaces répétés réduits, puis le nom est coupé à
+    /// `confirmationNameLength` caractères et suivi de « … ». Un nom vide après nettoyage donne `nil`.
+    static func cleanedName(_ name: String) -> String? {
+        var text = ""
+        for scalar in name.unicodeScalars {
+            switch scalar.properties.generalCategory {
+            case .control where scalar == "\t" || scalar == "\n" || scalar == "\r" || scalar == "\u{85}" || scalar == "\u{0B}" || scalar == "\u{0C}",
+                 .lineSeparator, .paragraphSeparator:
+                text.append(" ")
+            case .control, .format:
+                continue
+            default:
+                text.unicodeScalars.append(scalar)
+            }
+        }
+        let words = text.split(separator: " ", omittingEmptySubsequences: true).joined(separator: " ")
+        guard !words.isEmpty else { return nil }
+        return words.count > confirmationNameLength ? String(words.prefix(confirmationNameLength)) + "…" : words
+    }
+
+    /// Les noms des appareils cochés, en lignes à puce, à ajouter APRÈS le texte localisé de la confirmation (ADR 0009, règle 2 : la
+    /// confirmation nomme la cible). Des DONNÉES, jamais des clés de catalogue : insérées telles quelles après `cleanedName`, donc aucun
+    /// texte à traduire. Au plus `confirmationNameLimit` noms, puis une seule ligne « … ».
+    /// - Returns: `""` sans nom, sinon une ligne vide puis « • nom » par ligne.
+    static func confirmationNames(_ names: [String]) -> String {
+        let cleaned = names.compactMap(cleanedName)
+        guard !cleaned.isEmpty else { return "" }
+        var lines = cleaned.prefix(confirmationNameLimit).map { "• " + $0 }
+        if cleaned.count > confirmationNameLimit { lines.append("…") }
+        return "\n\n" + lines.joined(separator: "\n")
+    }
+
     // MARK: Raison
 
     /// « Running · quit it first » pour un appareil en cours d'exécution (variante « indisponible » de SL3), `nil` sinon.

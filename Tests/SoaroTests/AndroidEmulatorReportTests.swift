@@ -49,7 +49,7 @@ import Testing
             "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from hardware-qemu.ini)  running",
             "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
             "1 small device (\(size(50_000_000))) not listed",
-            "note: the app does not pre-select Android devices until SL11 (the rule's output is shown above)",
+            "note: the app does not pre-select Android devices until the last-used signal is settled (the rule's output is shown above)",
             "SDK source: ANDROID_HOME",
         ])
     }

@@ -136,7 +136,7 @@ final class RecordingConfirm {
         (.failed(.couldNotRead), false, 1, false, false),
     ])
     func theDeleteRuleIsAPureFunction(phase: SimulatorsModel.Phase, measuring: Bool, selected: Int, deleting: Bool, expected: Bool) {
-        #expect(SimulatorsModel.canDelete(phase: phase, isMeasuring: measuring, selectedCount: selected, isDeleting: deleting, androidSelectedCount: 0) == expected)
+        #expect(SimulatorsModel.canDelete(phase: phase, androidPhase: .hidden, isMeasuring: measuring, selectedCount: selected, androidSelectedCount: 0, isDeleting: deleting) == expected)
     }
 
     // MARK: Confirmation (R8)
@@ -153,7 +153,8 @@ final class RecordingConfirm {
         let ask = try #require(confirm.asks.first)
         #expect(confirm.asks.count == 1)
         #expect(ask.title == "Delete the selected devices? (2)")
-        #expect(ask.message == "\(Format.fileBytes(900_000_000)) \(Self.confirmMessageTail)")
+        // Le texte localisé de SL9, tel quel, puis les noms des appareils cochés (des données, jamais des clés), en ordre d'affichage.
+        #expect(ask.message == "\(Format.fileBytes(900_000_000)) \(Self.confirmMessageTail)\n\n• iPhone 1\n• iPhone 2")
         #expect(ask.button == "Delete")
         #expect(ask.critical)
     }

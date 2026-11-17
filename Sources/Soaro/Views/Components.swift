@@ -128,12 +128,26 @@ struct StatCard: View {
 
 struct SectionHeader: View {
     let title: LocalizedStringKey
+    /// La case « Select all » de la section, avant le titre ; `nil` : l'en-tête ne change pas.
+    var selectAll: SelectAllControl? = nil
+
     var body: some View {
+        if let selectAll {
+            HStack(spacing: 6) {
+                SelectAllCheckbox(control: selectAll)
+                titleText.accessibilityHidden(SelectAll.hidesHeaderTitle(sectionName: selectAll.sectionName))
+            }
+            .padding(.top, 4)
+        } else {
+            titleText.padding(.top, 4)
+        }
+    }
+
+    private var titleText: some View {
         Text(title)
             .textCase(.uppercase)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)
-            .padding(.top, 4)
     }
 }
 

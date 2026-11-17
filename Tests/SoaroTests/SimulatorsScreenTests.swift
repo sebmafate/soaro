@@ -144,11 +144,11 @@ import Testing
 
     @MainActor
     @Test func theDeleteRuleIsThePureFunctionOfTheModel() {
-        #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: true, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 0, isDeleting: false, androidSelectedCount: 0))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: true, androidSelectedCount: 0))
-        #expect(!SimulatorsModel.canDelete(phase: .listing, isMeasuring: false, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
+        #expect(SimulatorsModel.canDelete(phase: .listed, androidPhase: .hidden, isMeasuring: false, selectedCount: 2, androidSelectedCount: 0, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, androidPhase: .hidden, isMeasuring: true, selectedCount: 2, androidSelectedCount: 0, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, androidPhase: .hidden, isMeasuring: false, selectedCount: 0, androidSelectedCount: 0, isDeleting: false))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, androidPhase: .hidden, isMeasuring: false, selectedCount: 2, androidSelectedCount: 0, isDeleting: true))
+        #expect(!SimulatorsModel.canDelete(phase: .listing, androidPhase: .hidden, isMeasuring: false, selectedCount: 2, androidSelectedCount: 0, isDeleting: false))
     }
 
     // MARK: Disposition de l'écran (SL10 T11)
@@ -223,10 +223,10 @@ import Testing
     }
 
     @MainActor
-    @Test func theDeleteRuleHoldsBackWhileAnAndroidRowIsChecked() {
-        #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 1, isDeleting: false, androidSelectedCount: 0))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 1, isDeleting: false, androidSelectedCount: 1))
-        #expect(!SimulatorsModel.canDelete(phase: .hidden, isMeasuring: false, selectedCount: 0, isDeleting: false, androidSelectedCount: 1))
+    @Test func theDeleteRuleAcceptsACheckedAndroidRowInEitherCombination() {
+        #expect(SimulatorsModel.canDelete(phase: .listed, androidPhase: .listed, isMeasuring: false, selectedCount: 1, androidSelectedCount: 0, isDeleting: false))
+        #expect(SimulatorsModel.canDelete(phase: .listed, androidPhase: .listed, isMeasuring: false, selectedCount: 1, androidSelectedCount: 1, isDeleting: false), "SL11")
+        #expect(SimulatorsModel.canDelete(phase: .hidden, androidPhase: .listed, isMeasuring: false, selectedCount: 0, androidSelectedCount: 1, isDeleting: false), "Android seul")
     }
 
     @Test func theScreenShowsBothSectionsInOrderAndTheAndroidRowReadsNameThenApi() throws {

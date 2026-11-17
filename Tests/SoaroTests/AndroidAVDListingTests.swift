@@ -406,9 +406,12 @@ import Testing
         let cleanup = RepositoryRoot.url().appendingPathComponent("Sources/Soaro/Cleanup")
         let files = try FileManager.default.contentsOfDirectory(atPath: cleanup.path).filter { $0.hasPrefix("Android") && $0.hasSuffix(".swift") }
         #expect(files.contains("AndroidEmulatorScanner.swift"))
+        #expect(files.contains("AndroidEmulatorRemover.swift"))
         for file in files {
             let text = try String(contentsOf: cleanup.appendingPathComponent(file), encoding: .utf8)
-            for forbidden in ["removeItem(", "trashItem(", "\"/bin/rm\"", "createFile(", "write(to:"] {
+            // SL11 : le seul fichier Android autorisé à supprimer, et seulement par `removeItem(`, est le suppresseur.
+            let exempt = file == "AndroidEmulatorRemover.swift"
+            for forbidden in ["removeItem(", "trashItem(", "\"/bin/rm\"", "createFile(", "write(to:"] where !(exempt && forbidden == "removeItem(") {
                 #expect(!text.contains(forbidden), "\(file) contient \(forbidden)")
             }
         }

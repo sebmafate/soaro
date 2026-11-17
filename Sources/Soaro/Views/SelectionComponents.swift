@@ -102,6 +102,91 @@ enum SelectionAccessibility {
     }
 }
 
+// MARK: - « Select all » : une case à trois états par section
+
+/// État de la case « Select all » d'une section : aucune ligne sélectionnable cochée, une partie, ou toutes.
+enum SelectAllState: Equatable {
+    case none, some, all
+}
+
+/// Règles PURES de la case « Select all » (testables sans vue ; les modèles et les vues s'en servent).
+enum SelectAll {
+    /// - Parameters:
+    ///   - selectable: le nombre de lignes sélectionnables de la section (les lignes indisponibles, p. ex. en cours d'exécution, n'y comptent pas).
+    ///   - selected: le nombre de lignes cochées PARMI les sélectionnables (borné).
+    /// - Returns: `.none` sans ligne sélectionnable ou sans coche, `.all` quand toutes sont cochées, sinon `.some` (état mixte).
+    static func state(selectable: Int, selected: Int) -> SelectAllState {
+        guard selectable > 0, selected > 0 else { return .none }
+        return selected >= selectable ? .all : .some
+    }
+
+    /// Le clic : mixte ou aucune → tout cocher ; tout → tout décocher.
+    static func turnsOn(from state: SelectAllState) -> Bool { state != .all }
+
+    /// Désactivée sans ligne sélectionnable, et tant que la section est verrouillée (suppression en cours).
+    static func isEnabled(selectable: Int, locked: Bool = false) -> Bool { selectable > 0 && !locked }
+
+    /// Un glyphe par état : la couleur n'est jamais le seul signal (coche, tiret, cercle vide).
+    static func symbol(for state: SelectAllState) -> String {
+        switch state {
+        case .none: "circle"
+        case .some: "minus.circle.fill"
+        case .all: "checkmark.circle.fill"
+        }
+    }
+
+    /// Le titre visible de l'en-tête est caché de VoiceOver quand la case n'a pas de nom de section : le titre est alors « Select all »
+    /// (listes sans en-tête propre) et la case le dit déjà, il serait lu deux fois.
+    static func hidesHeaderTitle(sectionName: String?) -> Bool {
+        (sectionName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Texte VoiceOver : libellé « Select all » suivi du nom de la section quand il y en a un ; valeur « Not selected » /
+    /// « Some selected » / « Selected ».
+    static func description(state: SelectAllState, sectionName: String?) -> SelectionAccessibility.Description {
+        let value: String
+        switch state {
+        case .none: value = String(localized: "Not selected")
+        case .some: value = String(localized: "Some selected")
+        case .all: value = String(localized: "Selected")
+        }
+        let name = sectionName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let label = String(localized: "Select all")
+        return SelectionAccessibility.Description(label: name.isEmpty ? label : "\(label), \(name)", value: value)
+    }
+}
+
+/// Ce que l'en-tête d'une section a besoin de savoir de sa case : l'état, si elle est active, le nom de la section (VoiceOver), le clic.
+struct SelectAllControl {
+    let state: SelectAllState
+    let enabled: Bool
+    var sectionName: String? = nil
+    let action: () -> Void
+}
+
+/// La case « Select all » d'un en-tête : UN élément pour VoiceOver (« Select all, <section> », valeur Selected / Not selected /
+/// Some selected), au moins 24 x 24 pt, atteignable au clavier (Full Keyboard Access : Espace bascule), sans aucun raccourci.
+struct SelectAllCheckbox: View {
+    let control: SelectAllControl
+
+    var body: some View {
+        let description = SelectAll.description(state: control.state, sectionName: control.sectionName)
+        Button(action: control.action) {
+            Image(systemName: SelectAll.symbol(for: control.state))
+                .foregroundStyle(control.state == .none ? Color.secondary : Color.accentColor)
+                .font(.title3)
+                .frame(minWidth: SelectionMetrics.minimumTargetSize, minHeight: SelectionMetrics.minimumTargetSize)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!control.enabled)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(description.label)
+        .accessibilityValue(description.value)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
 /// Ligne de sélection : UN SEUL élément pour VoiceOver (nom, détails, valeur « Selected » / « Not selected »),
 /// activé pour basculer. Le texte visible n'est pas lu une seconde fois. Une ligne indisponible ne fait rien.
 /// « Show in Finder » (si `revealAction` est fourni) est un bouton à la souris ET une action nommée de la ligne.

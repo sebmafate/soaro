@@ -56,7 +56,7 @@ enum AndroidEmulatorReport {
         }
         // `pre-selected: inactive` est la sortie de la RÈGLE ; tant que l'application ne pré-sélectionne pas Android, on le dit.
         if !appPreselects && suggestions.preSelectedCount > 0 {
-            out.append("note: the app does not pre-select Android devices until SL11 (the rule's output is shown above)")
+            out.append("note: the app does not pre-select Android devices until the last-used signal is settled (the rule's output is shown above)")
         }
         if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
         if let sdk = scan.sdk { out.append("SDK source: \(sdk.source.rawValue)") }

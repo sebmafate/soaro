@@ -82,6 +82,16 @@ final class LargeFilesModel: ObservableObject {
         if selected.contains(file.id) { selected.remove(file.id) } else { selected.insert(file.id) }
     }
 
+    // « Select all » de la liste (en mémoire seulement : démo comprise). Tous les fichiers sont sélectionnables.
+    var selectAllState: SelectAllState { SelectAll.state(selectable: files.count, selected: selectedFiles.count) }
+    var canSelectAll: Bool { SelectAll.isEnabled(selectable: files.count) }
+    func setAllSelected(_ on: Bool) {
+        guard canSelectAll else { return }
+        selected = on ? Set(files.map(\.id)) : []
+    }
+    /// Le clic sur la case : mixte ou aucune → tout cocher ; tout → tout décocher.
+    func toggleAll() { setAllSelected(SelectAll.turnsOn(from: selectAllState)) }
+
     func trashSelected() {
         let items = selectedFiles
         guard !items.isEmpty else { return }
@@ -165,6 +175,16 @@ final class DevArtifactsModel: ObservableObject {
     func toggle(_ artifact: DevArtifact) {
         if selected.contains(artifact.id) { selected.remove(artifact.id) } else { selected.insert(artifact.id) }
     }
+
+    // « Select all » de la liste (en mémoire seulement : démo comprise). Tous les dossiers sont sélectionnables.
+    var selectAllState: SelectAllState { SelectAll.state(selectable: artifacts.count, selected: selectedArtifacts.count) }
+    var canSelectAll: Bool { SelectAll.isEnabled(selectable: artifacts.count) }
+    func setAllSelected(_ on: Bool) {
+        guard canSelectAll else { return }
+        selected = on ? Set(artifacts.map(\.id)) : []
+    }
+    /// Le clic sur la case : mixte ou aucune → tout cocher ; tout → tout décocher.
+    func toggleAll() { setAllSelected(SelectAll.turnsOn(from: selectAllState)) }
 
     func removeSelected() {
         let items = selectedArtifacts
@@ -284,6 +304,17 @@ final class UninstallerModel: ObservableObject {
     }
 
     func deselect() { current = nil; leftovers = [] }
+
+    // « Select all » des fichiers liés (en mémoire seulement : démo comprise). Ici la sélection est l'inverse de `excluded` : tout est
+    // coché au départ. L'application elle-même n'a pas de case.
+    var selectAllState: SelectAllState { SelectAll.state(selectable: leftovers.count, selected: selectedLeftovers.count) }
+    var canSelectAll: Bool { SelectAll.isEnabled(selectable: leftovers.count) }
+    func setAllSelected(_ on: Bool) {
+        guard canSelectAll else { return }
+        excluded = on ? [] : Set(leftovers.map(\.id))
+    }
+    /// Le clic sur la case : mixte ou aucune → tout cocher ; tout → tout décocher.
+    func toggleAll() { setAllSelected(SelectAll.turnsOn(from: selectAllState)) }
 
     func uninstall() {
         guard let app = current else { return }

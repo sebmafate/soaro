@@ -1,7 +1,8 @@
 import Foundation
 
-/// Appareils virtuels Android (AVD) pour l'outil « Simulators and emulators » (R16, R18). LECTURE SEULE (ADR 0009) :
-/// rien n'est supprimé, déplacé ni écrit sous `~/.android` ou dans le SDK ; aucun outil du SDK n'est lancé.
+/// Appareils virtuels Android (AVD) pour l'outil « Simulators and emulators » (R16, R18). Ce fichier LIT seulement (ADR 0009) :
+/// il ne supprime, ne déplace ni n'écrit rien sous `~/.android` ou dans le SDK, et ne lance aucun outil du SDK. La suppression
+/// d'un AVD (SL11) est dans `AndroidEmulatorRemover.swift`, seul fichier Android qui supprime.
 /// Cette première partie : fonctions PURES de lecture des fichiers d'un AVD (aucun accès au disque).
 enum AndroidEmulatorScanner {
     // MARK: Nom
@@ -89,7 +90,7 @@ struct AndroidDevice: Equatable {
     /// fichier par fichier avec `--scan`). Vide : aucun de ces fichiers.
     let fileDates: [AndroidFileDate]
     /// Les AUTRES inscriptions (`<nom>.ini`) qui désignent le même dossier, dans l'ordre des noms : une ligne par dossier, mais un
-    /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 doit refuser toute
+    /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 refuse toute
     /// inscription en cours d'exécution).
     let aliases: [String]
 
@@ -207,7 +208,7 @@ extension AndroidEmulatorScanner {
     }
 
     /// Le premier candidat qui est un dossier existant (`path=` absolu, `path.rel`, dossier par défaut). `nil` sinon.
-    private static func deviceFolder(name: String, registration: [String: String], androidFolder: URL, avdFolder: URL) -> URL? {
+    static func deviceFolder(name: String, registration: [String: String], androidFolder: URL, avdFolder: URL) -> URL? {
         var candidates: [URL] = []
         if let path = registration["path"], path.hasPrefix("/") { candidates.append(URL(fileURLWithPath: path, isDirectory: true)) }
         if let rel = registration["path.rel"], !rel.isEmpty, !rel.hasPrefix("/") {
@@ -226,8 +227,10 @@ extension AndroidEmulatorScanner {
     /// Le suffixe est `.avd` en minuscules exactement (les outils d'Android l'écrivent ainsi ; une autre casse est rejetée : on se
     /// trompe du côté sûr), et seule la forme RÉSOLUE compte (un lien nommé `X.avd` vers un autre dossier est rejeté).
     /// Règle la plus stricte qui reste sûre pour les vraies dispositions : `avdmanager` et Android Studio créent toujours
-    /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fera la cible
-    /// d'une suppression). Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe
+    /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fait la cible
+    /// d'une suppression, après l'avoir relue).
+    /// Le LISTAGE accepte un dossier atteint par un lien symbolique (le chemin résolu compte) ; la SUPPRESSION (`prepareRemoval`) le
+    /// refuse : supprimer le dossier visé laisserait un lien cassé, l'appareil reste visible mais n'est pas supprimé. Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe
     /// est `<home>/.android/avd`) ; déplacé DANS le dossier personnel, il est accepté s'il respecte cette règle.
     private static func looksLikeAVDFolder(_ folder: URL) -> Bool {
         let resolved = folder.resolvingSymlinksInPath().standardizedFileURL
@@ -244,7 +247,7 @@ extension AndroidEmulatorScanner {
     }
 
     /// Lit et analyse un fichier INI : fichier ordinaire de 1 Mio au plus, UTF-8 valide. Sinon `nil` (le fichier compte comme absent).
-    private static func readINI(_ url: URL) -> [String: String]? {
+    static func readINI(_ url: URL) -> [String: String]? {
         var info = stat()
         guard stat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, info.st_size <= iniSizeLimit,
               let handle = try? FileHandle(forReadingFrom: url) else { return nil }

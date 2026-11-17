@@ -49,20 +49,25 @@ struct LargeFilesView: View {
                     .padding(14).frame(maxHeight: .infinity, alignment: .top)
             } else {
                 List {
-                    ForEach(model.files) { file in
-                        SelectionRow(name: file.name,
-                                     isOn: model.selected.contains(file.id),
-                                     details: [fileSubtitle(file), Format.fileBytes(file.size)],
-                                     revealAction: { revealInFinder(file.url) },
-                                     toggle: { model.toggle(file) }) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
-                                Text(verbatim: fileSubtitle(file))
-                                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                    Section {
+                        ForEach(model.files) { file in
+                            SelectionRow(name: file.name,
+                                         isOn: model.selected.contains(file.id),
+                                         details: [fileSubtitle(file), Format.fileBytes(file.size)],
+                                         revealAction: { revealInFinder(file.url) },
+                                         toggle: { model.toggle(file) }) {
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(file.name).font(.callout).lineLimit(1).truncationMode(.middle)
+                                    Text(verbatim: fileSubtitle(file))
+                                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                                }
+                                Spacer()
+                                Text(Format.fileBytes(file.size)).font(.caption.monospacedDigit())
                             }
-                            Spacer()
-                            Text(Format.fileBytes(file.size)).font(.caption.monospacedDigit())
                         }
+                    } header: {
+                        SectionHeader(title: "Select all", selectAll: SelectAllControl(
+                            state: model.selectAllState, enabled: model.canSelectAll, action: { model.toggleAll() }))
                     }
                 }
                 .listStyle(.plain)
@@ -136,6 +141,9 @@ struct DevProjectsView: View {
                                 Text(Format.fileBytes(item.size)).font(.caption.monospacedDigit())
                             }
                         }
+                    } header: {
+                        SectionHeader(title: "Select all", selectAll: SelectAllControl(
+                            state: model.selectAllState, enabled: model.canSelectAll, action: { model.toggleAll() }))
                     } footer: {
                         Text("Projects inactive for more than \(DevArtifactScanner.staleAfterDays) days are pre-selected. These folders can be rebuilt with “npm install”, “swift build”, and so on; your sources are never touched.")
                             .font(.caption2)
@@ -236,7 +244,7 @@ struct UninstallerView: View {
                             Text(app.size.map { Format.fileBytes($0) } ?? "").font(.caption.monospacedDigit())
                         }
                     }
-                    Section("Related files (\(model.leftovers.count))") {
+                    Section {
                         if model.leftovers.isEmpty {
                             Text("No leftovers found in ~/Library.").font(.caption).foregroundStyle(.secondary)
                         }
@@ -249,6 +257,14 @@ struct UninstallerView: View {
                                 Spacer()
                                 Text(Format.fileBytes(item.size)).font(.caption.monospacedDigit())
                             }
+                        }
+                    } header: {
+                        // Le titre garde le style d'en-tête par défaut (comme « Application ») ; la case vient avant lui.
+                        HStack(spacing: 6) {
+                            SelectAllCheckbox(control: SelectAllControl(
+                                state: model.selectAllState, enabled: model.canSelectAll,
+                                sectionName: String(localized: "Related files (\(model.leftovers.count))"), action: { model.toggleAll() }))
+                            Text("Related files (\(model.leftovers.count))")
                         }
                     }
                 }

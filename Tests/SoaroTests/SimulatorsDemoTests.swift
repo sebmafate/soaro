@@ -141,7 +141,7 @@ import Testing
         #expect((inactive?.daysSinceLastUse ?? 0) > 60)
         #expect(inactive.map { m.size(of: $0) ?? 0 } ?? 0 >= DeviceSuggestions.smallDeviceThreshold)
         #expect(inactive?.isPreSelected == true, "la règle le pré-sélectionnerait")
-        #expect(m.androidSelected.isEmpty, "mais l'application ne pré-sélectionne pas Android avant SL11 : la démo ouvre Delete utilisable")
+        #expect(m.androidSelected.isEmpty, "mais l'application ne pré-sélectionne pas Android (condition d'entrée de SL10 non remplie) : rien n'est coché d'office")
         let running = m.androidRows.first { $0.isRunning }
         #expect(running != nil, "un appareil en cours d'exécution")
         #expect(running.map { !m.androidSelected.contains($0.device.device.name) } == true)
@@ -169,7 +169,7 @@ import Testing
         #expect(!text.contains("/Users/") && !text.contains(".android"))
     }
 
-    @Test func androidDeletionIsNeverOfferedInDemo() async {
+    @Test func aCheckedDemoAndroidRowCanBeDeletedAndTheRowLeavesTheList() async {
         let runner = FakeCommandRunner()
         let measure = ScriptedMeasure([:])
         let confirm = RecordingConfirm(answer: true)
@@ -177,33 +177,133 @@ import Testing
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
         #expect(m.androidSelected.isEmpty, "rien d'Android n'est coché d'office")
-        #expect(m.canDelete, "la démo ouvre Delete utilisable pour iOS")
-        // Cocher une ligne Android (non en cours d'exécution) à la main désactive Delete : aucune confirmation, aucun effet.
         let checkable = try! #require(m.androidRows.first { !$0.isRunning })
         m.toggle(checkable)
-        #expect(!m.canDelete)
+        #expect(m.canDelete, "SL11 : une ligne Android cochée laisse Delete utilisable")
+        let size = m.selectedSize                  // les lignes iOS pré-sélectionnées de la démo et la ligne Android cochée
+        #expect(size >= (m.size(of: checkable) ?? 0))
         m.deleteSelected()
-        #expect(confirm.asks.isEmpty, "aucune confirmation, aucun effet")
-        #expect(toasts.messages.isEmpty)
-        // Décochée : la suppression iOS de démo marche et ne touche pas aux lignes Android.
-        m.toggle(checkable)
-        let android = m.androidRows
-        #expect(m.canDelete)
-        m.deleteSelected()
-        #expect(m.androidRows == android)
+        #expect(confirm.asks.count == 1)
+        #expect(!m.androidRows.contains { $0.device.device.name == checkable.device.device.name })
+        #expect(toasts.messages == ["\(Format.fileBytes(size)) freed"])
         #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+    }
+
+    // MARK: Suppression Android en démo (SL11 T6)
+
+    @Test func aDemoBatchWithAnAndroidRowIsInertAndCountsBothGroups() async throws {
+        let runner = FakeCommandRunner()           // un appel non prévu fait échouer le test
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let counts = Counts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts, counts: counts)
+        m.scan()
+        let ios = try #require(m.rows.first { !$0.isRunning && !m.selected.contains($0.device.device.udid) })
+        let android = try #require(m.androidRows.first { !$0.isRunning })
+        m.toggle(ios)
+        m.toggle(android)
+        let total = m.selectedCount
+        let expected = (m.size(of: ios) ?? 0) + (m.size(of: android) ?? 0)
+        let selectedBefore = m.selectedSize
+        #expect(selectedBefore >= expected)
+        let iosGone = m.selected, androidGone = m.androidSelected
+        let freed = selectedBefore
+
+        m.deleteSelected()
+        await m.deleteTask?.value
+
+        let ask = try #require(confirm.asks.first)
+        #expect(ask.title == "Delete the selected devices? (\(total))", "la confirmation compte les deux groupes")
+        #expect(ask.message.hasPrefix(Format.fileBytes(freed)))
+        #expect(ask.message.contains("\n\n• "), "la confirmation de démo nomme aussi les appareils (inventés)")
+        #expect(ask.message.contains("• \(android.device.device.displayName)") && ask.message.contains("• \(ios.device.device.name)"))
+        #expect(ask.button == "Delete" && ask.critical)
+        #expect(!m.rows.contains { iosGone.contains($0.device.device.udid) })
+        #expect(!m.androidRows.contains { androidGone.contains($0.device.device.name) })
+        #expect(m.selected.isEmpty && m.androidSelected.isEmpty)
+        #expect(toasts.messages == ["\(Format.fileBytes(freed)) freed"], "la somme des tailles de démo des deux groupes")
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+        #expect(counts.removals == 0 && counts.locates == 0 && counts.detections == 0)
+        #expect(m.deleteTask == nil && !m.isDeleting, "pas de lot, pas de porte, pas de nouveau scan")
+    }
+
+    @Test func aDemoAndroidRowAloneIsInertAndItsToastIsItsDemoSize() async throws {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: true)
+        let toasts = Toasts()
+        let counts = Counts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts, counts: counts)
+        m.scan()
+        // Seule la ligne Android est cochée : les lignes iOS pré-sélectionnées de la démo sont décochées.
+        for row in m.rows where m.selected.contains(row.device.device.udid) { m.toggle(row) }
+        let android = try #require(m.androidRows.first { !$0.isRunning })
+        m.toggle(android)
+        #expect(m.canDelete)
+        let size = try #require(m.size(of: android))
+        let iosBefore = m.rows
+
+        m.deleteSelected()
+
+        #expect(confirm.asks.map(\.title) == ["Delete the selected devices? (1)"])
+        #expect(!m.androidRows.contains { $0.device.device.name == android.device.device.name })
+        #expect(m.rows == iosBefore, "les lignes iOS ne bougent pas")
+        #expect(toasts.messages == ["\(Format.fileBytes(size)) freed"])
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+        #expect(counts.removals == 0 && counts.locates == 0 && counts.detections == 0)
+        #expect(m.deleteTask == nil)
+    }
+
+    @Test func cancellingTheConfirmationInDemoChangesNothing() throws {
+        let runner = FakeCommandRunner()
+        let measure = ScriptedMeasure([:])
+        let confirm = RecordingConfirm(answer: false)
+        let toasts = Toasts()
+        let counts = Counts()
+        let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts, counts: counts)
+        m.scan()
+        m.toggle(try #require(m.androidRows.first { !$0.isRunning }))
+        let rows = m.rows, androidRows = m.androidRows, selected = m.selected, androidSelected = m.androidSelected
+
+        m.deleteSelected()
+
+        #expect(confirm.asks.count == 1)
+        #expect(m.rows == rows && m.androidRows == androidRows)
+        #expect(m.selected == selected && m.androidSelected == androidSelected)
+        #expect(toasts.messages.isEmpty)
+        #expect(runner.calls.isEmpty && measure.calls.isEmpty)
+        #expect(counts.removals == 0 && counts.locates == 0 && counts.detections == 0)
+    }
+
+    @Test func theRunningDemoAvdStillCannotBeChecked() throws {
+        let m = confirmingModel(runner: FakeCommandRunner(), measure: ScriptedMeasure([:]), confirm: RecordingConfirm(answer: true), toasts: Toasts())
+        m.scan()
+        let running = try #require(m.androidRows.first { $0.isRunning })
+        m.toggle(running)
+        #expect(!m.androidSelected.contains(running.device.device.name))
     }
 
     // MARK: Suppression en démo (SL9 T6)
 
     final class Toasts { var messages: [String] = [] }
 
-    func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts) -> SimulatorsModel {
+    /// Compte les appels qu'un mode démo inerte ne doit jamais faire : recherche d'outil, détection, suppression de fichier.
+    final class Counts {
+        var locates = 0
+        var detections = 0
+        var removals = 0
+    }
+
+    func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts,
+                         counts: Counts = Counts()) -> SimulatorsModel {
         SimulatorsModel(runner: runner,
-                        detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                        locateTool: { _ in nil },
+                        detect: { counts.detections += 1; return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
+                        locateTool: { _ in counts.locates += 1; return nil },
                         environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
-                        measure: { measure.measure($0) }, demo: true, confirm: confirm.handler,
+                        measure: { measure.measure($0) },
+                        removeFile: { _ in counts.removals += 1 },
+                        demo: true, confirm: confirm.handler,
                         notify: { toasts.messages.append($0) })
     }
 
