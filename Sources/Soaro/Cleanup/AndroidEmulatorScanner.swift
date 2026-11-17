@@ -223,6 +223,8 @@ extension AndroidEmulatorScanner {
     private static func resolvedPath(_ url: URL) -> String { url.resolvingSymlinksInPath().standardizedFileURL.path }
 
     /// Le dossier ressemble à un dossier d'AVD : son nom (résolu) finit par `.avd` ET il contient un `config.ini` ordinaire.
+    /// Le suffixe est `.avd` en minuscules exactement (les outils d'Android l'écrivent ainsi ; une autre casse est rejetée : on se
+    /// trompe du côté sûr), et seule la forme RÉSOLUE compte (un lien nommé `X.avd` vers un autre dossier est rejeté).
     /// Règle la plus stricte qui reste sûre pour les vraies dispositions : `avdmanager` et Android Studio créent toujours
     /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fera la cible
     /// d'une suppression). Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe

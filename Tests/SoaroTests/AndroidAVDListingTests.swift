@@ -283,6 +283,48 @@ import Testing
         #expect(listing.devices.first?.aliases == ["Test_Phone_B", "Test_Phone_C"], "les autres inscriptions du même dossier sont gardées")
     }
 
+    @Test func aSymlinkNamedAvdPointingAtANonAvdFolderInsideTheHomeIsRejected() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Documents")
+        try box.write("Documents/config.ini", "avd.ini.displayname=Not an AVD\n")
+        try box.dir(".android/avd")
+        // Le nom du lien finit par `.avd`, mais le dossier RÉSOLU est « Documents » : seule la forme résolue compte.
+        try FileManager.default.createSymbolicLink(atPath: box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd").path,
+                                                   withDestinationPath: box.root.appendingPathComponent("Documents").path)
+        try box.write(".android/avd/Test_Phone_A.ini", "path.rel=avd/Test_Phone_A.avd\n")
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func anUppercaseAvdSuffixIsRejectedOnTheSafeSide() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.dir("Dev/Moved.AVD")
+        try box.write("Dev/Moved.AVD/config.ini", "avd.ini.displayname=Upper\n")
+        try box.write(".android/avd/Test_Phone_A.ini", "path=\(box.root.path)/Dev/Moved.AVD\n")
+        // Les outils d'Android écrivent toujours `.avd` en minuscules : une autre casse est traitée comme « pas un AVD ».
+        #expect(list(box).devices.isEmpty)
+    }
+
+    @Test func aPathWithATrailingSlashIsAcceptedWhenOtherwiseValid() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A", registration: "path=\(box.root.path)/.android/avd/Test_Phone_A.avd/\n")
+        let listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"])
+        #expect(listing.devices.map { realPath($0.folder) } == [realPath(folder)])
+    }
+
+    @Test func aRelativePathClimbingThroughASymlinkThatEndsOutsideTheHomeIsRejected() throws {
+        let box = try Sandbox(insideHome: true)
+        let outside = try Sandbox()
+        try outside.dir("Out.avd")
+        try outside.write("Out.avd/config.ini", "avd.ini.displayname=Outside\n")
+        try box.dir(".android")
+        try FileManager.default.createSymbolicLink(atPath: box.root.appendingPathComponent(".android/link").path,
+                                                   withDestinationPath: outside.root.path)
+        try box.write(".android/avd/Test_Phone_A.ini", "path.rel=link/Out.avd\n")
+        #expect(list(box).devices.isEmpty)
+        #expect(list(box).skippedCount == 1)
+    }
+
     @Test func skippedRegistrationsAreCounted() throws {
         let box = try Sandbox(insideHome: true)
         let outside = try Sandbox()
