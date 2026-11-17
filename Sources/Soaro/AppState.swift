@@ -634,43 +634,22 @@ final class AppState: ObservableObject {
         CleanupKind.quickCleanTotal(sizes: cleanupSizes)
     }
 
-    /// Demande confirmation puis nettoie.
+    /// Demande confirmation puis nettoie (le déroulé est dans `CacheCleanupFlow`, rien n'est supprimé en mode démo).
     func cleanup(_ kinds: [CleanupKind]) {
         guard !kinds.isEmpty, busyKinds.isDisjoint(with: kinds) else { return }
 
-        let total = kinds.reduce(UInt64(0)) { $0 + ((cleanupSizes[$1] ?? nil) ?? 0) }
-        var info = kinds.map { "• \($0.title)" }.joined(separator: "\n")
-        if total > 0 { info += String(localized: "\n\nAbout \(Format.fileBytes(total)) will be freed.") }
-        if kinds.contains(.trash) { info += String(localized: "\nEmptying the Trash is permanent.") }
-        guard Self.confirm(
-            title: kinds.count == 1 ? String(localized: "Clean “\(kinds[0].title)”?") : String(localized: "Run the quick clean?"),
-            message: info, button: String(localized: "Clean"), critical: kinds.contains(.trash)
+        guard let outcome = CacheCleanupFlow.run(
+            kinds: kinds, sizes: cleanupSizes, demo: DemoMode.isEnabled,
+            confirm: SystemConfirmation.ask,
+            clean: { CleanupService.clean($0) },
+            willStart: { [weak self] in self?.busyKinds.formUnion(kinds) }
         ) else { return }
 
-        busyKinds.formUnion(kinds)
         Task { [weak self] in
-            let outcome = await Task.detached(priority: .userInitiated) { () -> (freed: UInt64, failures: Int, errors: [String]) in
-                var freed: UInt64 = 0
-                var failures = 0
-                var errors: [String] = []
-                for kind in kinds {
-                    let result = CleanupService.clean(kind)
-                    freed += result.freed
-                    failures += result.failures
-                    if let error = result.error { errors.append("\(kind.title) : \(error)") }
-                }
-                return (freed, failures, errors)
-            }.value
-
+            let message = await outcome.value
             guard let self else { return }
             self.busyKinds.subtract(kinds)
-            if let first = outcome.errors.first {
-                self.showToast(first)
-            } else {
-                var message = String(localized: "\(Format.fileBytes(outcome.freed)) freed")
-                if outcome.failures > 0 { message += String(localized: " (\(outcome.failures) items in use were skipped)") }
-                self.showToast(message)
-            }
+            self.showToast(message)
             self.scanCleanup()
         }
     }
