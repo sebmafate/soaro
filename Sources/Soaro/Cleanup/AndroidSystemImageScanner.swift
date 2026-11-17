@@ -182,3 +182,133 @@ extension AndroidSystemImageScanner {
         return a.abi < b.abi
     }
 }
+
+// MARK: - Qui utilise chaque image, et le listage complet
+
+/// Une image système installée, avec qui l'utilise.
+struct AndroidSystemImage: Equatable {
+    enum Usage: Equatable {
+        /// Les appareils listés (`listAVDs`) dont la clé d'image est celle-ci, dans l'ordre `AndroidDevice.isOrderedBefore`.
+        case usedBy([AndroidDevice])
+        /// Aucun appareil listé ne l'utilise, mais un appareil peut exister que Soaro ne voit pas.
+        case cannotTell
+        /// Aucun appareil listé ne l'utilise et la liste des appareils est complète.
+        case notUsed
+    }
+
+    let key: AndroidSystemImageKey
+    let folder: URL
+    let usage: Usage
+}
+
+/// Les raisons pour lesquelles la liste des appareils peut être incomplète (jamais un chemin ni une valeur).
+struct AndroidSystemImageIncompleteness: Equatable {
+    enum Reason: Equatable {
+        /// Variables d'environnement définies et non vides parmi `ANDROID_AVD_HOME`, `ANDROID_USER_HOME`, `ANDROID_EMULATOR_HOME`,
+        /// dans cet ordre : les appareils déplacés par elles ne sont pas lus.
+        case customLocation([String])
+        /// Le dossier des AVD ne peut pas être lu.
+        case avdFolderUnreadable
+        /// Inscriptions (`<nom>.ini`) qui n'ont donné aucun appareil.
+        case skippedRegistrations(Int)
+        /// Appareils listés dont l'image système est inconnue (pas de `image.sysdir.1` lisible).
+        case unknownImage(Int)
+    }
+
+    var reasons: [Reason]
+    var isEmpty: Bool { reasons.isEmpty }
+}
+
+/// Résultat du listage complet des images système.
+struct AndroidSystemImageListing: Equatable {
+    enum Status: Equatable {
+        /// Lu (éventuellement aucune image).
+        case ok
+        /// Pas de SDK : le groupe n'existe pas.
+        case sdkNotFound
+        /// Le SDK est hors du dossier personnel : rien n'est lu.
+        case sdkOutsideHome
+        /// `system-images` illisible.
+        case unreadable
+    }
+
+    let status: Status
+    let images: [AndroidSystemImage]
+    let sdk: AndroidSDKLocation?
+    /// Dossiers écartés (voir `AndroidSystemImageScanner.listImages`).
+    let skippedCount: Int
+    let incompleteness: AndroidSystemImageIncompleteness
+
+    init(status: Status, images: [AndroidSystemImage] = [], sdk: AndroidSDKLocation? = nil, skippedCount: Int = 0,
+         incompleteness: AndroidSystemImageIncompleteness = AndroidSystemImageIncompleteness(reasons: [])) {
+        self.status = status
+        self.images = images
+        self.sdk = sdk
+        self.skippedCount = skippedCount
+        self.incompleteness = incompleteness
+    }
+}
+
+extension AndroidSystemImageScanner {
+    /// Les variables qui déplacent les AVD, dans l'ordre où elles sont nommées. Une UNIQUE constante : si l'auteur utilise encore
+    /// d'anciens outils, `ANDROID_SDK_HOME` s'y ajoute ici.
+    static let customLocationVariables = ["ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_HOME"]
+
+    /// Les raisons d'incomplétude, dans l'ordre : emplacements personnalisés, dossier illisible, inscriptions écartées, image inconnue.
+    /// Fonction pure ; l'environnement est injecté.
+    static func incompleteness(environment: [String: String], avds: AndroidAVDListing) -> AndroidSystemImageIncompleteness {
+        var reasons: [AndroidSystemImageIncompleteness.Reason] = []
+        let set = customLocationVariables.filter { !(environment[$0] ?? "").isEmpty }
+        if !set.isEmpty { reasons.append(.customLocation(set)) }
+        if avds.status == .unreadable { reasons.append(.avdFolderUnreadable) }
+        if avds.skippedCount > 0 { reasons.append(.skippedRegistrations(avds.skippedCount)) }
+        let unknown = avds.devices.filter { imageKey(imageSysdir: $0.imageSysdir) == nil }.count
+        if unknown > 0 { reasons.append(.unknownImage(unknown)) }
+        return AndroidSystemImageIncompleteness(reasons: reasons)
+    }
+
+    /// Rattache chaque image à ses appareils : tous les AVD listés comptent (même petits, même à l'arrêt), chacun une seule fois
+    /// (les alias ne sont pas des utilisateurs distincts). Sans utilisateur : `cannotTell` si la liste est incomplète, sinon `notUsed`.
+    /// Une image utilisée par un appareil listé reste « utilisée » même si la liste est incomplète. L'ordre des images est gardé.
+    static func usage(images: [AndroidSystemImageFolder], devices: [AndroidDevice],
+                      incompleteness: AndroidSystemImageIncompleteness) -> [AndroidSystemImage] {
+        let sorted = devices.sorted(by: AndroidDevice.isOrderedBefore)
+        return images.map { image in
+            let users = sorted.filter { imageKey(imageSysdir: $0.imageSysdir) == image.key }
+            let usage: AndroidSystemImage.Usage = !users.isEmpty ? .usedBy(users) : (incompleteness.isEmpty ? .notUsed : .cannotTell)
+            return AndroidSystemImage(key: image.key, folder: image.folder, usage: usage)
+        }
+    }
+
+    /// Le listage complet, synchrone, dans cet ordre :
+    /// 1. le SDK (`ToolLocator.androidSDK`, première variable définie, sans repli) : absent, `sdkNotFound`, rien d'autre n'est lu ;
+    /// 2. `listImages` : `sdkOutsideHome` et `unreadable` sont rendus tels quels ; aucune image : `ok` et vide (les AVD ne sont pas lus) ;
+    /// 3. `AndroidEmulatorScanner.listAVDs` alimente le rattachement ;
+    /// 4. `ok` avec les images, le décompte, l'incomplétude et le SDK.
+    /// Aucun processus n'est lancé : le rattachement ne dépend pas des émulateurs en cours d'exécution.
+    /// - Parameter environment: injecté, jamais lu sur la machine ici (aucune valeur par défaut).
+    static func list(environment: [String: String], home: URL) -> AndroidSystemImageListing {
+        guard let sdk = ToolLocator.androidSDK(environment: environment, home: home) else {
+            return AndroidSystemImageListing(status: .sdkNotFound)
+        }
+        let folders = listImages(sdk: sdk, home: home)
+        guard folders.status == .ok else { return AndroidSystemImageListing(status: folders.status.listingStatus, sdk: sdk) }
+        guard !folders.images.isEmpty else {
+            return AndroidSystemImageListing(status: .ok, sdk: sdk, skippedCount: folders.skippedCount)
+        }
+        let avds = AndroidEmulatorScanner.listAVDs(home: home)
+        let incompleteness = incompleteness(environment: environment, avds: avds)
+        return AndroidSystemImageListing(status: .ok, images: usage(images: folders.images, devices: avds.devices, incompleteness: incompleteness),
+                                         sdk: sdk, skippedCount: folders.skippedCount, incompleteness: incompleteness)
+    }
+}
+
+private extension AndroidSystemImageFolderListing.Status {
+    var listingStatus: AndroidSystemImageListing.Status {
+        switch self {
+        case .ok: .ok
+        case .sdkOutsideHome: .sdkOutsideHome
+        case .unreadable: .unreadable
+        }
+    }
+}
