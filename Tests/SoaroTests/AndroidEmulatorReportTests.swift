@@ -11,7 +11,7 @@ import Testing
 
     private func ago(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
 
-    /// `files` : les dates de chaque fichier du signal qui existe (nom, jours depuis) ; par défaut, seulement le gagnant.
+    /// `files` : les dates de chaque fichier de diagnostic qui existe (nom, jours depuis) ; par défaut, seulement le gagnant.
     private func sized(_ name: String, display: String? = nil, version: String? = "36", days: Double?, source: String? = "userdata-qemu.img",
                        running: Bool = false, size: UInt64, files: [(String, Double)]? = nil) -> SizedAndroidDevice {
         let dates = files ?? (days.map { [(source ?? "userdata-qemu.img", $0)] } ?? [])

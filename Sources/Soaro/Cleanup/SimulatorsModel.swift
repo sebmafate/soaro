@@ -115,7 +115,7 @@ final class SimulatorsModel: ObservableObject {
     let demo: Bool
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
-    /// Le groupe Android est-il pré-sélectionné ? `DeviceSuggestions.androidPreselectionEnabled` (faux : le signal « dernière utilisation » n'est pas réglé) ; un test peut l'activer.
+    /// Le groupe Android est-il pré-sélectionné ? `DeviceSuggestions.androidPreselectionEnabled` (vrai depuis la décision de l'auteur du 2026-11-17) ; un test peut l'activer.
     private let androidPreselects: Bool
 
     /// - Parameters:

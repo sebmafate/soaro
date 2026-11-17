@@ -208,7 +208,7 @@ import Testing
         #expect(SimulatorsScreen.footers(ios: .listed, android: .absent) == .init(explanationUnderIos: true, smallCountUnder: .ios))
         #expect(SimulatorsScreen.footers(ios: .listed, android: .listed) == .init(explanationUnderIos: true, smallCountUnder: .android))
         #expect(SimulatorsScreen.footers(ios: .listed, android: .failed) == .init(explanationUnderIos: true, smallCountUnder: .android))
-        // Android seul : plus d'explication (« are pre-selected » serait faux), le décompte des petits appareils reste.
+        // Android seul : pas d'explication (la mise en page ne change pas en SL10b), le décompte des petits appareils reste.
         #expect(SimulatorsScreen.footers(ios: .absent, android: .listed) == .init(explanationUnderIos: false, smallCountUnder: .android))
         // Un groupe iOS en échec n'explique rien non plus.
         #expect(SimulatorsScreen.footers(ios: .failed, android: .listed) == .init(explanationUnderIos: false, smallCountUnder: .android))
