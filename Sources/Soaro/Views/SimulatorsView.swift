@@ -3,7 +3,7 @@ import SwiftUI
 /// Écran « Simulators and emulators » (S2) : deux sections, iOS puis Android (SL10), choisies par `SimulatorsScreen.layout`.
 /// Un groupe en échec montre son en-tête et son message (l'autre reste utilisable) ; un groupe caché ou vide est absent. Une ligne
 /// Android en cours d'exécution est « indisponible » (jamais cochable). Le bouton « Delete » (barre d'action « danger ») est disponible quand `canDelete`
-/// l'autorise ; il demande d'abord la confirmation (S3, injectée dans le modèle). Pendant la suppression : barre occupée,
+/// l'autorise (une ligne cochée dans l'un ou l'autre groupe, un lot peut mêler iOS et Android) ; il demande d'abord la confirmation (S3, injectée dans le modèle). Pendant la suppression : barre occupée,
 /// menu de limite et « Scan again » désactivés. Aucun raccourci clavier ni action par défaut : Retour ne supprime jamais (R8).
 /// Textes d'appoint (tailles, résumés, pieds de page) : jeton « texte de soutien » (`supportingText`), pas de style système estompé.
 struct SimulatorsView: View {
@@ -174,7 +174,7 @@ struct SimulatorsView: View {
     }
 
     /// Pied de page d'une section : le décompte des petits appareils (des deux groupes) et/ou l'explication des règles (iOS seulement :
-    /// elle parle de pré-sélection, qu'Android n'a pas avant SL11). Textes existants, aucune clé nouvelle.
+    /// elle parle de pré-sélection, qu'Android n'a pas : les lignes Android se cochent à la main). Textes existants, aucune clé nouvelle.
     @ViewBuilder private func footer(explanation: Bool, smallCount: Bool) -> some View {
         let small = smallCount
             ? SimulatorPresentation.smallDevicesFooter(count: model.hiddenSmallCount, size: model.hiddenSmallSize, locale: .current) : nil

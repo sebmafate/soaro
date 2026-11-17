@@ -214,10 +214,10 @@ import Testing
         #expect(!empty.showsNothingToSuggest)
     }
 
-    // MARK: Pas de pré-sélection Android avant SL11 (décision de l'auteur)
+    // MARK: Pas de pré-sélection Android (décision de l'auteur : le signal « dernière utilisation » n'est pas réglé)
 
     @Test func theSwitchIsOffAndTheModelUsesItByDefault() {
-        #expect(!DeviceSuggestions.androidPreselectionEnabled, "SL11 l'active avec la suppression, et ce test avec lui")
+        #expect(!DeviceSuggestions.androidPreselectionEnabled, "éteint tant que l'auteur n'a pas réglé le signal « dernière utilisation » (condition d'entrée de SL10 non remplie en SL11)")
     }
 
     @Test func byDefaultAnInactiveAvdIsListedWithItsReasonButNeverPreSelected() async throws {

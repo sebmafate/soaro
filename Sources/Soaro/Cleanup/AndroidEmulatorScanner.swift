@@ -89,7 +89,7 @@ struct AndroidDevice: Equatable {
     /// fichier par fichier avec `--scan`). Vide : aucun de ces fichiers.
     let fileDates: [AndroidFileDate]
     /// Les AUTRES inscriptions (`<nom>.ini`) qui désignent le même dossier, dans l'ordre des noms : une ligne par dossier, mais un
-    /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 doit refuser toute
+    /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 refuse toute
     /// inscription en cours d'exécution).
     let aliases: [String]
 
@@ -226,8 +226,8 @@ extension AndroidEmulatorScanner {
     /// Le suffixe est `.avd` en minuscules exactement (les outils d'Android l'écrivent ainsi ; une autre casse est rejetée : on se
     /// trompe du côté sûr), et seule la forme RÉSOLUE compte (un lien nommé `X.avd` vers un autre dossier est rejeté).
     /// Règle la plus stricte qui reste sûre pour les vraies dispositions : `avdmanager` et Android Studio créent toujours
-    /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fera la cible
-    /// d'une suppression). Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe
+    /// `<nom>.avd/config.ini`. Un `.ini` qui désigne `~/Documents` ou `../x` n'est donc jamais une cible (SL11 en fait la cible
+    /// d'une suppression, après l'avoir relue). Un AVD déplacé par `ANDROID_AVD_HOME` hors du dossier personnel reste hors périmètre (le dossier fixe
     /// est `<home>/.android/avd`) ; déplacé DANS le dossier personnel, il est accepté s'il respecte cette règle.
     private static func looksLikeAVDFolder(_ folder: URL) -> Bool {
         let resolved = folder.resolvingSymlinksInPath().standardizedFileURL

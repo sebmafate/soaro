@@ -378,7 +378,7 @@ final class GatedRunner: CommandRunner, @unchecked Sendable {
         await gated.started.wait()                         // la revérification de `ps` est en cours
         #expect(gate.isBusy)
         let task = m!.deleteTask!
-        weak var weakModel = m
+        weak let weakModel = m
         m = nil                                            // l'onglet a été quitté
         #expect(weakModel == nil, "le lot ne retient pas le modèle")
         for _ in 0..<5 { gated.release.signal() }

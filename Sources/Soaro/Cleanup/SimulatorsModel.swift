@@ -5,15 +5,16 @@ import Foundation
 ///
 /// Deux groupes côte à côte : les simulateurs iOS (UDID) et, SL10, les émulateurs Android (nom d'AVD). Chacun a son état, ses
 /// lignes, ses tailles et sa sélection ; les parties communes (limite, totaux, pied de page, « Scan again », « Delete ») les
-/// additionnent. Un échec d'un groupe n'abîme jamais l'autre. Android est en LECTURE SEULE : rien n'y est supprimé en SL10.
+/// additionnent. Un échec d'un groupe n'abîme jamais l'autre. SL11 : « Delete » agit sur les deux groupes (un lot mixte : iOS d'abord, puis Android).
 ///
 /// - Le listage (une commande) tourne dans une tâche détachée (priorité utilitaire), jamais sur l'acteur principal,
 ///   jamais dans le tick de 3 secondes. Un `CancelToken` annule le scan : le résultat d'un scan annulé n'est jamais appliqué.
 /// - Le lanceur n'a PAS de valeur par défaut (ADR 0009) : il est construit par `CleanupTab`, et nulle part ailleurs.
 /// - La détection de l'outil ne lance rien ; le lanceur n'est appelé que si `simctl` est sur le disque ET `xcrun` présent.
-/// - Suppression (SL9) : après confirmation (`ConfirmHandler` injecté, sans valeur par défaut), un lot tourne dans une tâche
-///   détachée (priorité utilisateur) : pour chaque appareil, `SimulatorScanner.remove` (revérification de l'état, portée, mesure
-///   avant et après, `xcrun simctl delete`). Le toast dit l'espace réellement libéré ; la liste est relue ensuite.
+/// - Suppression (SL9, SL11) : après confirmation (`ConfirmHandler` injecté, sans valeur par défaut), un lot tourne dans une tâche
+///   détachée (priorité utilisateur) : pour chaque simulateur, `SimulatorScanner.remove` (revérification de l'état, portée, mesure
+///   avant et après, `xcrun simctl delete`) ; puis pour chaque AVD, `AndroidEmulatorScanner.remove` (listage frais, `ps` frais, portée,
+///   mesure, dossier puis `.ini`). Le toast dit l'espace réellement libéré ; la liste est relue ensuite.
 @MainActor
 final class SimulatorsModel: ObservableObject {
     enum Failure: Equatable {
@@ -102,7 +103,7 @@ final class SimulatorsModel: ObservableObject {
     let demo: Bool
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
-    /// Le groupe Android est-il pré-sélectionné ? `DeviceSuggestions.androidPreselectionEnabled` (faux avant SL11) ; un test peut l'activer.
+    /// Le groupe Android est-il pré-sélectionné ? `DeviceSuggestions.androidPreselectionEnabled` (faux : le signal « dernière utilisation » n'est pas réglé) ; un test peut l'activer.
     private let androidPreselects: Bool
 
     /// - Parameters:
@@ -182,7 +183,7 @@ final class SimulatorsModel: ObservableObject {
 
     /// Bandeau « Nothing to suggest… » : au moins une ligne listée (dans l'un ou l'autre groupe), rien de pré-sélectionné nulle part,
     /// et les tailles sont toutes arrivées.
-    /// Un groupe dont la pré-sélection est coupée (Android avant SL11) ne compte pas : « rien à suggérer » serait faux (par conception),
+    /// Un groupe dont la pré-sélection est coupée (Android, tant que le réglage est éteint) ne compte pas : « rien à suggérer » serait faux (par conception),
     /// et « baisser la limite » n'y changerait rien.
     var showsNothingToSuggest: Bool {
         let suggested = rows.count + (androidPreselects ? androidRows.count : 0)
@@ -484,7 +485,7 @@ final class SimulatorsModel: ObservableObject {
         androidRows = androidMeasuring ? result.rows.sorted { AndroidDevice.isOrderedBefore($0.device.device, $1.device.device) } : result.rows
         androidNothingPreSelected = result.preSelectedCount == 0
         switch selection {
-        // Réglage coupé (avant SL11) : la règle est calculée (raison « inactive for N d », `--scan`) mais rien n'est coché d'office.
+        // Réglage coupé : la règle est calculée (raison « inactive for N d », `--scan`) mais rien n'est coché d'office.
         case .replace: androidSelected = androidPreselects ? Set(result.rows.filter(\.isPreSelected).map(\.device.device.name)) : []
         case .prune: androidSelected.formIntersection(result.rows.filter { !$0.isRunning }.map(\.device.device.name))
         }
