@@ -131,11 +131,11 @@ import Testing
 
     @MainActor
     @Test func theDeleteRuleIsThePureFunctionOfTheModel() {
-        #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: false))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: true, selectedCount: 2, isDeleting: false))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 0, isDeleting: false))
-        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: true))
-        #expect(!SimulatorsModel.canDelete(phase: .listing, isMeasuring: false, selectedCount: 2, isDeleting: false))
+        #expect(SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: true, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 0, isDeleting: false, androidSelectedCount: 0))
+        #expect(!SimulatorsModel.canDelete(phase: .listed, isMeasuring: false, selectedCount: 2, isDeleting: true, androidSelectedCount: 0))
+        #expect(!SimulatorsModel.canDelete(phase: .listing, isMeasuring: false, selectedCount: 2, isDeleting: false, androidSelectedCount: 0))
     }
 
     @Test func theViewNoLongerSaysDeleteIsDisabled() throws {

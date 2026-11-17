@@ -83,8 +83,8 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
         let detection = detection ?? present
         return SimulatorsModel(runner: runner,
                                detect: { detection },
-                               locateXcrun: { _ in "/usr/bin/xcrun" },
-                               home: URL(fileURLWithPath: "/home-fake/user-x"),
+                               locateTool: { _ in "/usr/bin/xcrun" },
+                               environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"),
                                now: { self.now },
                                measure: measure,
                                demo: false,
@@ -176,8 +176,8 @@ final class BlockingRunner: CommandRunner, @unchecked Sendable {
 
     @Test func xcrunMissingAlsoMakesZeroRunnerCalls() async {
         let runner = FakeCommandRunner()
-        let m = SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in nil },
-                                home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now }, measure: { _ in 0 },
+        let m = SimulatorsModel(runner: runner, detect: { self.present }, locateTool: { _ in nil },
+                                environment: [:], home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now }, measure: { _ in 0 },
                                 demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         await run(m)
         #expect(runner.calls.isEmpty)

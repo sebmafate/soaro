@@ -38,7 +38,7 @@ import Testing
 
     func model(_ runner: CommandRunner, measure: ScriptedMeasure? = nil) -> SimulatorsModel {
         let measure = measure ?? ScriptedMeasure([:])
-        return SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in "/usr/bin/xcrun" }, home: home,
+        return SimulatorsModel(runner: runner, detect: { self.present }, locateTool: { _ in "/usr/bin/xcrun" }, environment: [:], home: home,
                                now: { self.now }, measure: { measure.measure($0) }, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 

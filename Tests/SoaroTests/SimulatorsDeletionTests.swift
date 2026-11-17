@@ -97,8 +97,8 @@ final class RecordingConfirm {
         let detection = present
         return SimulatorsModel(runner: runner ?? self.runner,
                                detect: { detect?(); return detection },
-                               locateXcrun: locate,
-                               home: box.root,
+                               locateTool: locate,
+                               environment: [:], home: box.root,
                                now: { Date() },
                                measure: { sizes.measure($0) },
                                demo: false,
@@ -136,7 +136,7 @@ final class RecordingConfirm {
         (.failed(.couldNotRead), false, 1, false, false),
     ])
     func theDeleteRuleIsAPureFunction(phase: SimulatorsModel.Phase, measuring: Bool, selected: Int, deleting: Bool, expected: Bool) {
-        #expect(SimulatorsModel.canDelete(phase: phase, isMeasuring: measuring, selectedCount: selected, isDeleting: deleting) == expected)
+        #expect(SimulatorsModel.canDelete(phase: phase, isMeasuring: measuring, selectedCount: selected, isDeleting: deleting, androidSelectedCount: 0) == expected)
     }
 
     // MARK: Confirmation (R8)
@@ -192,7 +192,7 @@ final class RecordingConfirm {
     @Test func deleteIsUnavailableWhileTheSizesAreBeingMeasured() async {
         scriptList([Self.list([Self.device(1)])])
         let gated = ScriptedMeasure([Self.a: Self.half], gated: true)
-        let m = SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in Self.xcrun }, home: box.root,
+        let m = SimulatorsModel(runner: runner, detect: { self.present }, locateTool: { _ in Self.xcrun }, environment: [:], home: box.root,
                                 measure: { gated.measure($0) }, demo: false, confirm: confirm.handler, deletionGate: gate, notify: { _ in })
         m.scan()
         await gated.started.wait()
@@ -527,9 +527,9 @@ final class RecordingConfirm {
 
     @Test func aModelBuiltWithoutAGateUsesTheSharedOneAndAnExplicitGateIsUsedAsIs() {
         // CleanupTab ne passe aucune porte : la porte commune du processus est ce qui relie le panneau et la fenêtre.
-        let byDefault = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        let byDefault = SimulatorsModel(runner: FakeCommandRunner(), environment: [:], demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         #expect(byDefault.gate === SimulatorDeletionGate.shared)
-        let other = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        let other = SimulatorsModel(runner: FakeCommandRunner(), environment: [:], demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         #expect(other.gate === byDefault.gate, "deux modèles de l'application partagent la même porte")
 
         #expect(model(sizes: PerDeviceSizes([:])).gate === gate)

@@ -77,7 +77,7 @@ struct SimulatorsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed:
             hint(model.message ?? "", systemImage: "exclamationmark.triangle")
-        case .empty:
+        case .empty, .hidden:
             hint(model.message ?? "", systemImage: "info.circle")
         case .listed:
             listed

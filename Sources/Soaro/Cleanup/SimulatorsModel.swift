@@ -1,7 +1,11 @@
 import Combine
 import Foundation
 
-/// Modèle de l'outil « Simulators and emulators » (R3, R4, R5, R6, R8).
+/// Modèle de l'outil « Simulators and emulators » (R3, R4, R5, R6, R8, R16, R18).
+///
+/// Deux groupes côte à côte : les simulateurs iOS (UDID) et, SL10, les émulateurs Android (nom d'AVD). Chacun a son état, ses
+/// lignes, ses tailles et sa sélection ; les parties communes (limite, totaux, pied de page, « Scan again », « Delete ») les
+/// additionnent. Un échec d'un groupe n'abîme jamais l'autre. Android est en LECTURE SEULE : rien n'y est supprimé en SL10.
 ///
 /// - Le listage (une commande) tourne dans une tâche détachée (priorité utilitaire), jamais sur l'acteur principal,
 ///   jamais dans le tick de 3 secondes. Un `CancelToken` annule le scan : le résultat d'un scan annulé n'est jamais appliqué.
@@ -21,6 +25,8 @@ final class SimulatorsModel: ObservableObject {
 
     enum Phase: Equatable {
         case notScanned
+        /// Le groupe n'existe pas sur ce Mac : pas d'outil iOS (ni dossier d'appareils ni `simctl`), ou pas de SDK Android (R18).
+        case hidden
         /// Lecture de la liste en cours.
         case listing
         case failed(Failure)
@@ -34,11 +40,28 @@ final class SimulatorsModel: ObservableObject {
     /// Lignes affichées (appareils d'au moins 100 Mo, ou de taille encore inconnue). Tant que les tailles arrivent : ordre du
     /// listage (nom, puis système, puis UDID) ; une fois la dernière arrivée : par taille décroissante (égalité : nom, UDID).
     @Published private(set) var rows: [DeviceSuggestions.Row] = []
-    /// Les tailles sont en cours de mesure (un dossier à la fois).
-    @Published private(set) var isMeasuring = false
-    /// Appareils mesurés à moins de 100 Mo : comptés, pas listés.
-    @Published private(set) var hiddenSmallCount = 0
-    @Published private(set) var hiddenSmallSize: UInt64 = 0
+    /// Les tailles iOS sont en cours de mesure (un dossier à la fois).
+    @Published private var iosMeasuring = false
+    /// Les tailles sont en cours de mesure, dans l'un ou l'autre groupe.
+    var isMeasuring: Bool { iosMeasuring || androidMeasuring }
+    /// Appareils iOS mesurés à moins de 100 Mo : comptés, pas listés.
+    @Published private var iosHiddenSmallCount = 0
+    @Published private var iosHiddenSmallSize: UInt64 = 0
+    /// Appareils mesurés à moins de 100 Mo, des deux groupes : comptés, pas listés (pied de page).
+    var hiddenSmallCount: Int { iosHiddenSmallCount + androidHiddenSmallCount }
+    var hiddenSmallSize: UInt64 { iosHiddenSmallSize + androidHiddenSmallSize }
+
+    // Groupe Android (SL10) : état, lignes, sélection (nom d'AVD) et tailles, séparés des UDID.
+    @Published private(set) var androidPhase: Phase = .notScanned
+    @Published private(set) var androidRows: [DeviceSuggestions.AndroidRow] = []
+    @Published private(set) var androidSelected: Set<String> = []
+    @Published private var androidMeasuring = false
+    @Published private var androidHiddenSmallCount = 0
+    @Published private var androidHiddenSmallSize: UInt64 = 0
+    @Published private var androidSizes: [String: UInt64] = [:]
+    private var androidNothingPreSelected = true
+    /// Tous les appareils Android du listage, sans taille.
+    private var androidDevices: [AndroidDevice] = []
     /// Limite d'inactivité choisie (menu) : `DeviceSuggestions.defaultLimitDays` au départ, JAMAIS mémorisée entre deux sessions.
     @Published private(set) var limitDays = DeviceSuggestions.defaultLimitDays
     /// Appareils cochés (UDID).
@@ -67,7 +90,10 @@ final class SimulatorsModel: ObservableObject {
     private var token: CancelToken?
     private let runner: CommandRunner
     private let detect: () -> SimulatorToolDetection
-    private let locateXcrun: ([String]) -> String?
+    private let locateTool: ([String]) -> String?
+    /// Variables d'environnement du processus, injectées (SDK Android) : AUCUNE valeur par défaut, pour qu'un test ne dépende
+    /// jamais de la machine (la CI définit `ANDROID_HOME`).
+    private let environment: [String: String]
     let home: URL
     private let now: () -> Date
     private let measure: (URL) -> UInt64
@@ -78,13 +104,15 @@ final class SimulatorsModel: ObservableObject {
     /// - Parameters:
     ///   - runner: sans valeur par défaut (ADR 0009).
     ///   - detect: détection de l'outil sur le disque (ne lance rien), appelée hors de l'acteur principal à chaque scan.
-    ///   - locateXcrun: trouve `xcrun` par chemin absolu (`ToolLocator`).
+    ///   - locateTool: trouve un outil par chemin absolu parmi des candidats (`ToolLocator`) : `xcrun`, et `ps` pour Android.
+    ///   - environment: variables d'environnement (`ANDROID_SDK_ROOT`, `ANDROID_HOME`) ; sans valeur par défaut.
     ///   - measure: taille allouée d'un dossier.
     ///   - confirm: demande de confirmation avant de supprimer ; sans valeur par défaut (un test ne peut jamais afficher une vraie alerte).
     ///   - deletionGate: la suppression en cours du processus (`nil` : la porte commune de l'application).
     init(runner: CommandRunner,
          detect: @escaping () -> SimulatorToolDetection = { SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory())) },
-         locateXcrun: @escaping ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
+         locateTool: @escaping ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
+         environment: [String: String],
          home: URL = URL(fileURLWithPath: NSHomeDirectory()),
          now: @escaping () -> Date = Date.init,
          measure: @escaping (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) },
@@ -94,7 +122,8 @@ final class SimulatorsModel: ObservableObject {
          notify: @escaping (String) -> Void) {
         self.runner = runner
         self.detect = detect
-        self.locateXcrun = locateXcrun
+        self.locateTool = locateTool
+        self.environment = environment
         self.home = home
         self.now = now
         self.measure = measure
@@ -113,34 +142,50 @@ final class SimulatorsModel: ObservableObject {
     func measuredSize(udid: String) -> UInt64? { sizes[udid] }
     var measuredSizes: [String: UInt64] { sizes }
 
-    /// « Scan again » est inutilisable pendant le listage (une seule commande `simctl list` à la fois) et pendant une suppression.
-    var canScanAgain: Bool { phase != .listing && !isDeleting }
+    /// « Scan again » est inutilisable pendant le listage (une seule commande à la fois, un seul outil à la fois) dans l'un ou
+    /// l'autre groupe, et pendant une suppression.
+    var canScanAgain: Bool { phase != .listing && androidPhase != .listing && !isDeleting }
 
-    /// « Delete » est disponible : liste affichée, tailles toutes mesurées, au moins un appareil coché, aucune suppression en cours.
+    /// « Delete » est disponible : liste iOS affichée, tailles toutes mesurées, au moins un appareil iOS coché, AUCUNE ligne
+    /// Android cochée (rien d'Android ne se supprime avant SL11), aucune suppression en cours.
     var canDelete: Bool {
-        Self.canDelete(phase: phase, isMeasuring: isMeasuring, selectedCount: selectedCount, isDeleting: isDeleting)
+        Self.canDelete(phase: phase, isMeasuring: isMeasuring, selectedCount: iosSelectedCount, isDeleting: isDeleting,
+                       androidSelectedCount: androidSelectedCount)
     }
 
     /// La règle, pure (testable sans modèle).
-    static func canDelete(phase: Phase, isMeasuring: Bool, selectedCount: Int, isDeleting: Bool) -> Bool {
-        phase == .listed && !isMeasuring && selectedCount > 0 && !isDeleting
+    static func canDelete(phase: Phase, isMeasuring: Bool, selectedCount: Int, isDeleting: Bool, androidSelectedCount: Int) -> Bool {
+        phase == .listed && !isMeasuring && selectedCount > 0 && androidSelectedCount == 0 && !isDeleting
     }
 
     /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
     func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
+    func size(of row: DeviceSuggestions.AndroidRow) -> UInt64? { androidSizes[row.device.device.name] }
+    func measuredSize(avd name: String) -> UInt64? { androidSizes[name] }
 
     /// Valeurs du menu de limite : 30, 60, 90, 180 jours ; la limite par défaut y est ajoutée (en ordre) si elle n'y est pas.
     static func limitChoices(defaultDays: Int = DeviceSuggestions.defaultLimitDays) -> [Int] {
         Set([30, 60, 90, 180, defaultDays]).sorted()
     }
 
-    /// Bandeau « Nothing to suggest… » : au moins une ligne listée, rien de pré-sélectionné, et les tailles sont toutes arrivées.
-    var showsNothingToSuggest: Bool { !isMeasuring && !rows.isEmpty && nothingPreSelected }
+    /// Bandeau « Nothing to suggest… » : au moins une ligne listée (dans l'un ou l'autre groupe), rien de pré-sélectionné nulle part,
+    /// et les tailles sont toutes arrivées.
+    var showsNothingToSuggest: Bool { !isMeasuring && listedCount > 0 && nothingPreSelected && androidNothingPreSelected }
 
-    var selectedCount: Int { rows.filter { selected.contains($0.device.device.udid) }.count }
-    /// Taille des appareils cochés (tailles connues seulement).
-    var selectedSize: UInt64 {
+    /// Appareils listés, des deux groupes.
+    var listedCount: Int { rows.count + androidRows.count }
+
+    var iosSelectedCount: Int { rows.filter { selected.contains($0.device.device.udid) }.count }
+    var androidSelectedCount: Int { androidRows.filter { androidSelected.contains($0.device.device.name) }.count }
+    /// Appareils cochés, des deux groupes.
+    var selectedCount: Int { iosSelectedCount + androidSelectedCount }
+    /// Taille des appareils iOS cochés (tailles connues seulement).
+    private var iosSelectedSize: UInt64 {
         rows.reduce(0) { $0 + (selected.contains($1.device.device.udid) ? (sizes[$1.device.device.udid] ?? 0) : 0) }
+    }
+    /// Taille des appareils cochés, des deux groupes (tailles connues seulement).
+    var selectedSize: UInt64 {
+        iosSelectedSize + androidRows.reduce(0) { $0 + (androidSelected.contains($1.device.device.name) ? (androidSizes[$1.device.device.name] ?? 0) : 0) }
     }
 
     /// Coche ou décoche une ligne ; un appareil en cours d'exécution ne se coche jamais.
@@ -148,6 +193,13 @@ final class SimulatorsModel: ObservableObject {
         guard !row.isRunning, !isDeleting else { return }
         let udid = row.device.device.udid
         if selected.contains(udid) { selected.remove(udid) } else { selected.insert(udid) }
+    }
+
+    /// Même chose pour une ligne Android (clé : nom d'AVD).
+    func toggle(_ row: DeviceSuggestions.AndroidRow) {
+        guard !row.isRunning, !isDeleting else { return }
+        let name = row.device.device.name
+        if androidSelected.contains(name) { androidSelected.remove(name) } else { androidSelected.insert(name) }
     }
 
     /// Change la limite : la sélection devient TOUT DE SUITE la suggestion de cette limite (les choix manuels sont remplacés),
@@ -158,8 +210,10 @@ final class SimulatorsModel: ObservableObject {
         recompute(selection: .replace)
     }
 
-    /// Somme des tailles mesurées des appareils listés.
-    var measuredSizeTotal: UInt64 { rows.reduce(0) { $0 + (sizes[$1.device.device.udid] ?? 0) } }
+    /// Somme des tailles mesurées des appareils listés, des deux groupes.
+    var measuredSizeTotal: UInt64 {
+        rows.reduce(0) { $0 + (sizes[$1.device.device.udid] ?? 0) } + androidRows.reduce(0) { $0 + (androidSizes[$1.device.device.name] ?? 0) }
+    }
 
     /// Message neutre de l'état courant (jamais de code de sortie, de sortie d'erreur ni de chemin), `nil` sinon.
     var message: String? {
@@ -168,8 +222,14 @@ final class SimulatorsModel: ObservableObject {
         case .failed(.couldNotRead): String(localized: "Could not read the iOS Simulators.")
         case .failed(.notAnswering): String(localized: "Xcode’s simulator service did not answer. Try again in a moment.")
         case .empty: String(localized: "No simulator or emulator found.")
-        case .notScanned, .listed: nil
+        case .notScanned, .hidden, .listed: nil
         }
+    }
+
+    /// Message du groupe Android quand sa lecture a échoué, `nil` sinon.
+    var androidMessage: String? {
+        if case .failed = androidPhase { return AndroidEmulatorPresentation.couldNotReadMessage }
+        return nil
     }
 
     /// Texte de l'attente de l'écran (« non scanné » ou en cours de listage) : « Deleting… » quand une suppression tourne,
@@ -197,6 +257,7 @@ final class SimulatorsModel: ObservableObject {
         // Mode démo : appareils inventés, tout de suite, sans lanceur, sans détection, sans mesure, sans lire ni écrire de fichier.
         if demo {
             reset()
+            androidPhase = .hidden
             let demoDevices = DemoData.simulators(now: now())
             devices = demoDevices.map(\.device)
             sizes = Dictionary(uniqueKeysWithValues: demoDevices.map { ($0.device.udid, $0.size) })
@@ -207,32 +268,59 @@ final class SimulatorsModel: ObservableObject {
         }
 
         phase = .listing
+        androidPhase = .listing
         reset()
 
-        let runner = runner, detect = detect, locateXcrun = locateXcrun, measure = measure, home = home
+        let runner = runner, detect = detect, locateTool = locateTool, measure = measure, home = home, environment = environment
         scanTask = Task { [weak self] in
-            let listing = await Task.detached(priority: .utility) { () -> SimulatorListing in
+            // UNE seule tâche, UN outil à la fois (le faux lanceur des tests n'est pas sûr entre fils) : `simctl list` d'abord,
+            // puis `ps` pour Android. Aucun outil iOS sur ce Mac (ni dossier d'appareils ni `simctl`) : le groupe iOS est caché.
+            let (iosListing, androidListing) = await Task.detached(priority: .utility) { () -> (SimulatorListing?, AndroidListing) in
                 let detection = detect()
-                let xcrun = ToolLocator.simulatorXcrunPath(detection: detection, locate: locateXcrun)
-                return SimulatorScanner.list(runner: runner, xcrunPath: xcrun)
+                var ios: SimulatorListing?
+                if detection.isToolPresent {
+                    let xcrun = ToolLocator.simulatorXcrunPath(detection: detection, locate: locateTool)
+                    ios = SimulatorScanner.list(runner: runner, xcrunPath: xcrun)
+                }
+                // `ps` n'est cherché que si un SDK existe : sans SDK, rien d'Android n'est lu ni lancé (R18).
+                let psPath = ToolLocator.androidSDK(environment: environment, home: home) == nil
+                    ? nil : locateTool(ToolLocator.processListCandidates)
+                let android = AndroidEmulatorScanner.list(runner: runner, psPath: psPath, environment: environment, home: home)
+                return (ios, android)
             }.value
             guard let self, !token.isCancelled else { return }
-            guard self.apply(listing) else { return }
+            let iosListed = self.apply(iosListing)
+            let androidListed = self.apply(androidListing)
 
             // Les tailles arrivent une à une (un dossier à la fois, hors de l'acteur principal), comme dans le désinstalleur.
-            // Dans l'ordre d'affichage (haut en bas).
-            for device in self.rows.map(\.device.device) {
+            // Dans l'ordre d'affichage (haut en bas) : les lignes iOS d'abord, puis les lignes Android.
+            if iosListed {
+                for device in self.rows.map(\.device.device) {
+                    if token.isCancelled { return }
+                    // `parse` a validé l'UDID : `deviceFolder` ne peut pas rendre `nil` ici.
+                    let folder = SimulatorScanner.deviceFolder(udid: device.udid, home: home)
+                    let size = await Task.detached(priority: .utility) { folder.map(measure) ?? 0 }.value
+                    if token.isCancelled { return }
+                    self.sizes[device.udid] = size
+                    self.recomputeIOS(selection: .prune)
+                }
                 if token.isCancelled { return }
-                // `parse` a validé l'UDID : `deviceFolder` ne peut pas rendre `nil` ici.
-                let folder = SimulatorScanner.deviceFolder(udid: device.udid, home: home)
-                let size = await Task.detached(priority: .utility) { folder.map(measure) ?? 0 }.value
-                if token.isCancelled { return }
-                self.sizes[device.udid] = size
-                self.recompute(selection: .prune)
+                self.iosMeasuring = false
+                self.recomputeIOS(selection: .prune)
             }
-            if token.isCancelled { return }
-            self.isMeasuring = false
-            self.recompute(selection: .prune)
+            if androidListed {
+                for device in self.androidRows.map(\.device.device) {
+                    if token.isCancelled { return }
+                    let folder = device.folder
+                    let size = await Task.detached(priority: .utility) { measure(folder) }.value
+                    if token.isCancelled { return }
+                    self.androidSizes[device.name] = size
+                    self.recomputeAndroid(selection: .prune)
+                }
+                if token.isCancelled { return }
+                self.androidMeasuring = false
+                self.recomputeAndroid(selection: .prune)
+            }
         }
     }
 
@@ -243,10 +331,11 @@ final class SimulatorsModel: ObservableObject {
     /// Annuler la confirmation : aucun appel, la sélection reste, pas de toast.
     func deleteSelected() {
         guard canDelete else { return }
+        // Cibles : les appareils iOS cochés SEULEMENT (`canDelete` garantit qu'aucune ligne Android n'est cochée).
         let targets = rows.map(\.device.device.udid).filter { selected.contains($0) }
         guard confirm(
             String(localized: "Delete the selected devices? (\(targets.count))"),
-            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
+            String(localized: "\(Format.fileBytes(iosSelectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
             String(localized: "Delete"), true
         ) else { return }
 
@@ -258,7 +347,7 @@ final class SimulatorsModel: ObservableObject {
             devices.removeAll { gone.contains($0.udid) }
             for udid in gone { sizes[udid] = nil }
             selected.subtract(gone)
-            recompute(selection: .prune)
+            recomputeIOS(selection: .prune)
             notify(String(localized: "\(Format.fileBytes(freed)) freed"))
             return
         }
@@ -267,7 +356,7 @@ final class SimulatorsModel: ObservableObject {
         guard gate.begin() else { return }
         let token = CancelToken()
         deleteToken = token
-        let runner = runner, detect = detect, locateXcrun = locateXcrun, measure = measure, home = home
+        let runner = runner, detect = detect, locateTool = locateTool, measure = measure, home = home
         // Le toast et la porte ne dépendent PAS du modèle : si l'écran disparaît (changement d'onglet), le lot va quand même
         // jusqu'à son toast et libère la porte. Seul le nouveau scan, qui ne sert qu'à un écran encore là, passe par `self` (faible).
         let notify = notify, gate = gate
@@ -275,7 +364,7 @@ final class SimulatorsModel: ObservableObject {
             // Hors de l'acteur principal. La détection et la porte de `xcrun` sont réévaluées MAINTENANT : si l'outil a disparu,
             // rien n'est lancé et chaque cible compte comme un échec (`remove` rend « impossible de vérifier »).
             let summary = await Task.detached(priority: .userInitiated) { () -> SimulatorRemovalSummary in
-                let xcrun = ToolLocator.simulatorXcrunPath(detection: detect(), locate: locateXcrun)
+                let xcrun = ToolLocator.simulatorXcrunPath(detection: detect(), locate: locateTool)
                 return SimulatorRemovalSummary.run(targets: targets, isCancelled: { token.isCancelled }) { udid in
                     SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
                 }
@@ -309,9 +398,11 @@ final class SimulatorsModel: ObservableObject {
         if let deleteToken {
             deleteToken.cancel()
             phase = .notScanned
+            androidPhase = .notScanned
             reset()
-        } else if phase == .listing || isMeasuring {
+        } else if phase == .listing || androidPhase == .listing || isMeasuring {
             phase = .notScanned
+            androidPhase = .notScanned
             reset()
         }
     }
@@ -322,9 +413,17 @@ final class SimulatorsModel: ObservableObject {
         sizes = [:]
         selected = []
         nothingPreSelected = true
-        isMeasuring = false
-        hiddenSmallCount = 0
-        hiddenSmallSize = 0
+        iosMeasuring = false
+        iosHiddenSmallCount = 0
+        iosHiddenSmallSize = 0
+        androidRows = []
+        androidDevices = []
+        androidSizes = [:]
+        androidSelected = []
+        androidNothingPreSelected = true
+        androidMeasuring = false
+        androidHiddenSmallCount = 0
+        androidHiddenSmallSize = 0
     }
 
     /// Recalcule les lignes et le pied de page : un appareil dont la taille n'est pas connue compte comme « assez gros »
@@ -336,17 +435,43 @@ final class SimulatorsModel: ObservableObject {
         case prune
     }
 
+    /// Les deux groupes : la limite est commune.
     private func recompute(selection: SelectionUpdate) {
+        recomputeIOS(selection: selection)
+        recomputeAndroid(selection: selection)
+    }
+
+    private func recomputeAndroid(selection: SelectionUpdate) {
+        let sized = androidDevices.map { SizedAndroidDevice(device: $0, size: androidSizes[$0.name] ?? DeviceSuggestions.smallDeviceThreshold) }
+        let result = DeviceSuggestions.suggestAndroid(sized, now: now(), limitDays: limitDays)
+        androidRows = androidMeasuring ? result.rows.sorted(by: Self.androidListingOrder) : result.rows
+        androidNothingPreSelected = result.preSelectedCount == 0
+        switch selection {
+        case .replace: androidSelected = Set(result.rows.filter(\.isPreSelected).map(\.device.device.name))
+        case .prune: androidSelected.formIntersection(result.rows.filter { !$0.isRunning }.map(\.device.device.name))
+        }
+        androidHiddenSmallCount = result.hiddenSmallCount
+        androidHiddenSmallSize = result.hiddenSmallSize
+    }
+
+    /// Ordre du listage Android : nom affiché (sans tenir compte de la casse), puis nom d'AVD.
+    private static func androidListingOrder(_ a: DeviceSuggestions.AndroidRow, _ b: DeviceSuggestions.AndroidRow) -> Bool {
+        let (x, y) = (a.device.device, b.device.device)
+        let (nx, ny) = (x.displayName.lowercased(), y.displayName.lowercased())
+        return nx != ny ? nx < ny : x.name < y.name
+    }
+
+    private func recomputeIOS(selection: SelectionUpdate) {
         let sized = devices.map { SizedSimulator(device: $0, size: sizes[$0.udid] ?? DeviceSuggestions.smallDeviceThreshold) }
         let result = DeviceSuggestions.suggest(sized, now: now(), limitDays: limitDays)
-        rows = isMeasuring ? result.rows.sorted(by: Self.listingOrder) : result.rows
+        rows = iosMeasuring ? result.rows.sorted(by: Self.listingOrder) : result.rows
         nothingPreSelected = result.preSelectedCount == 0
         switch selection {
         case .replace: selected = Set(result.rows.filter(\.isPreSelected).map(\.device.device.udid))
         case .prune: selected.formIntersection(result.rows.filter { !$0.isRunning }.map(\.device.device.udid))
         }
-        hiddenSmallCount = result.hiddenSmallCount
-        hiddenSmallSize = result.hiddenSmallSize
+        iosHiddenSmallCount = result.hiddenSmallCount
+        iosHiddenSmallSize = result.hiddenSmallSize
     }
 
     /// Ordre du listage : nom, puis système, puis UDID.
@@ -360,8 +485,13 @@ final class SimulatorsModel: ObservableObject {
         return x.udid < y.udid
     }
 
+    /// - Parameter listing: `nil` : aucun outil iOS sur ce Mac, le groupe est caché (R6 : pas de message d'échec sans Xcode).
     /// - Returns: `true` quand des appareils sont listés (les tailles peuvent alors être mesurées).
-    private func apply(_ listing: SimulatorListing) -> Bool {
+    private func apply(_ listing: SimulatorListing?) -> Bool {
+        guard let listing else {
+            phase = .hidden
+            return false
+        }
         switch listing.status {
         case .ok:
             if listing.devices.isEmpty {
@@ -370,13 +500,34 @@ final class SimulatorsModel: ObservableObject {
             }
             devices = listing.devices
             phase = .listed
-            isMeasuring = true
-            recompute(selection: .replace)
+            iosMeasuring = true
+            recomputeIOS(selection: .replace)
             return true
         case .timedOut:
             phase = .failed(.notAnswering)
         case .toolNotFound, .commandFailed, .outputNotReadable:
             phase = .failed(.couldNotRead)
+        }
+        return false
+    }
+
+    /// - Returns: `true` quand des appareils Android sont listés (leurs tailles peuvent alors être mesurées).
+    private func apply(_ listing: AndroidListing) -> Bool {
+        switch listing.status {
+        case .sdkNotFound:
+            androidPhase = .hidden
+        case .couldNotRead:
+            androidPhase = .failed(.couldNotRead)
+        case .ok:
+            if listing.devices.isEmpty {
+                androidPhase = .empty
+                return false
+            }
+            androidDevices = listing.devices
+            androidPhase = .listed
+            androidMeasuring = true
+            recomputeAndroid(selection: .replace)
+            return true
         }
         return false
     }

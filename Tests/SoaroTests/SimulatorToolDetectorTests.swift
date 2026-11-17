@@ -182,8 +182,8 @@ private final class FakeToolFileSystem: ToolFileSystem {
         #expect(SimulatorToolDetection.showsToolsRow(detection: detection, demo: false))
 
         let runner = FakeCommandRunner()
-        let model = SimulatorsModel(runner: runner, detect: { detection }, locateXcrun: { _ in "/usr/bin/xcrun" },
-                                    home: home, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        let model = SimulatorsModel(runner: runner, detect: { detection }, locateTool: { _ in "/usr/bin/xcrun" },
+                                    environment: [:], home: home, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
         model.scan()
         await model.scanTask?.value
         #expect(runner.calls.isEmpty)

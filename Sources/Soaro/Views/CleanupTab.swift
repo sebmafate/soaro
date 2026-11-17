@@ -63,7 +63,7 @@ struct CleanupTab: View {
         _uninstaller = StateObject(wrappedValue: UninstallerModel(notify: { _ in }))
         _startup = StateObject(wrappedValue: StartupModel(notify: { _ in }))
         // Seul endroit de l'application où le vrai lanceur de commandes est construit (avec `Diagnostics.scan`).
-        _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), confirm: SystemConfirmation.ask, notify: { _ in }))
+        _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), environment: ProcessInfo.processInfo.environment, confirm: SystemConfirmation.ask, notify: { _ in }))
     }
 
     var body: some View {

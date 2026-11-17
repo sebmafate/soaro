@@ -54,7 +54,7 @@ final class ScriptedMeasure: @unchecked Sendable {
     }
 
     func model(_ runner: CommandRunner, _ measure: ScriptedMeasure) -> SimulatorsModel {
-        SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in "/usr/bin/xcrun" }, home: home,
+        SimulatorsModel(runner: runner, detect: { self.present }, locateTool: { _ in "/usr/bin/xcrun" }, environment: [:], home: home,
                         now: { self.now }, measure: { measure.measure($0) }, demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 
