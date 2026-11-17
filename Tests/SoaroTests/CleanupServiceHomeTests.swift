@@ -72,4 +72,28 @@ import Testing
         #expect(box.exists(".npm/_cacache/content-v2/a"))
         #expect(box.exists(".npm/_cacache/index-v5/b"))
     }
+
+    // MARK: R2 : « App caches » couvre le cache SwiftPM, jamais son dossier de configuration
+
+    @Test func appCachesCoverTheSwiftPMCacheButNeverItsConfiguration() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.file("Library/Caches/org.swift.swiftpm/repositories/x", bytes: 30_000)
+        try box.file("Library/Caches/com.apple.Safari/y", bytes: 30_000)
+        try box.file("Library/org.swift.swiftpm/configuration/mirrors.json", bytes: 100)
+
+        let items = try #require(CleanupService.items(for: .caches, home: box.root))
+        let swiftPMCache = box.root.appendingPathComponent("Library/Caches/org.swift.swiftpm")
+        let configuration = box.root.appendingPathComponent("Library/org.swift.swiftpm").path
+
+        #expect(items.contains { $0.path == swiftPMCache.path })
+        #expect(!items.contains { $0.lastPathComponent.hasPrefix("com.apple.") })
+        #expect(!items.contains { $0.path == configuration || $0.path.hasPrefix(configuration + "/") })
+
+        let result = CleanupService.clean(.caches, home: box.root)
+
+        #expect(result.failures == 0)
+        #expect(!box.exists("Library/Caches/org.swift.swiftpm"))
+        #expect(box.exists("Library/org.swift.swiftpm/configuration/mirrors.json"))
+        #expect(box.exists("Library/Caches/com.apple.Safari/y"))
+    }
 }
