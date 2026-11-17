@@ -98,7 +98,8 @@ struct SupportingTextShapeStyle: ShapeStyle {
                                          contrastIncreased: environment.colorSchemeContrast == .increased)
     }
 
-    func resolve(in environment: EnvironmentValues) -> some ShapeStyle { Self.color(in: environment) }
+    /// Type de retour explicite (`Color`) : un test résout une instance du style et compare au jeton.
+    func resolve(in environment: EnvironmentValues) -> Color { Self.color(in: environment) }
 }
 
 extension ShapeStyle where Self == SupportingTextShapeStyle {
@@ -108,5 +109,8 @@ extension ShapeStyle where Self == SupportingTextShapeStyle {
 
 extension View {
     /// Texte de soutien (tailles, résumés, pieds de page) : jamais `.secondary` ni `.tertiary` (DESIGN.md partie 2).
+    /// Même résultat que `.foregroundStyle(.supportingText)`, qui est la forme à écrire dans le nouveau code. Le modificateur
+    /// reste pour l'écran des simulateurs (SL8) et pour les `Label` d'`EmptyHint`, qui ne changent pas d'appel ; aucun
+    /// modificateur de couleur n'y est ajouté (`SupportingTextStyleTests`).
     func supportingText() -> some View { foregroundStyle(.supportingText) }
 }

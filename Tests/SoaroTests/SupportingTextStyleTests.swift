@@ -16,6 +16,32 @@ import Testing
         return (Double(resolved.red), Double(resolved.green), Double(resolved.blue), Double(resolved.opacity))
     }
 
+    /// Corps d'un type de premier niveau : de sa déclaration jusqu'à l'accolade fermante en colonne 0.
+    private func typeBody(_ declaration: String, in path: String) throws -> String {
+        let text = try source(path)
+        let start = try #require(text.range(of: declaration), "\(declaration) introuvable dans \(path)")
+        let end = text.range(of: "\n}\n", range: start.upperBound..<text.endIndex)?.upperBound ?? text.endIndex
+        return String(text[start.lowerBound..<end])
+    }
+
+    @Test func anInstanceOfTheShapeStyleResolvesToTheTokenInLightAndDark() {
+        // On passe par `resolve(in:)` d'une instance, c'est ce que SwiftUI appelle : un `resolve` qui renverrait
+        // une autre couleur (par exemple `Color.gray`) doit faire échouer ce test.
+        for scheme in [ColorScheme.light, .dark] {
+            var environment = EnvironmentValues()
+            environment.colorScheme = scheme
+            let resolved: Color = SupportingTextShapeStyle().resolve(in: environment)
+            let expected = DesignTokens.supportingTextColor(dark: scheme == .dark, contrastIncreased: false)
+            let a = resolved.resolve(in: environment)
+            let b = expected.resolve(in: environment)
+            #expect(a.red == b.red && a.green == b.green && a.blue == b.blue && a.opacity == b.opacity,
+                    "\(scheme) : l'instance du style doit se résoudre en la couleur du jeton")
+            let base: Float = scheme == .dark ? 1 : 0
+            #expect(abs(a.red - base) < 0.002 && abs(a.green - base) < 0.002 && abs(a.blue - base) < 0.002)
+            #expect(abs(a.opacity - 0.56) < 0.002)
+        }
+    }
+
     @Test func lightResolvesToBlackAtFiftySixPercent() {
         let c = components(EnvironmentValues())
         #expect(abs(c.red) < 0.002 && abs(c.green) < 0.002 && abs(c.blue) < 0.002)
@@ -48,20 +74,30 @@ import Testing
         _ = Text("x").supportingText()
     }
 
+    /// Modificateurs qui changeraient la couleur du jeton après coup (le jeton est une couleur plate, à opacité absolue).
+    private static let colourAlteringModifiers = [".opacity(", ".brightness(", ".saturation(", ".contrast(", ".colorMultiply(",
+                                                   ".blendMode(", ".foregroundColor(", ".tint(", ".luminanceToAlpha(", ".grayscale("]
+
     @Test func theShapeStyleReadsTheContrastSettingAndTheTokenFunctionOnly() throws {
-        let text = try source("Sources/Soaro/Views/DesignTokens.swift")
-        let start = try #require(text.range(of: "struct SupportingTextShapeStyle"))
-        let body = String(text[start.lowerBound...].prefix(900))
+        let body = try typeBody("struct SupportingTextShapeStyle", in: "Sources/Soaro/Views/DesignTokens.swift")
         #expect(body.contains("colorSchemeContrast"))
         #expect(body.contains("supportingTextColor("))
         #expect(!body.contains("Color.primary"), "jamais `Color.primary.opacity` : l'opacité doit être absolue")
-        #expect(!body.contains(".opacity("))
+        for modifier in Self.colourAlteringModifiers {
+            #expect(!body.contains(modifier), "le style du jeton ne doit pas altérer la couleur : `\(modifier)` interdit dans SupportingTextShapeStyle (la couleur vient de DesignTokens.supportingTextColor)")
+        }
     }
 
-    @Test func theViewModifierAppliesTheShapeStyle() throws {
+    @Test func theViewModifierAppliesTheShapeStyleAndNothingElse() throws {
         let text = try source("Sources/Soaro/Views/DesignTokens.swift")
         let start = try #require(text.range(of: "func supportingText()"))
-        let body = String(text[start.lowerBound...].prefix(200))
-        #expect(body.contains("foregroundStyle(.supportingText)") || body.contains("foregroundStyle(SupportingTextShapeStyle())"))
+        let line = String(text[start.lowerBound...].prefix { $0 != "\n" })
+        #expect(line.contains("foregroundStyle(.supportingText)") || line.contains("foregroundStyle(SupportingTextShapeStyle())"),
+                "supportingText() applique le style du jeton")
+        for modifier in Self.colourAlteringModifiers {
+            #expect(!line.contains(modifier), "supportingText() ne doit pas altérer la couleur : `\(modifier)` interdit (un seul chemin vers la couleur)")
+        }
+        #expect(line.hasSuffix("{ foregroundStyle(.supportingText) }") || line.hasSuffix("{ foregroundStyle(SupportingTextShapeStyle()) }"),
+                "supportingText() est exactement le style du jeton, sans modificateur ajouté : \(line)")
     }
 }
