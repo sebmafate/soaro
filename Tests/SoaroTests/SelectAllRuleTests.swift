@@ -51,6 +51,23 @@ import Testing
         #expect(SelectAll.description(state: .all, sectionName: "  ").label == "Select all")
     }
 
+    // MARK: Une seule lecture de « Select all » (listes sans nom de section)
+
+    @Test(arguments: [(nil as String?, true), ("", true), ("  ", true), ("iOS Simulators", false)])
+    func theVisibleHeaderTitleIsHiddenFromVoiceOverOnlyWhenTheCheckboxHasNoSectionName(name: String?, hidden: Bool) {
+        #expect(SelectAll.hidesHeaderTitle(sectionName: name) == hidden)
+    }
+
+    @Test func aListWithoutSectionNameReadsSelectAllOnceBecauseTheVisibleTitleIsHidden() throws {
+        // Les listes sans en-tête propre (gros fichiers, projets inactifs) ont le titre visible « Select all » : caché de VoiceOver,
+        // la case dit « Select all » seule. Les autres listes gardent le libellé « Select all, <section> » et leur titre.
+        let text = try String(contentsOf: RepositoryRoot.url().appendingPathComponent("Sources/Soaro/Views/Components.swift"), encoding: .utf8)
+        let start = try #require(text.range(of: "struct SectionHeader"))
+        #expect(String(text[start.lowerBound...].prefix(1200)).contains("SelectAll.hidesHeaderTitle(sectionName:"))
+        #expect(SelectAll.description(state: .none, sectionName: nil).label == "Select all")
+        #expect(SelectAll.description(state: .none, sectionName: "Android emulators").label == "Select all, Android emulators")
+    }
+
     // MARK: Le code source de la vue
 
     private func source(_ path: String) throws -> String {

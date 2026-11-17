@@ -135,6 +135,12 @@ enum SelectAll {
         }
     }
 
+    /// Le titre visible de l'en-tête est caché de VoiceOver quand la case n'a pas de nom de section : le titre est alors « Select all »
+    /// (listes sans en-tête propre) et la case le dit déjà, il serait lu deux fois.
+    static func hidesHeaderTitle(sectionName: String?) -> Bool {
+        (sectionName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// Texte VoiceOver : libellé « Select all » suivi du nom de la section quand il y en a un ; valeur « Not selected » /
     /// « Some selected » / « Selected ».
     static func description(state: SelectAllState, sectionName: String?) -> SelectionAccessibility.Description {

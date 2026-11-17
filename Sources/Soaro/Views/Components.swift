@@ -135,7 +135,7 @@ struct SectionHeader: View {
         if let selectAll {
             HStack(spacing: 6) {
                 SelectAllCheckbox(control: selectAll)
-                titleText
+                titleText.accessibilityHidden(SelectAll.hidesHeaderTitle(sectionName: selectAll.sectionName))
             }
             .padding(.top, 4)
         } else {

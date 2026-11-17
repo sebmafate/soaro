@@ -15,7 +15,7 @@ import Testing
     let gate = SimulatorDeletionGate()
 
     /// Trois simulateurs (le troisième en cours d'exécution) et trois AVD (le troisième en cours d'exécution).
-    func fixture(demo: Bool = false, gated: Bool = false) throws -> (SimulatorsModel, Sandbox, ScriptedMeasure) {
+    func fixture(demo: Bool = false, gated: Bool = false, androidPreselects: Bool = false) throws -> (SimulatorsModel, Sandbox, ScriptedMeasure) {
         let box = try Sandbox(insideHome: true)
         try box.dir("Library/Android/sdk")
         for name in ["Test_Phone_A", "Test_Tablet_B", "Test_Watch_C"] {
@@ -36,7 +36,7 @@ import Testing
                                     locateTool: { $0 == ToolLocator.processListCandidates ? "/bin/ps" : "/usr/bin/xcrun" },
                                     environment: [:], home: box.root, now: { self.now },
                                     measure: { measure.measure($0) }, demo: demo,
-                                    confirm: { _, _, _, _ in false }, deletionGate: gate, notify: { _ in })
+                                    confirm: { _, _, _, _ in false }, deletionGate: gate, androidPreselects: androidPreselects, notify: { _ in })
         return (model, box, measure)
     }
 
@@ -109,6 +109,30 @@ import Testing
         m.setAllSelected(true, group: .ios)
         m.setAllSelected(true, group: .android)
         #expect(!m.selected.contains(Self.u3) && !m.androidSelected.contains("Test_Watch_C"))
+    }
+
+    @Test func anInactiveRunningAvdIsNeverCheckedAndSelectAllAndDeselectAllLeaveItAsItIsAndTheStateIgnoresIt() async throws {
+        // Pré-sélection allumée dans ce test seulement : l'AVD en cours d'exécution est inactif (la règle le suggérerait s'il ne tournait pas).
+        let (m, box, _) = try fixture(androidPreselects: true)
+        for name in ["Test_Phone_A", "Test_Tablet_B", "Test_Watch_C"] {
+            let file = box.root.appendingPathComponent(".android/avd/\(name).avd/emulator-user.ini")
+            try Data(count: 3).write(to: file)
+            try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-90 * 86_400)], ofItemAtPath: file.path)
+        }
+        m.scan()
+        await m.scanTask?.value
+        let running = try #require(m.androidRows.first { $0.device.device.name == "Test_Watch_C" })
+        #expect(running.isRunning)
+        #expect(m.androidSelected == ["Test_Phone_A", "Test_Tablet_B"], "la pré-sélection coche les inactifs qui ne tournent pas, jamais celui qui tourne")
+        #expect(m.selectAllState(.android) == .all, "l'état ignore la ligne en cours d'exécution")
+
+        m.setAllSelected(true, group: .android)
+        #expect(m.androidSelected == ["Test_Phone_A", "Test_Tablet_B"], "tout cocher la laisse décochée")
+        #expect(m.selectAllState(.android) == .all)
+        m.setAllSelected(false, group: .android)
+        #expect(m.androidSelected.isEmpty && m.selectAllState(.android) == .none)
+        m.toggle(running)
+        #expect(m.androidSelected.isEmpty, "et elle ne se coche pas à la main non plus")
     }
 
     // MARK: Totaux, Delete, limite
