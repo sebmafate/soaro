@@ -12,9 +12,9 @@ import Testing
     private func ago(_ days: Double) -> Date { now.addingTimeInterval(-days * 86_400) }
 
     /// `files` : les dates de chaque fichier du signal qui existe (nom, jours depuis) ; par défaut, seulement le gagnant.
-    private func sized(_ name: String, display: String? = nil, version: String? = "36", days: Double?, source: String? = "hardware-qemu.ini",
+    private func sized(_ name: String, display: String? = nil, version: String? = "36", days: Double?, source: String? = "userdata-qemu.img",
                        running: Bool = false, size: UInt64, files: [(String, Double)]? = nil) -> SizedAndroidDevice {
-        let dates = files ?? (days.map { [(source ?? "hardware-qemu.ini", $0)] } ?? [])
+        let dates = files ?? (days.map { [(source ?? "userdata-qemu.img", $0)] } ?? [])
         return SizedAndroidDevice(
             device: AndroidDevice(name: name, displayName: display ?? name, systemVersion: version,
                                   folder: URL(fileURLWithPath: "/Users/test/.android/avd/\(name).avd"),
@@ -23,11 +23,13 @@ import Testing
             size: size)
     }
 
-    private func report(_ scan: AndroidScan, limit: Int = 60, appPreselects: Bool = false) -> [String] {
+    private func report(_ scan: AndroidScan, limit: Int = 60) -> [String] {
         let suggestions = DeviceSuggestions.suggestAndroid(scan.devices, now: now, limitDays: limit)
-        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc,
-                                           appPreselects: appPreselects)
+        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc)
     }
+
+    /// La ligne qui dit quel fichier compte (SL10b) : présente dès qu'un appareil est listé.
+    private let countsNote = "note: only userdata-qemu.img gives the last-used date; the other files are shown for comparison"
 
     private func size(_ bytes: UInt64) -> String { Format.fileBytes(bytes, locale: locale) }
 
@@ -37,19 +39,19 @@ import Testing
         let sdk = AndroidSDKLocation(path: "/Users/test/Library/Android/sdk", source: .androidHome)
         let scan = AndroidScan(status: .ok, sdk: sdk, devices: [
             sized("Old_Phone_C", display: "Old Phone C", days: 90, size: 3_000_000_000,
-                  files: [("hardware-qemu.ini", 90), ("userdata-qemu.img.qcow2", 200)]),
+                  files: [("hardware-qemu.ini", 3), ("userdata-qemu.img", 90), ("userdata-qemu.img.qcow2", 1)]),
             sized("Test_Phone_A", version: nil, days: 2, running: true, size: 1_000_000_000,
-                  files: [("hardware-qemu.ini", 40), ("emulator-user.ini", 2), ("cache.img.qcow2", 41)]),
+                  files: [("hardware-qemu.ini", 40), ("emulator-user.ini", 2), ("userdata-qemu.img", 2), ("cache.img.qcow2", 41)]),
             sized("Test_Tablet_B", days: nil, size: 50_000_000),
         ])
         #expect(report(scan) == [
             "== Android emulators",
-            "\(size(3_000_000_000))  Old_Phone_C  Old Phone C (API 36)  last used 2026-08-18 (90 d, from hardware-qemu.ini)  pre-selected: inactive",
-            "    files: hardware-qemu.ini 2026-08-18 (90 d), userdata-qemu.img.qcow2 2026-04-30 (200 d)",
-            "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from hardware-qemu.ini)  running",
-            "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
+            "\(size(3_000_000_000))  Old_Phone_C  Old Phone C (API 36)  last used 2026-08-18 (90 d, from userdata-qemu.img)  pre-selected: inactive",
+            "    files: hardware-qemu.ini 2026-11-13 (3 d), userdata-qemu.img 2026-08-18 (90 d), userdata-qemu.img.qcow2 2026-11-15 (1 d)",
+            "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from userdata-qemu.img)  running",
+            "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), userdata-qemu.img 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
             "1 small device (\(size(50_000_000))) not listed",
-            "note: the app does not pre-select Android devices until the last-used signal is settled (the rule's output is shown above)",
+            countsNote,
             "SDK source: ANDROID_HOME",
         ])
     }
@@ -60,14 +62,18 @@ import Testing
                                  "2 registrations skipped (folder missing, outside the home or not an AVD folder)"])
     }
 
-    @Test func theNoteIsAbsentWhenNothingIsPreSelectedOrWhenTheAppPreSelects() {
+    @Test func theOldDoesNotPreSelectNoteIsGoneAndTheCountingFileIsNamedWhateverTheDevices() {
         let sdk = AndroidSDKLocation(path: "/x", source: .androidHome)
-        let inactive = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 90, size: 500_000_000)])
-        #expect(!report(inactive, appPreselects: true).contains { $0.hasPrefix("note:") }, "le réglage est activé : plus de note")
-        #expect(report(inactive).contains { $0.hasPrefix("note:") })
-        let recent = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 3, size: 500_000_000)])
-        #expect(!report(recent).contains { $0.hasPrefix("note:") }, "rien à pré-sélectionner : pas de note")
-        #expect(!report(inactive).joined(separator: "\n").contains("/x"))
+        for days in [3.0, 90.0] {
+            let scan = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: days, size: 500_000_000)])
+            let lines = report(scan)
+            #expect(!lines.joined(separator: "\n").contains("does not pre-select"), "la note « ne pré-sélectionne pas » a disparu")
+            #expect(lines.filter { $0.hasPrefix("note:") } == [countsNote])
+            #expect(!lines.joined(separator: "\n").contains("/x"))
+        }
+        // Rien de listé (tous petits) : pas de ligne de diagnostic, seulement le décompte des petits.
+        let small = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 3, size: 5)])
+        #expect(!report(small).contains { $0.hasPrefix("note:") })
     }
 
     @Test func aSkippedCountIsPrintedBeforeTheSdkSourceAndOnlyWhenNotZero() {
@@ -89,17 +95,18 @@ import Testing
             "== Android emulators",
             "\(size(500_000_000))  Test_Phone_A  Test_Phone_A (API 36)  last used unknown",
             "    files: none",
+            countsNote,
             "SDK source: default",
         ])
     }
 
     @Test func manySmallDevicesArePluralAndTheFileSourceIsPrinted() {
         let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .androidSDKRoot), devices: [
-            sized("Test_Phone_A", days: 5, source: "snapshots/default_boot/snapshot.pb", size: 400_000_000),
+            sized("Test_Phone_A", days: 5, source: "userdata-qemu.img", size: 400_000_000),
             sized("Test_Tablet_B", days: 5, size: 1), sized("Test_Tablet_C", days: 5, size: 2)])
         let lines = report(scan)
-        #expect(lines[1].contains("from snapshots/default_boot/snapshot.pb"))
-        #expect(lines[2] == "    files: snapshots/default_boot/snapshot.pb 2026-11-11 (5 d)")
+        #expect(lines[1].contains("from userdata-qemu.img"))
+        #expect(lines[2] == "    files: userdata-qemu.img 2026-11-11 (5 d)")
         #expect(lines.contains("2 small devices (\(size(3))) not listed"))
     }
 

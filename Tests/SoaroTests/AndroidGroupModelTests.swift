@@ -18,7 +18,7 @@ import Testing
     struct AVD {
         let name: String
         let display: String
-        /// Jours depuis la dernière utilisation (date de `emulator-user.ini`), `nil` : aucun fichier daté.
+        /// Jours depuis la dernière utilisation (date de `userdata-qemu.img`), `nil` : aucun fichier daté.
         let days: Double?
     }
 
@@ -34,7 +34,7 @@ import Testing
             try box.write(".android/avd/\(avd.name).avd/config.ini",
                           "avd.ini.displayname=\(avd.display)\nimage.sysdir.1=system-images/android-36/google_apis/arm64-v8a/\n")
             if let days = avd.days {
-                let file = box.root.appendingPathComponent(".android/avd/\(avd.name).avd/emulator-user.ini")
+                let file = box.root.appendingPathComponent(".android/avd/\(avd.name).avd/userdata-qemu.img")
                 try Data(count: 3).write(to: file)
                 try FileManager.default.setAttributes([.modificationDate: ago(days)], ofItemAtPath: file.path)
             }

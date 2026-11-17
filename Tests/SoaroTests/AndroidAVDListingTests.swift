@@ -41,9 +41,9 @@ import Testing
         let box = try Sandbox(insideHome: true)
         let a = try makeAVD(box, name: "Test_Phone_A", display: "Test Phone A")
         let b = try makeAVD(box, name: "Test_Tablet_B", system: "system-images/android-34/default/arm64-v8a/")
-        try touch(a, "userdata-qemu.img.qcow2", daysAgo: 10)
-        try touch(a, "hardware-qemu.ini", daysAgo: 12)
-        try touch(b, "cache.img.qcow2", daysAgo: 70)
+        try touch(a, "userdata-qemu.img", daysAgo: 10)
+        try touch(a, "hardware-qemu.ini", daysAgo: 1)
+        try touch(b, "userdata-qemu.img", daysAgo: 70)
 
         let listing = list(box)
         #expect(listing.status == .ok)
@@ -52,9 +52,9 @@ import Testing
         #expect(listing.devices.map(\.systemVersion) == ["36", "34"])
         #expect(listing.devices.map { realPath($0.folder) } == [realPath(a), realPath(b)])
         #expect(listing.devices[0].lastUsed == daysAgo(10))
-        #expect(listing.devices[0].lastUsedSource == "userdata-qemu.img.qcow2")
+        #expect(listing.devices[0].lastUsedSource == "userdata-qemu.img")
         #expect(listing.devices[1].lastUsed == daysAgo(70))
-        #expect(listing.devices[1].lastUsedSource == "cache.img.qcow2")
+        #expect(listing.devices[1].lastUsedSource == "userdata-qemu.img")
         #expect(listing.devices.allSatisfy { !$0.isRunning })
     }
 
@@ -86,37 +86,54 @@ import Testing
 
     // MARK: Date de dernière utilisation
 
-    @Test func theNewestListedFileGivesTheDate() throws {
+    @Test func onlyUserdataQemuImgGivesTheDateWhateverTheOtherFilesSay() throws {
         let box = try Sandbox(insideHome: true)
         let folder = try makeAVD(box, name: "Test_Phone_A")
         try FileManager.default.setAttributes([.modificationDate: daysAgo(100)], ofItemAtPath: folder.appendingPathComponent("config.ini").path)
-        try touch(folder, "hardware-qemu.ini", daysAgo: 20)
         try touch(folder, "userdata-qemu.img", daysAgo: 40)
+        try touch(folder, "hardware-qemu.ini", daysAgo: 1)
+        try touch(folder, "emulator-user.ini", daysAgo: 2)
+        try touch(folder, "userdata-qemu.img.qcow2", daysAgo: 3)
+        try touch(folder, "cache.img.qcow2", daysAgo: 4)
+        try touch(folder, "snapshots/default_boot/snapshot.pb", daysAgo: 5)
         let device = try #require(list(box).devices.first)
-        #expect(device.lastUsed == daysAgo(20))
-        #expect(device.lastUsedSource == "hardware-qemu.ini")
+        #expect(device.lastUsed == daysAgo(40))
+        #expect(device.lastUsedSource == "userdata-qemu.img")
+    }
+
+    @Test func eachOtherFileAloneIsIgnoredForTheDate() throws {
+        for file in ["hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2", "cache.img.qcow2",
+                     "snapshots/default_boot/snapshot.pb", "multiinstance.lock", "config.ini"] {
+            let box = try Sandbox(insideHome: true)
+            let folder = try makeAVD(box, name: "Test_Phone_A")
+            try touch(folder, file, daysAgo: 1)
+            let device = try #require(list(box).devices.first)
+            #expect(device.lastUsed == nil, "\(file) ne doit pas donner la date")
+            #expect(device.lastUsedSource == nil, "\(file) ne doit pas donner la date")
+        }
     }
 
     @Test func aNewerConfigIniOrLockFileIsIgnored() throws {
         let box = try Sandbox(insideHome: true)
         let folder = try makeAVD(box, name: "Test_Phone_A")
-        try touch(folder, "hardware-qemu.ini", daysAgo: 50)
+        try touch(folder, "userdata-qemu.img", daysAgo: 50)
         try FileManager.default.setAttributes([.modificationDate: daysAgo(1)], ofItemAtPath: folder.appendingPathComponent("config.ini").path)
         try touch(folder, "multiinstance.lock", daysAgo: 0)
         try FileManager.default.setAttributes([.modificationDate: daysAgo(2)],
                                               ofItemAtPath: box.root.appendingPathComponent(".android/avd/Test_Phone_A.ini").path)
         let device = try #require(list(box).devices.first)
         #expect(device.lastUsed == daysAgo(50))
-        #expect(device.lastUsedSource == "hardware-qemu.ini")
+        #expect(device.lastUsedSource == "userdata-qemu.img")
     }
 
-    @Test func onlyTheSnapshotFileGivesItsDate() throws {
+    @Test func theSnapshotFileStillShowsItsDateForDiagnosisButGivesNoDate() throws {
         let box = try Sandbox(insideHome: true)
         let folder = try makeAVD(box, name: "Test_Phone_A")
         try touch(folder, "snapshots/default_boot/snapshot.pb", daysAgo: 33)
         let device = try #require(list(box).devices.first)
-        #expect(device.lastUsed == daysAgo(33))
-        #expect(device.lastUsedSource == "snapshots/default_boot/snapshot.pb")
+        #expect(device.lastUsed == nil)
+        #expect(device.lastUsedSource == nil)
+        #expect(device.fileDates == [AndroidFileDate(file: "snapshots/default_boot/snapshot.pb", date: daysAgo(33))])
     }
 
     @Test func noListedFileMeansUnknown() throws {
@@ -128,18 +145,21 @@ import Testing
         #expect(device.lastUsedSource == nil)
     }
 
-    @Test func everyExistingListedFileDateIsReturnedInConstantOrder() throws {
+    @Test func everyExistingDiagnosticFileDateIsReturnedInConstantOrder() throws {
         let box = try Sandbox(insideHome: true)
         let folder = try makeAVD(box, name: "Test_Phone_A")
         try touch(folder, "cache.img.qcow2", daysAgo: 41)
         try touch(folder, "emulator-user.ini", daysAgo: 2)
         try touch(folder, "hardware-qemu.ini", daysAgo: 40)
         try touch(folder, "multiinstance.lock", daysAgo: 0)    // hors liste : jamais renvoyé
+        try touch(folder, "userdata-qemu.img", daysAgo: 30)
         let device = try #require(list(box).devices.first)
         #expect(device.fileDates == [AndroidFileDate(file: "hardware-qemu.ini", date: daysAgo(40)),
                                      AndroidFileDate(file: "emulator-user.ini", date: daysAgo(2)),
+                                     AndroidFileDate(file: "userdata-qemu.img", date: daysAgo(30)),
                                      AndroidFileDate(file: "cache.img.qcow2", date: daysAgo(41))])
-        #expect(device.lastUsedSource == "emulator-user.ini")
+        #expect(device.lastUsed == daysAgo(30), "seul userdata-qemu.img donne la date, même si emulator-user.ini est plus récent")
+        #expect(device.lastUsedSource == "userdata-qemu.img")
     }
 
     @Test func noListedFileGivesNoFileDates() throws {
@@ -148,9 +168,19 @@ import Testing
         #expect(try #require(list(box).devices.first).fileDates.isEmpty)
     }
 
-    @Test func theSignalIsOneNamedConstant() {
-        #expect(AndroidEmulatorScanner.lastUsedFiles == ["hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2",
-                                                        "userdata-qemu.img", "cache.img.qcow2", "snapshots/default_boot/snapshot.pb"])
+    @Test func theSignalIsOneNamedConstantAndTheDiagnosisListIsAnother() {
+        // Décision de l'auteur, 2026-11-17 : seul le fichier de données du disque compte.
+        #expect(AndroidEmulatorScanner.lastUsedFiles == ["userdata-qemu.img"])
+        #expect(AndroidEmulatorScanner.diagnosticFiles == ["hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2",
+                                                          "userdata-qemu.img", "cache.img.qcow2", "snapshots/default_boot/snapshot.pb"])
+        #expect(Set(AndroidEmulatorScanner.lastUsedFiles).isSubset(of: Set(AndroidEmulatorScanner.diagnosticFiles)))
+    }
+
+    @Test func aDirectoryNamedUserdataQemuImgIsNotADateSource() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("userdata-qemu.img"), withIntermediateDirectories: true)
+        #expect(try #require(list(box).devices.first).lastUsed == nil)
     }
 
     // MARK: Dossier absent, illisible
