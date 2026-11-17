@@ -130,7 +130,7 @@ struct ProcessList: View {
     var body: some View {
         let list = state.top(by: sort, count: count)
         if list.isEmpty {
-            Text("Loading…").font(.caption).foregroundStyle(.secondary)
+            Text("Loading…").font(.caption).foregroundStyle(.supportingText)
         } else {
             VStack(spacing: 2) {
                 ForEach(list) { group in

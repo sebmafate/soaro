@@ -30,14 +30,14 @@ struct PerformanceTab: View {
                         .font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
                     Spacer()
                     Text("User \(Format.percent(s.cpu.user)) · System \(Format.percent(s.cpu.system))")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.supportingText)
                 }
                 Sparkline(values: state.cpuHistory, color: loadColor(s.cpu.total)).frame(height: 36)
                 if !s.cpu.perCore.isEmpty {
                     CoreBars(cpu: s.cpu).padding(.top, 4)
                     if s.cpu.efficiencyCores > 0 {
                         Text("Efficiency cores (E): \(s.cpu.efficiencyCores) · Performance cores (P): \(s.cpu.perCore.count - s.cpu.efficiencyCores)")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption2).foregroundStyle(.supportingText)
                     }
                 }
             }
@@ -79,7 +79,7 @@ struct PerformanceTab: View {
                     Text(Format.percent(gpu.utilization))
                         .font(.system(size: 18, weight: .semibold, design: .rounded)).monospacedDigit()
                     Spacer()
-                    if let t = sensors?.gpu { Text("\(Int(t)) °C").font(.caption).foregroundStyle(.secondary) }
+                    if let t = sensors?.gpu { Text("\(Int(t)) °C").font(.caption).foregroundStyle(.supportingText) }
                 }
                 Sparkline(values: state.gpuHistory, color: loadColor(gpu.utilization)).frame(height: 28)
                 KeyValueRow("GPU memory used", Format.bytes(gpu.memoryUsed))
@@ -170,7 +170,7 @@ struct PerformanceTab: View {
             Text("Disk").frame(width: 72, alignment: .trailing)
             Color.clear.frame(width: 20, height: 1)
         }
-        .font(.caption2).foregroundStyle(.secondary)
+        .font(.caption2).foregroundStyle(.supportingText)
         ProcessList(sort: sort, count: 8)
     }
 }

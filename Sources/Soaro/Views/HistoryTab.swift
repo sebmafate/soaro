@@ -35,7 +35,7 @@ struct HistoryTab: View {
                 summary
             }
             Text("Kept for 30 days, on this Mac only (~/Library/Application Support/Soaro).")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(.supportingText)
         }
         // Recharge à chaque changement de choix, puis toutes les 30 s tant que l'onglet est ouvert.
         .task(id: "\(metric.rawValue)-\(range.rawValue)") {
@@ -185,7 +185,7 @@ struct HistoryTab: View {
 
     private func stat(_ title: LocalizedStringKey, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(title).font(.caption2).foregroundStyle(.secondary)
+            Text(title).font(.caption2).foregroundStyle(.supportingText)
             Text(value).font(.callout.weight(.medium).monospacedDigit())
         }
     }
