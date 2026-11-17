@@ -66,3 +66,31 @@ extension AndroidEmulatorScanner {
         return .plan(AndroidRemovalPlan(displayName: device.displayName, names: names, folder: freshFolder, registrations: registrations))
     }
 }
+
+// MARK: - Vérification juste avant d'agir (processus en cours)
+
+/// Ce qui suit la vérification d'une cible : continuer avec le plan, ou s'arrêter avec un résultat (rien n'est alors mesuré ni supprimé).
+enum AndroidRemovalCheck: Equatable {
+    case proceed(AndroidRemovalPlan)
+    case stop(SimulatorRemovalResult)
+}
+
+extension AndroidEmulatorScanner {
+    /// Les deux vérifications qui précèdent toute mesure et toute suppression d'une cible, dans cet ordre (ADR 0009, règles 3 et 4) :
+    /// 1. le listage frais (`prepareRemoval`) : déjà disparu, refusé ou illisible : on s'arrête, SANS lancer `ps` ;
+    /// 2. un `ps` FRAIS (une fois par cible) : indisponible (chemin absent, délai, échec, refus, code non nul, signal, sortie tronquée) :
+    ///    « impossible de vérifier » ; un nom quelconque du plan (le nom ou un alias) en cours d'exécution : `running(nom affiché frais)`.
+    /// Un délai de `ps` n'est JAMAIS un « délai dépassé » (ce résultat parle du service des simulateurs iOS) : c'est « impossible de vérifier ».
+    /// - Parameter runner: sans valeur par défaut (ADR 0009).
+    static func checkBeforeRemoval(runner: CommandRunner, psPath: String?, home: URL, target: AndroidRemovalTarget) -> AndroidRemovalCheck {
+        switch prepareRemoval(home: home, target: target) {
+        case .alreadyGone: return .stop(.alreadyGone)
+        case .refused: return .stop(.refused)
+        case .couldNotCheck: return .stop(.couldNotCheck)
+        case .plan(let plan):
+            guard let running = runningAVDNames(runner: runner, psPath: psPath) else { return .stop(.couldNotCheck) }
+            if plan.names.contains(where: { isRunning($0, in: running) }) { return .stop(.running(name: plan.displayName)) }
+            return .proceed(plan)
+        }
+    }
+}
