@@ -152,6 +152,7 @@ struct SimulatorsView: View {
     private func failedGroup(_ message: String) -> some View {
         EmptyHint(verbatim: message, systemImage: "exclamationmark.triangle", supporting: true)
             .font(.caption)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var actionBar: some View {
@@ -178,12 +179,19 @@ struct SimulatorsView: View {
         let small = smallCount
             ? SimulatorPresentation.smallDevicesFooter(count: model.hiddenSmallCount, size: model.hiddenSmallSize, locale: .current) : nil
         if explanation || small != nil {
+            // Le pied de page d'une section de liste tient sur UNE ligne par défaut sous macOS : on le laisse prendre toute sa hauteur
+            // (texte sur plusieurs lignes, sans « … »).
             VStack(alignment: .leading, spacing: 4) {
-                if let small { Text(verbatim: small) }
-                if explanation { Text(verbatim: SimulatorPresentation.explanationFooter(limitDays: model.limitDays)) }
+                if let small { Text(verbatim: small).lineLimit(nil).fixedSize(horizontal: false, vertical: true) }
+                if explanation {
+                    Text(verbatim: SimulatorPresentation.explanationFooter(limitDays: model.limitDays))
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                }
             }
             .font(.caption)
             .supportingText()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 6)
         }
     }
