@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 /// Modèle de l'outil « Simulators and emulators » (R3, R4, R5, R6, R8).
@@ -48,13 +49,18 @@ final class SimulatorsModel: ObservableObject {
     @Published private var sizes: [String: UInt64] = [:]
     /// Tous les appareils du listage, sans taille.
     private var devices: [SimulatorDevice] = []
-    /// Une suppression est en cours (le lot tourne, ou la liste est relue juste après).
-    @Published private(set) var isDeleting = false
+    /// Une suppression est en cours, dans ce modèle OU dans un autre (porte commune du processus).
+    var isDeleting: Bool { gate.isBusy }
+    /// Un scan a été demandé alors que l'écran n'était pas scanné et qu'une suppression tournait : il part à la fin du lot.
+    private var pendingScan = false
+    private let gate: SimulatorDeletionGate
+    private var gateObservation: AnyCancellable?
 
     /// La tâche du scan en cours ou du dernier scan : les tests l'attendent (`await model.scanTask?.value`) sans dormir.
     private(set) var scanTask: Task<Void, Never>?
     /// La tâche de la suppression en cours ou de la dernière (lot, toast, puis nouveau scan) : les tests l'attendent sans dormir.
     private(set) var deleteTask: Task<Void, Never>?
+    /// Jeton du lot lancé PAR ce modèle, tant qu'il tourne.
     private var deleteToken: CancelToken?
 
     private var token: CancelToken?
@@ -74,6 +80,7 @@ final class SimulatorsModel: ObservableObject {
     ///   - locateXcrun: trouve `xcrun` par chemin absolu (`ToolLocator`).
     ///   - measure: taille allouée d'un dossier.
     ///   - confirm: demande de confirmation avant de supprimer ; sans valeur par défaut (un test ne peut jamais afficher une vraie alerte).
+    ///   - deletionGate: la suppression en cours du processus (par défaut la porte commune de l'application).
     init(runner: CommandRunner,
          detect: @escaping () -> SimulatorToolDetection = { SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory())) },
          locateXcrun: @escaping ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
@@ -82,6 +89,7 @@ final class SimulatorsModel: ObservableObject {
          measure: @escaping (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) },
          demo: Bool = DemoMode.isEnabled,
          confirm: @escaping ConfirmHandler,
+         deletionGate: SimulatorDeletionGate = .shared,
          notify: @escaping (String) -> Void) {
         self.runner = runner
         self.detect = detect
@@ -92,6 +100,10 @@ final class SimulatorsModel: ObservableObject {
         self.demo = demo
         self.notify = notify
         self.confirm = confirm
+        self.gate = deletionGate
+        gate.register(self)
+        // Les vues voient la porte comme une propriété de ce modèle.
+        gateObservation = gate.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
@@ -164,6 +176,12 @@ final class SimulatorsModel: ObservableObject {
     /// Lance la lecture de la liste, hors de l'acteur principal. Pendant le listage un nouveau déclenchement est ignoré
     /// (jamais deux `simctl list` en même temps) ; pendant la mesure des tailles il annule la mesure et recommence.
     func scan() {
+        // Une suppression tourne (ici ou ailleurs) : jamais de liste pendant ce temps. Un écran qui vient de s'ouvrir
+        // (jamais scanné) est relancé à la fin du lot.
+        if isDeleting {
+            if phase == .notScanned { pendingScan = true }
+            return
+        }
         guard canScanAgain else { return }
         token?.cancel()
         let token = CancelToken()
@@ -238,10 +256,14 @@ final class SimulatorsModel: ObservableObject {
             return
         }
 
-        isDeleting = true
+        // La porte est commune au processus : un seul lot à la fois, tous modèles confondus.
+        guard gate.begin() else { return }
         let token = CancelToken()
         deleteToken = token
         let runner = runner, detect = detect, locateXcrun = locateXcrun, measure = measure, home = home
+        // Le toast et la porte ne dépendent PAS du modèle : si l'écran disparaît (changement d'onglet), le lot va quand même
+        // jusqu'à son toast et libère la porte. Seul le nouveau scan, qui ne sert qu'à un écran encore là, passe par `self` (faible).
+        let notify = notify, gate = gate
         deleteTask = Task { [weak self] in
             // Hors de l'acteur principal. La détection et la porte de `xcrun` sont réévaluées MAINTENANT : si l'outil a disparu,
             // rien n'est lancé et chaque cible compte comme un échec (`remove` rend « impossible de vérifier »).
@@ -251,14 +273,21 @@ final class SimulatorsModel: ObservableObject {
                     SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
                 }
             }.value
-            guard let self else { return }
-            self.notify(summary.toast())
-            self.isDeleting = false
+            notify(summary.toast())
+            self?.deleteToken = nil
+            gate.end()
             // Retour pendant la suppression : pas de nouveau scan ; l'écran est déjà « non scanné » et se relancera à l'ouverture.
-            guard !token.isCancelled else { return }
+            guard let self, !token.isCancelled else { return }
             self.scan()
             await self.scanTask?.value
         }
+    }
+
+    /// Un lot vient de finir (porte libre) : le scan demandé pendant ce temps part maintenant.
+    func gateDidBecomeIdle() {
+        guard pendingScan else { return }
+        pendingScan = false
+        scan()
     }
 
     /// Bouton Retour : annule le scan en cours ; un scan inachevé n'est pas conservé (la prochaine ouverture relance).
@@ -267,8 +296,9 @@ final class SimulatorsModel: ObservableObject {
     func cancel() {
         token?.cancel()
         scanTask?.cancel()
-        if isDeleting {
-            deleteToken?.cancel()
+        pendingScan = false
+        if let deleteToken {
+            deleteToken.cancel()
             phase = .notScanned
             reset()
         } else if phase == .listing || isMeasuring {
@@ -340,5 +370,39 @@ final class SimulatorsModel: ObservableObject {
             phase = .failed(.couldNotRead)
         }
         return false
+    }
+}
+
+/// Une suppression de simulateurs en cours, vue par TOUS les modèles du processus (le panneau et la fenêtre ont chacun le leur,
+/// et un modèle disparaît quand on change d'onglet). Tant qu'un lot tourne : aucun autre lot, aucun scan, sur aucun modèle,
+/// pour ne jamais voir (ni supprimer deux fois) des appareils en cours de suppression.
+/// Les tests donnent leur propre porte à chaque modèle (`deletionGate:`) ; l'application utilise `shared`.
+@MainActor
+final class SimulatorDeletionGate: ObservableObject {
+    static let shared = SimulatorDeletionGate()
+
+    @Published private(set) var isBusy = false
+
+    private struct Observer { weak var model: SimulatorsModel? }
+    private var observers: [Observer] = []
+
+    func register(_ model: SimulatorsModel) {
+        observers.removeAll { $0.model == nil }
+        observers.append(Observer(model: model))
+    }
+
+    /// - Returns: `false` quand un lot tourne déjà (rien n'est alors commencé).
+    func begin() -> Bool {
+        guard !isBusy else { return false }
+        isBusy = true
+        return true
+    }
+
+    /// Fin du lot (réussi, échoué, délai dépassé, annulé) : la porte se libère TOUJOURS, puis les modèles qui attendaient la fin
+    /// (un scan demandé pendant le lot) sont prévenus.
+    func end() {
+        isBusy = false
+        observers.removeAll { $0.model == nil }
+        for observer in observers { observer.model?.gateDidBecomeIdle() }
     }
 }

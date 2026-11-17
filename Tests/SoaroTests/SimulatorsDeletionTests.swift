@@ -62,6 +62,8 @@ final class RecordingConfirm {
         + "You can create new devices from Xcode or Android Studio."
 
     let box: Sandbox
+    /// Une porte PAR TEST (jamais la porte partagée du processus) : les suites tournent en parallèle.
+    let gate = SimulatorDeletionGate()
     let runner = FakeCommandRunner()
     let confirm: RecordingConfirm
     var toasts = ToastBox()
@@ -101,6 +103,7 @@ final class RecordingConfirm {
                                measure: { sizes.measure($0) },
                                demo: false,
                                confirm: confirm.handler,
+                               deletionGate: gate,
                                notify: { toasts.messages.append($0) })
     }
 
@@ -190,7 +193,7 @@ final class RecordingConfirm {
         scriptList([Self.list([Self.device(1)])])
         let gated = ScriptedMeasure([Self.a: Self.half], gated: true)
         let m = SimulatorsModel(runner: runner, detect: { self.present }, locateXcrun: { _ in Self.xcrun }, home: box.root,
-                                measure: { gated.measure($0) }, demo: false, confirm: confirm.handler, notify: { _ in })
+                                measure: { gated.measure($0) }, demo: false, confirm: confirm.handler, deletionGate: gate, notify: { _ in })
         m.scan()
         await gated.started.wait()
         #expect(m.isMeasuring)
@@ -421,6 +424,127 @@ final class RecordingConfirm {
         #expect(m.phase == .notScanned, "la prochaine ouverture relance le scan, jamais de liste périmée")
         #expect(!m.isDeleting)
         #expect(m.rows.isEmpty)
+    }
+
+    // MARK: Une suppression en cours est un fait du processus, pas d'un modèle (revue, point 1)
+
+    /// Deux appareils listés, cochés, prêts à être supprimés avec un lanceur bloquant.
+    func blockedBatch(_ model: SimulatorsModel, _ blocking: BlockingRunner) async {
+        model.scan()
+        await blocking.started.wait()
+        blocking.release.signal()
+        await model.scanTask?.value
+        for row in model.rows where !model.selected.contains(row.device.device.udid) { model.toggle(row) }
+        model.deleteSelected()
+        await blocking.started.wait()                 // la revérification du premier appareil est en cours
+    }
+
+    @Test func aBatchStillEndsWithItsToastAndFreesTheGateWhenTheModelIsDestroyed() async {
+        let blocking = BlockingRunner(Self.list([Self.device(1), Self.device(2)]))
+        let sizes = PerDeviceSizes([Self.a: [Self.half, Self.half, 0], Self.b: [Self.half, Self.half, 0]])
+        var m: SimulatorsModel? = model(blocking, sizes: sizes)
+        await blockedBatch(m!, blocking)
+        #expect(gate.isBusy)
+        let task = m!.deleteTask!
+        weak var weakModel = m
+        m = nil                                       // l'onglet a été quitté : le modèle disparaît
+        #expect(weakModel == nil, "le lot ne retient pas le modèle")
+
+        for _ in 0..<20 { blocking.release.signal() }
+        await task.value
+
+        #expect(toasts.messages == [freed(2 * Self.half)], "le toast arrive quand même")
+        #expect(!gate.isBusy, "la porte est libérée")
+        #expect(blocking.calls.filter { $0.arguments.contains("delete") }.count == 2, "le lot va jusqu'au bout")
+    }
+
+    @Test func aSecondModelCannotScanOrDeleteWhileABatchRunsAndCanAfterwards() async {
+        let blocking = BlockingRunner(Self.list([Self.device(1), Self.device(2)]))
+        let sizes = PerDeviceSizes([Self.a: [Self.half, Self.half, 0], Self.b: [Self.half, Self.half, 0]])
+        let first = model(blocking, sizes: sizes)
+
+        // L'autre surface (fenêtre ou panneau) a déjà sa liste, cochée.
+        let otherRunner = FakeCommandRunner()
+        otherRunner.script(Self.list([Self.device(1), Self.device(2)]), executable: Self.xcrun, arguments: Self.listArgs)
+        otherRunner.script(.finished(), executable: Self.xcrun, arguments: ["simctl", "delete", Self.a])
+        otherRunner.script(.finished(), executable: Self.xcrun, arguments: ["simctl", "delete", Self.b])
+        let other = model(otherRunner, sizes: PerDeviceSizes([Self.a: [Self.half], Self.b: [Self.half]]))
+        await scanAndSelect(other, [Self.a, Self.b])
+        // L'onglet rouvert : un modèle neuf.
+        let reopenedRunner = FakeCommandRunner()
+        reopenedRunner.script(Self.list([Self.device(3)]), executable: Self.xcrun, arguments: Self.listArgs)
+        let reopened = model(reopenedRunner, sizes: PerDeviceSizes([Self.c: [Self.half]]))
+
+        await blockedBatch(first, blocking)
+        let asks = confirm.asks.count, otherCalls = otherRunner.calls.count
+
+        #expect(other.isDeleting && reopened.isDeleting, "tous les modèles le voient")
+        #expect(!other.canDelete && !other.canScanAgain)
+        other.deleteSelected()
+        other.scan()
+        reopened.scan()
+        #expect(confirm.asks.count == asks, "pas même la question")
+        #expect(otherRunner.calls.count == otherCalls, "ni scan ni suppression")
+        #expect(reopenedRunner.calls.isEmpty)
+        #expect(reopened.phase == .notScanned)
+        #expect(!gate.begin(), "la porte refuse un second lot")
+
+        for _ in 0..<20 { blocking.release.signal() }
+        await first.deleteTask?.value
+        await reopened.scanTask?.value               // son scan demandé pendant le lot part à la fin
+
+        #expect(!gate.isBusy)
+        #expect(reopened.phase == .listed && reopenedRunner.calls.count == 1)
+        #expect(other.canDelete && other.canScanAgain, "après le lot, l'autre modèle peut agir")
+        #expect(otherRunner.calls.count == otherCalls, "l'autre modèle n'a pas été relancé tout seul")
+    }
+
+    @Test func theGateIsFreeAgainAfterATimeoutAfterAFailureAndWhenTheToolIsGone() async {
+        scriptList([Self.list([Self.device(1)])])
+        scriptDelete(Self.a, .timedOut)
+        let m = model(sizes: PerDeviceSizes([Self.a: [Self.half]]))
+        await scanAndSelect(m, [Self.a])
+        m.deleteSelected()
+        #expect(gate.isBusy)
+        await m.deleteTask?.value
+        #expect(!gate.isBusy, "délai dépassé")
+
+        scriptDelete(Self.a, .finished(exit: 1))
+        await scanAndSelect(m, [Self.a])
+        m.deleteSelected()
+        await m.deleteTask?.value
+        #expect(!gate.isBusy, "échec")
+        #expect(m.canScanAgain)
+
+        var locates = 0
+        let gone = model(sizes: PerDeviceSizes([Self.a: [Self.half]]), locate: { _ in locates += 1; return locates == 1 ? Self.xcrun : nil })
+        await scanAndSelect(gone, [Self.a])
+        gone.deleteSelected()
+        await gone.deleteTask?.value
+        #expect(!gate.isBusy, "outil disparu")
+    }
+
+    @Test func theSharedGateIsTheDefaultOfTheApplicationModels() {
+        let m = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        #expect(m.isDeleting == SimulatorDeletionGate.shared.isBusy)
+    }
+
+    @Test func backThenReopeningDuringTheBatchRescansWhenItEnds() async {
+        let blocking = BlockingRunner(Self.list([Self.device(1), Self.device(2)]))
+        let sizes = PerDeviceSizes([Self.a: [Self.half, Self.half, 0], Self.b: [Self.half, Self.half, 0]])
+        let m = model(blocking, sizes: sizes)
+        await blockedBatch(m, blocking)
+        m.cancel()                                    // Retour
+        #expect(m.phase == .notScanned)
+        m.scan()                                      // l'écran est rouvert avant la fin : ignoré, mais retenu
+        #expect(m.phase == .notScanned)
+
+        for _ in 0..<20 { blocking.release.signal() }
+        await m.deleteTask?.value
+        await m.scanTask?.value
+
+        #expect(m.phase == .listed, "le scan retenu part à la fin du lot")
+        #expect(!gate.isBusy)
     }
 
     // MARK: Catalogue
