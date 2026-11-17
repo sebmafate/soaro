@@ -12330,6 +12330,58 @@
         }
       }
     },
+    "NuGet packages": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NuGet-Pakete"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquetes de NuGet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquets NuGet"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pacchetti NuGet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NuGet パッケージ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NuGet 패키지"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pacotes do NuGet"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NuGet 包"
+          }
+        }
+      }
+    },
     "Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. At most one request every 5 minutes, only while the Network tab is open. Nothing is stored. VPN detection is entirely local.": {
       "localizations": {
         "de": {

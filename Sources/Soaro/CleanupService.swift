@@ -22,6 +22,8 @@ enum CleanupService {
         case .npmCache: home.appendingPathComponent(".npm/_cacache")
         case .gradleCache: home.appendingPathComponent(".gradle/caches")
         case .cargoCache: home.appendingPathComponent(".cargo/registry/cache")
+        // Dossier par défaut seulement : NUGET_PACKAGES et globalPackagesFolder ne sont pas lus.
+        case .nugetCache: home.appendingPathComponent(".nuget/packages")
         case .xcodeDeviceSupport: home.appendingPathComponent("Library/Developer/Xcode/iOS DeviceSupport")
         case .simulatorCaches: home.appendingPathComponent("Library/Developer/CoreSimulator/Caches")
         }
