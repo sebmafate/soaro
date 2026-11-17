@@ -25,8 +25,8 @@ struct SimulatorRemovalSummary: Equatable {
     ///   comptées à part (`untriedCount`), ni supprimées ni échouées.
     /// - « Délai dépassé » arrête le lot (les cibles restantes ne sont pas essayées) et lève `timedOut`.
     /// - « Impossible de vérifier » arrête le lot ; ce cas et toutes les cibles restantes comptent chacun comme un échec.
-    /// - Parameter remove: supprime une cible (un UDID) ; synchrone, appelé hors de l'acteur principal.
-    static func run(targets: [String], isCancelled: () -> Bool, remove: (String) -> SimulatorRemovalResult) -> SimulatorRemovalSummary {
+    /// - Parameter remove: supprime une cible (un UDID, ou un AVD pour `DeviceRemovalSummary`) ; synchrone, appelé hors de l'acteur principal.
+    static func run<Target>(targets: [Target], isCancelled: () -> Bool, remove: (Target) -> SimulatorRemovalResult) -> SimulatorRemovalSummary {
         var summary = SimulatorRemovalSummary()
         for (index, target) in targets.enumerated() {
             if isCancelled() {
