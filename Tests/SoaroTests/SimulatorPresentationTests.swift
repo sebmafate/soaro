@@ -229,6 +229,28 @@ import Testing
         #expect(!SimulatorPresentation.confirmationNames(nine).contains("Test Device 9"))
     }
 
+    @Test func aLongNameIsShortenedToSixtyCharactersAndAnEllipsis() {
+        let sixty = String(repeating: "a", count: 60)
+        #expect(SimulatorPresentation.confirmationNames([sixty]) == "\n\n• \(sixty)", "60 caractères : tel quel")
+        #expect(SimulatorPresentation.confirmationNames([sixty + "b"]) == "\n\n• \(sixty)…")
+        #expect(SimulatorPresentation.confirmationNames([String(repeating: "é", count: 500)]) == "\n\n• " + String(repeating: "é", count: 60) + "…")
+    }
+
+    @Test func controlAndDirectionalCharactersAreRemovedAndTabsAndBreaksBecomeSpaces() {
+        // Tabulation, C0 (U+0007), C1 (U+0085 : saut de ligne), séparateurs U+2028 et U+2029, et tous les caractères de format :
+        // marques de direction, isolats, espaces de largeur nulle, BOM, RLO.
+        let hostile = "Test\tPhone\u{7}\u{85}A\u{2028}B\u{2029}C\u{202E}evil\u{202C}\u{200E}\u{200F}\u{2066}\u{2069}\u{200B}\u{200C}\u{200D}\u{FEFF}"
+        #expect(SimulatorPresentation.confirmationNames([hostile]) == "\n\n• Test Phone A B Cevil")
+        #expect(SimulatorPresentation.confirmationNames(["\u{202E}\u{200B}"]) == "", "un nom vide après nettoyage est omis")
+        #expect(SimulatorPresentation.confirmationNames(["Test Phone A", "\u{FEFF}"]) == "\n\n• Test Phone A")
+    }
+
+    @Test func moreThanEightNamesStillCapAfterCleaningAndTheEllipsisLineIsPlain() {
+        let names = (1...12).map { "Test\u{200B} Device \($0)" }
+        let text = SimulatorPresentation.confirmationNames(names)
+        #expect(text == "\n\n" + (1...8).map { "• Test Device \($0)" }.joined(separator: "\n") + "\n…")
+    }
+
     @Test func aNameWithLineBreaksStaysOnOneLineAndOtherwiseVerbatim() {
         #expect(SimulatorPresentation.confirmationNames(["Test\nPhone\r\nA", "“Quoted” 100 %"]) == "\n\n• Test Phone A\n• “Quoted” 100 %")
     }
