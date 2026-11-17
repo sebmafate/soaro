@@ -1,11 +1,14 @@
 import Foundation
 
-/// Modèle de l'outil « Simulators and emulators » (R3, R6) : LECTURE SEULE, rien ne peut être supprimé ici (SL9).
+/// Modèle de l'outil « Simulators and emulators » (R3, R4, R5, R6, R8).
 ///
 /// - Le listage (une commande) tourne dans une tâche détachée (priorité utilitaire), jamais sur l'acteur principal,
 ///   jamais dans le tick de 3 secondes. Un `CancelToken` annule le scan : le résultat d'un scan annulé n'est jamais appliqué.
 /// - Le lanceur n'a PAS de valeur par défaut (ADR 0009) : il est construit par `CleanupTab`, et nulle part ailleurs.
 /// - La détection de l'outil ne lance rien ; le lanceur n'est appelé que si `simctl` est sur le disque ET `xcrun` présent.
+/// - Suppression (SL9) : après confirmation (`ConfirmHandler` injecté, sans valeur par défaut), un lot tourne dans une tâche
+///   détachée (priorité utilisateur) : pour chaque appareil, `SimulatorScanner.remove` (revérification de l'état, portée, mesure
+///   avant et après, `xcrun simctl delete`). Le toast dit l'espace réellement libéré ; la liste est relue ensuite.
 @MainActor
 final class SimulatorsModel: ObservableObject {
     enum Failure: Equatable {
@@ -35,7 +38,7 @@ final class SimulatorsModel: ObservableObject {
     /// Appareils mesurés à moins de 100 Mo : comptés, pas listés.
     @Published private(set) var hiddenSmallCount = 0
     @Published private(set) var hiddenSmallSize: UInt64 = 0
-    /// Limite d'inactivité choisie (menu) : provisoire (`DeviceSuggestions.defaultLimitDays`), JAMAIS mémorisée entre deux sessions.
+    /// Limite d'inactivité choisie (menu) : `DeviceSuggestions.defaultLimitDays` au départ, JAMAIS mémorisée entre deux sessions.
     @Published private(set) var limitDays = DeviceSuggestions.defaultLimitDays
     /// Appareils cochés (UDID).
     @Published private(set) var selected: Set<String> = []
@@ -45,9 +48,14 @@ final class SimulatorsModel: ObservableObject {
     @Published private var sizes: [String: UInt64] = [:]
     /// Tous les appareils du listage, sans taille.
     private var devices: [SimulatorDevice] = []
+    /// Une suppression est en cours (le lot tourne, ou la liste est relue juste après).
+    @Published private(set) var isDeleting = false
 
     /// La tâche du scan en cours ou du dernier scan : les tests l'attendent (`await model.scanTask?.value`) sans dormir.
     private(set) var scanTask: Task<Void, Never>?
+    /// La tâche de la suppression en cours ou de la dernière (lot, toast, puis nouveau scan) : les tests l'attendent sans dormir.
+    private(set) var deleteTask: Task<Void, Never>?
+    private var deleteToken: CancelToken?
 
     private var token: CancelToken?
     private let runner: CommandRunner
@@ -58,12 +66,14 @@ final class SimulatorsModel: ObservableObject {
     private let measure: (URL) -> UInt64
     let demo: Bool
     private var notify: (String) -> Void
+    private let confirm: ConfirmHandler
 
     /// - Parameters:
     ///   - runner: sans valeur par défaut (ADR 0009).
     ///   - detect: détection de l'outil sur le disque (ne lance rien), appelée hors de l'acteur principal à chaque scan.
     ///   - locateXcrun: trouve `xcrun` par chemin absolu (`ToolLocator`).
     ///   - measure: taille allouée d'un dossier.
+    ///   - confirm: demande de confirmation avant de supprimer ; sans valeur par défaut (un test ne peut jamais afficher une vraie alerte).
     init(runner: CommandRunner,
          detect: @escaping () -> SimulatorToolDetection = { SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory())) },
          locateXcrun: @escaping ([String]) -> String? = { ToolLocator.firstExecutable(in: $0) },
@@ -71,6 +81,7 @@ final class SimulatorsModel: ObservableObject {
          now: @escaping () -> Date = Date.init,
          measure: @escaping (URL) -> UInt64 = { CleanupService.allocatedSize(of: $0) },
          demo: Bool = DemoMode.isEnabled,
+         confirm: @escaping ConfirmHandler,
          notify: @escaping (String) -> Void) {
         self.runner = runner
         self.detect = detect
@@ -80,6 +91,7 @@ final class SimulatorsModel: ObservableObject {
         self.measure = measure
         self.demo = demo
         self.notify = notify
+        self.confirm = confirm
     }
 
     func setNotify(_ notify: @escaping (String) -> Void) { self.notify = notify }
@@ -88,8 +100,18 @@ final class SimulatorsModel: ObservableObject {
     func measuredSize(udid: String) -> UInt64? { sizes[udid] }
     var measuredSizes: [String: UInt64] { sizes }
 
-    /// « Scan again » est inutilisable pendant le listage (une seule commande `simctl list` à la fois).
-    var canScanAgain: Bool { phase != .listing }
+    /// « Scan again » est inutilisable pendant le listage (une seule commande `simctl list` à la fois) et pendant une suppression.
+    var canScanAgain: Bool { phase != .listing && !isDeleting }
+
+    /// « Delete » est disponible : liste affichée, tailles toutes mesurées, au moins un appareil coché, aucune suppression en cours.
+    var canDelete: Bool {
+        Self.canDelete(phase: phase, isMeasuring: isMeasuring, selectedCount: selectedCount, isDeleting: isDeleting)
+    }
+
+    /// La règle, pure (testable sans modèle).
+    static func canDelete(phase: Phase, isMeasuring: Bool, selectedCount: Int, isDeleting: Bool) -> Bool {
+        phase == .listed && !isMeasuring && selectedCount > 0 && !isDeleting
+    }
 
     /// Taille mesurée d'une ligne, `nil` tant qu'elle ne l'est pas (la vue affiche « … »).
     func size(of row: DeviceSuggestions.Row) -> UInt64? { sizes[row.device.device.udid] }
@@ -110,7 +132,7 @@ final class SimulatorsModel: ObservableObject {
 
     /// Coche ou décoche une ligne ; un appareil en cours d'exécution ne se coche jamais.
     func toggle(_ row: DeviceSuggestions.Row) {
-        guard !row.isRunning else { return }
+        guard !row.isRunning, !isDeleting else { return }
         let udid = row.device.device.udid
         if selected.contains(udid) { selected.remove(udid) } else { selected.insert(udid) }
     }
@@ -118,6 +140,7 @@ final class SimulatorsModel: ObservableObject {
     /// Change la limite : la sélection devient TOUT DE SUITE la suggestion de cette limite (les choix manuels sont remplacés),
     /// sans nouveau scan ni appel au lanceur.
     func setLimit(_ days: Int) {
+        guard !isDeleting else { return }
         limitDays = days
         recompute(selection: .replace)
     }
@@ -188,11 +211,60 @@ final class SimulatorsModel: ObservableObject {
         }
     }
 
+    // MARK: Suppression
+
+    /// Bouton « Delete » : demande la confirmation (nombre, taille, ce qui est perdu ; « Delete » est le bouton destructif, `critical`),
+    /// puis supprime les appareils cochés, dans l'ordre d'affichage. Sans effet quand `canDelete` est faux.
+    /// Annuler la confirmation : aucun appel, la sélection reste, pas de toast.
+    func deleteSelected() {
+        guard canDelete else { return }
+        let targets = rows.map(\.device.device.udid).filter { selected.contains($0) }
+        guard confirm(
+            String(localized: "Delete the selected devices? (\(targets.count))"),
+            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
+            String(localized: "Delete"), true
+        ) else { return }
+
+        // Mode démo : traité à part (T6) ; ici rien ne doit jamais être lancé.
+        if demo { return }
+
+        isDeleting = true
+        let token = CancelToken()
+        deleteToken = token
+        let runner = runner, detect = detect, locateXcrun = locateXcrun, measure = measure, home = home
+        deleteTask = Task { [weak self] in
+            // Hors de l'acteur principal. La détection et la porte de `xcrun` sont réévaluées MAINTENANT : si l'outil a disparu,
+            // rien n'est lancé et chaque cible compte comme un échec (`remove` rend « impossible de vérifier »).
+            let summary = await Task.detached(priority: .userInitiated) { () -> SimulatorRemovalSummary in
+                let xcrun = ToolLocator.simulatorXcrunPath(detection: detect(), locate: locateXcrun)
+                return SimulatorRemovalSummary.run(targets: targets, isCancelled: { token.isCancelled }) { udid in
+                    SimulatorScanner.remove(runner: runner, xcrunPath: xcrun, home: home, measure: measure, udid: udid)
+                }
+            }.value
+            guard let self else { return }
+            self.notify(summary.toast())
+            self.isDeleting = false
+            // Retour pendant la suppression : pas de nouveau scan ; l'écran est déjà « non scanné » et se relancera à l'ouverture.
+            guard !token.isCancelled else { return }
+            self.scan()
+            await self.scanTask?.value
+        }
+    }
+
     /// Bouton Retour : annule le scan en cours ; un scan inachevé n'est pas conservé (la prochaine ouverture relance).
+    /// Pendant une suppression : aucun nouvel appareil n'est commencé (celui en cours se termine, jamais interrompu), le toast
+    /// dit ce qui a été fait, il n'y a pas de nouveau scan, et l'écran redevient « non scanné » (jamais de liste périmée).
     func cancel() {
         token?.cancel()
         scanTask?.cancel()
-        if phase == .listing || isMeasuring { phase = .notScanned; reset() }
+        if isDeleting {
+            deleteToken?.cancel()
+            phase = .notScanned
+            reset()
+        } else if phase == .listing || isMeasuring {
+            phase = .notScanned
+            reset()
+        }
     }
 
     private func reset() {

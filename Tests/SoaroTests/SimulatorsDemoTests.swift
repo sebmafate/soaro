@@ -13,7 +13,7 @@ import Testing
                                detect: { detect?(); return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
                                locateXcrun: { _ in nil },
                                home: URL(fileURLWithPath: "/home-fake/user-x"), now: { self.now },
-                               measure: { measure.measure($0) }, demo: true, notify: { _ in })
+                               measure: { measure.measure($0) }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
     }
 
     @Test func demoNeverCallsTheRunnerNorMeasuresNorDetects() async {
@@ -74,7 +74,7 @@ import Testing
         // Le modèle utilise l'horloge injectée : les jours écoulés restent les mêmes quelle que soit la date « maintenant ».
         func days(at date: Date) -> [Int?] {
             let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                                    home: URL(fileURLWithPath: "/home-fake/user-x"), now: { date }, demo: true, notify: { _ in })
+                                    home: URL(fileURLWithPath: "/home-fake/user-x"), now: { date }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
             m.scan()
             return m.rows.map(\.daysSinceLastUse)
         }
@@ -110,7 +110,7 @@ import Testing
         // Le dossier personnel de démo n'existe pas : si le modèle y touchait, il échouerait ou créerait quelque chose.
         let missing = FileManager.default.temporaryDirectory.appendingPathComponent("soaro-demo-\(UUID().uuidString)")
         let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
-                                home: missing, now: { self.now }, demo: true, notify: { _ in })
+                                home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in false }, notify: { _ in })
         m.scan()
         #expect(m.phase == .listed)
         #expect(!FileManager.default.fileExists(atPath: missing.path))
