@@ -350,6 +350,20 @@ import Testing
         #expect(listing.skippedCount == 4, "Gone, Outside, Docs, Twin")
     }
 
+    @Test func aliasRegistrationsCountAsSkippedButNotAsUnreadable() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        try box.write(".android/avd/Test_Phone_B.ini", "path.rel=avd/Test_Phone_A.avd\n")       // alias : même dossier, un appareil seulement
+        var listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"])
+        #expect(listing.skippedCount == 1, "le sens de skippedCount ne change pas (SL10, SL11)")
+        #expect(listing.unreadableRegistrationCount == 0, "un alias n'a rien d'illisible : l'appareil est listé")
+        try box.write(".android/avd/Gone.ini", "path.rel=avd/Gone.avd\n")                          // aucun dossier : vraiment illisible
+        listing = list(box)
+        #expect(listing.skippedCount == 2)
+        #expect(listing.unreadableRegistrationCount == 1, "seule l'inscription qui n'a donné aucun appareil compte")
+    }
+
     @Test func nothingSkippedWhenEverythingIsListed() throws {
         let box = try Sandbox(insideHome: true)
         try makeAVD(box, name: "Test_Phone_A")

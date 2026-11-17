@@ -261,7 +261,8 @@ extension AndroidSystemImageScanner {
         let set = customLocationVariables.filter { !(environment[$0] ?? "").isEmpty }
         if !set.isEmpty { reasons.append(.customLocation(set)) }
         if avds.status == .unreadable { reasons.append(.avdFolderUnreadable) }
-        if avds.skippedCount > 0 { reasons.append(.skippedRegistrations(avds.skippedCount)) }
+        // Les alias ne comptent pas : l'appareil est listé. Seules les inscriptions qui n'ont donné aucun appareil rendent la liste incomplète.
+        if avds.unreadableRegistrationCount > 0 { reasons.append(.skippedRegistrations(avds.unreadableRegistrationCount)) }
         let unknown = avds.devices.filter { imageKey(imageSysdir: $0.imageSysdir) == nil }.count
         if unknown > 0 { reasons.append(.unknownImage(unknown)) }
         return AndroidSystemImageIncompleteness(reasons: reasons)

@@ -147,6 +147,19 @@ import Testing
         #expect(output.allSatisfy { !$0.contains(box.root.path) })
     }
 
+    @Test func anAliasRegistrationPrintsNoRegistrationNote() throws {
+        let box = try Sandbox(insideHome: true)
+        try box.write("Library/Android/sdk/system-images/android-36/google_apis_playstore/arm64-v8a/source.properties", "x\n")
+        try box.write("Library/Android/sdk/system-images/android-34/default/arm64-v8a/source.properties", "x\n")
+        try box.write(".android/avd/Test_Phone_A.avd/config.ini", "image.sysdir.1=system-images/android-36/google_apis_playstore/arm64-v8a/\n")
+        try box.write(".android/avd/Test_Phone_A.ini", "path.rel=avd/Test_Phone_A.avd\n")
+        try box.write(".android/avd/Test_Phone_B.ini", "path.rel=avd/Test_Phone_A.avd\n")
+        let scan = Diagnostics.androidImageScan(environment: [:], home: box.root, measure: { _ in 1_000 })
+        let output = AndroidSystemImageReport.lines(scan: scan, locale: locale)
+        #expect(!output.contains { $0.contains("could not be read") }, "\(output)")
+        #expect(output.contains("\(size(1_000))  android-34/default/arm64-v8a  API 34  not used by any listed AVD"))
+    }
+
     @Test func androidImageScanWithoutAnSdkMeasuresNothing() throws {
         let box = try Sandbox(insideHome: true)
         let measured = MeasureLog()

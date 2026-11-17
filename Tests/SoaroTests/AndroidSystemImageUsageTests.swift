@@ -156,6 +156,33 @@ import Testing
         #expect(usage(listing, "android-36/google_apis_playstore/arm64-v8a") == .cannotTell)
     }
 
+    @Test func anAliasRegistrationIsNotAnIncompleteness() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeImage(box, "android-36/google_apis_playstore/arm64-v8a")
+        try makeImage(box, "android-34/default/arm64-v8a")
+        try makeAVD(box, name: "Test_Phone_A")
+        try box.write(".android/avd/Test_Phone_B.ini", "path.rel=avd/Test_Phone_A.avd\n")       // second `.ini` du même dossier
+        let listing = list(box)
+        #expect(listing.incompleteness.reasons.isEmpty, "un alias n'est pas une inscription illisible")
+        #expect(usage(listing, "android-34/default/arm64-v8a") == .notUsed, "et l'image inutilisée n'est pas « cannot tell »")
+    }
+
+    @Test func twoRegistrationsOfOneAvdGiveOneUserWithItsImageAndNoUnknownImage() throws {
+        // Casse si `withAliases` perd `imageSysdir` : l'appareil n'aurait plus d'image (« unknown image ») et l'image ne serait pas utilisée.
+        let box = try Sandbox(insideHome: true)
+        try makeImage(box, "android-36/google_apis_playstore/arm64-v8a")
+        try makeAVD(box, name: "Test_Phone_A", display: "Test Phone A")
+        try box.write(".android/avd/Test_Phone_B.ini", "path.rel=avd/Test_Phone_A.avd\n")
+        let listing = list(box)
+        guard case .usedBy(let devices)? = usage(listing, "android-36/google_apis_playstore/arm64-v8a") else {
+            Issue.record("l'image devrait être utilisée"); return
+        }
+        #expect(devices.map(\.name) == ["Test_Phone_A"], "l'appareil une seule fois")
+        #expect(devices.first?.aliases == ["Test_Phone_B"])
+        #expect(!listing.incompleteness.reasons.contains(.unknownImage(1)))
+        #expect(listing.incompleteness.reasons.isEmpty)
+    }
+
     @Test func anAvdWithoutAnImageSysdirGivesUnknownImage() throws {
         let box = try Sandbox(insideHome: true)
         try makeImage(box, "android-36/google_apis_playstore/arm64-v8a")

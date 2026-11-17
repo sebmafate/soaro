@@ -142,6 +142,10 @@ struct AndroidAVDListing: Equatable {
     /// Inscriptions (`<nom>.ini` de nom valide) qui n'ont donné aucun appareil : dossier absent, hors du dossier personnel,
     /// qui ne ressemble pas à un AVD, ou déjà pris par une autre inscription. Un décompte, jamais de nom ni de chemin.
     var skippedCount = 0
+    /// Parmi `skippedCount`, seulement les inscriptions qui n'ont donné AUCUN appareil (dossier absent, hors du dossier personnel, qui ne
+    /// ressemble pas à un AVD) : les alias (second `.ini` d'un dossier déjà listé) n'y sont PAS, l'appareil est listé. C'est ce décompte
+    /// qui rend la liste des appareils incomplète pour les images système (SL12a) ; `skippedCount` garde son sens pour SL10 et SL11.
+    var unreadableRegistrationCount = 0
 }
 
 extension AndroidEmulatorScanner {
@@ -181,6 +185,7 @@ extension AndroidEmulatorScanner {
         // Dossiers déjà pris (chemin résolu) : deux `.ini` vers le même dossier ne donnent qu'une ligne (le premier par nom).
         var firstIndexByFolder: [String: Int] = [:]
         var skipped = 0
+        var unreadable = 0
         for entry in entries.sorted() where entry.hasSuffix(".ini") {
             let name = String(entry.dropLast(".ini".count))
             guard isValidAVDName(name) else { continue }
@@ -188,6 +193,7 @@ extension AndroidEmulatorScanner {
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
                   isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder) else {
                 skipped += 1
+                unreadable += 1
                 continue
             }
             // Deux inscriptions vers le même dossier : une seule ligne (la première par nom), l'autre nom devient un alias.
@@ -208,7 +214,7 @@ extension AndroidEmulatorScanner {
                                          imageSysdir: config["image.sysdir.1"]))
         }
         devices.sort(by: AndroidDevice.isOrderedBefore)
-        return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped)
+        return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped, unreadableRegistrationCount: unreadable)
     }
 
     /// Le premier candidat qui est un dossier existant (`path=` absolu, `path.rel`, dossier par défaut). `nil` sinon.
