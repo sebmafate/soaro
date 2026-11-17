@@ -23,9 +23,10 @@ import Testing
             size: size)
     }
 
-    private func report(_ scan: AndroidScan, limit: Int = 60) -> [String] {
+    private func report(_ scan: AndroidScan, limit: Int = 60, appPreselects: Bool = false) -> [String] {
         let suggestions = DeviceSuggestions.suggestAndroid(scan.devices, now: now, limitDays: limit)
-        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc)
+        return AndroidEmulatorReport.lines(scan: scan, suggestions: suggestions, now: now, locale: locale, timeZone: utc,
+                                           appPreselects: appPreselects)
     }
 
     private func size(_ bytes: UInt64) -> String { Format.fileBytes(bytes, locale: locale) }
@@ -48,8 +49,19 @@ import Testing
             "\(size(1_000_000_000))  Test_Phone_A  Test_Phone_A (unknown system)  last used 2026-11-14 (2 d, from hardware-qemu.ini)  running",
             "    files: hardware-qemu.ini 2026-10-07 (40 d), emulator-user.ini 2026-11-14 (2 d), cache.img.qcow2 2026-10-06 (41 d)",
             "1 small device (\(size(50_000_000))) not listed",
+            "note: the app does not pre-select Android devices until SL11 (the rule's output is shown above)",
             "SDK source: ANDROID_HOME",
         ])
+    }
+
+    @Test func theNoteIsAbsentWhenNothingIsPreSelectedOrWhenTheAppPreSelects() {
+        let sdk = AndroidSDKLocation(path: "/x", source: .androidHome)
+        let inactive = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 90, size: 500_000_000)])
+        #expect(!report(inactive, appPreselects: true).contains { $0.hasPrefix("note:") }, "le réglage est activé : plus de note")
+        #expect(report(inactive).contains { $0.hasPrefix("note:") })
+        let recent = AndroidScan(status: .ok, sdk: sdk, devices: [sized("Test_Phone_A", days: 3, size: 500_000_000)])
+        #expect(!report(recent).contains { $0.hasPrefix("note:") }, "rien à pré-sélectionner : pas de note")
+        #expect(!report(inactive).joined(separator: "\n").contains("/x"))
     }
 
     @Test func aSkippedCountIsPrintedBeforeTheSdkSourceAndOnlyWhenNotZero() {

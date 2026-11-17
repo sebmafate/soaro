@@ -5,7 +5,8 @@ import Foundation
 /// `--scan` : volontairement ni `String(localized:)` ni clé de catalogue. Aucun chemin n'est jamais affiché.
 enum AndroidEmulatorReport {
     static func lines(scan: AndroidScan, suggestions: DeviceSuggestions.AndroidResult, now: Date, locale: Locale,
-                      timeZone: TimeZone = .current) -> [String] {
+                      timeZone: TimeZone = .current,
+                      appPreselects: Bool = DeviceSuggestions.androidPreselectionEnabled) -> [String] {
         var out = ["== Android emulators"]
         switch scan.status {
         case .sdkNotFound:
@@ -51,6 +52,10 @@ enum AndroidEmulatorReport {
         if suggestions.hiddenSmallCount > 0 {
             let n = suggestions.hiddenSmallCount
             out.append("\(n) small \(n == 1 ? "device" : "devices") (\(Format.fileBytes(suggestions.hiddenSmallSize, locale: locale))) not listed")
+        }
+        // `pre-selected: inactive` est la sortie de la RÈGLE ; tant que l'application ne pré-sélectionne pas Android, on le dit.
+        if !appPreselects && suggestions.preSelectedCount > 0 {
+            out.append("note: the app does not pre-select Android devices until SL11 (the rule's output is shown above)")
         }
         if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
         if let sdk = scan.sdk { out.append("SDK source: \(sdk.source.rawValue)") }

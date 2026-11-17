@@ -100,6 +100,8 @@ final class SimulatorsModel: ObservableObject {
     let demo: Bool
     private var notify: (String) -> Void
     private let confirm: ConfirmHandler
+    /// Le groupe Android est-il pré-sélectionné ? `DeviceSuggestions.androidPreselectionEnabled` (faux avant SL11) ; un test peut l'activer.
+    private let androidPreselects: Bool
 
     /// - Parameters:
     ///   - runner: sans valeur par défaut (ADR 0009).
@@ -119,6 +121,7 @@ final class SimulatorsModel: ObservableObject {
          demo: Bool = DemoMode.isEnabled,
          confirm: @escaping ConfirmHandler,
          deletionGate: SimulatorDeletionGate? = nil,
+         androidPreselects: Bool = DeviceSuggestions.androidPreselectionEnabled,
          notify: @escaping (String) -> Void) {
         self.runner = runner
         self.detect = detect
@@ -130,6 +133,7 @@ final class SimulatorsModel: ObservableObject {
         self.demo = demo
         self.notify = notify
         self.confirm = confirm
+        self.androidPreselects = androidPreselects
         self.gate = deletionGate ?? .shared
         gate.register(self)
         // Les vues voient la porte comme une propriété de ce modèle.
@@ -170,7 +174,12 @@ final class SimulatorsModel: ObservableObject {
 
     /// Bandeau « Nothing to suggest… » : au moins une ligne listée (dans l'un ou l'autre groupe), rien de pré-sélectionné nulle part,
     /// et les tailles sont toutes arrivées.
-    var showsNothingToSuggest: Bool { !isMeasuring && listedCount > 0 && nothingPreSelected && androidNothingPreSelected }
+    /// Un groupe dont la pré-sélection est coupée (Android avant SL11) ne compte pas : « rien à suggérer » serait faux (par conception),
+    /// et « baisser la limite » n'y changerait rien.
+    var showsNothingToSuggest: Bool {
+        let suggested = rows.count + (androidPreselects ? androidRows.count : 0)
+        return !isMeasuring && suggested > 0 && nothingPreSelected && (!androidPreselects || androidNothingPreSelected)
+    }
 
     /// Appareils listés, des deux groupes.
     var listedCount: Int { rows.count + androidRows.count }
@@ -450,7 +459,8 @@ final class SimulatorsModel: ObservableObject {
         androidRows = androidMeasuring ? result.rows.sorted { AndroidDevice.isOrderedBefore($0.device.device, $1.device.device) } : result.rows
         androidNothingPreSelected = result.preSelectedCount == 0
         switch selection {
-        case .replace: androidSelected = Set(result.rows.filter(\.isPreSelected).map(\.device.device.name))
+        // Réglage coupé (avant SL11) : la règle est calculée (raison « inactive for N d », `--scan`) mais rien n'est coché d'office.
+        case .replace: androidSelected = androidPreselects ? Set(result.rows.filter(\.isPreSelected).map(\.device.device.name)) : []
         case .prune: androidSelected.formIntersection(result.rows.filter { !$0.isRunning }.map(\.device.device.name))
         }
         androidHiddenSmallCount = result.hiddenSmallCount

@@ -140,7 +140,8 @@ import Testing
         let inactive = m.androidRows.first { $0.isInactive }
         #expect((inactive?.daysSinceLastUse ?? 0) > 60)
         #expect(inactive.map { m.size(of: $0) ?? 0 } ?? 0 >= DeviceSuggestions.smallDeviceThreshold)
-        #expect(m.androidSelected == Set(inactive.map { [$0.device.device.name] } ?? []), "seul l'appareil inactif est pré-sélectionné")
+        #expect(inactive?.isPreSelected == true, "la règle le pré-sélectionnerait")
+        #expect(m.androidSelected.isEmpty, "mais l'application ne pré-sélectionne pas Android avant SL11 : la démo ouvre Delete utilisable")
         let running = m.androidRows.first { $0.isRunning }
         #expect(running != nil, "un appareil en cours d'exécution")
         #expect(running.map { !m.androidSelected.contains($0.device.device.name) } == true)
@@ -175,14 +176,18 @@ import Testing
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
-        #expect(!m.androidSelected.isEmpty)
-        #expect(!m.canDelete, "une ligne Android est cochée")
+        #expect(m.androidSelected.isEmpty, "rien d'Android n'est coché d'office")
+        #expect(m.canDelete, "la démo ouvre Delete utilisable pour iOS")
+        // Cocher une ligne Android (non en cours d'exécution) à la main désactive Delete : aucune confirmation, aucun effet.
+        let checkable = try! #require(m.androidRows.first { !$0.isRunning })
+        m.toggle(checkable)
+        #expect(!m.canDelete)
         m.deleteSelected()
         #expect(confirm.asks.isEmpty, "aucune confirmation, aucun effet")
         #expect(toasts.messages.isEmpty)
-        // Décocher l'Android : la suppression iOS de démo marche et ne touche pas aux lignes Android.
+        // Décochée : la suppression iOS de démo marche et ne touche pas aux lignes Android.
+        m.toggle(checkable)
         let android = m.androidRows
-        for row in android where m.androidSelected.contains(row.device.device.name) { m.toggle(row) }
         #expect(m.canDelete)
         m.deleteSelected()
         #expect(m.androidRows == android)
@@ -192,12 +197,6 @@ import Testing
     // MARK: Suppression en démo (SL9 T6)
 
     final class Toasts { var messages: [String] = [] }
-
-    /// SL10 : la démo pré-sélectionne un appareil Android, ce qui désactive « Delete » (rien d'Android ne se supprime avant SL11).
-    /// Les tests de suppression iOS le décochent d'abord.
-    func uncheckAndroid(_ m: SimulatorsModel) {
-        for row in m.androidRows where m.androidSelected.contains(row.device.device.name) { m.toggle(row) }
-    }
 
     func confirmingModel(runner: CommandRunner, measure: ScriptedMeasure, confirm: RecordingConfirm, toasts: Toasts) -> SimulatorsModel {
         SimulatorsModel(runner: runner,
@@ -215,7 +214,6 @@ import Testing
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
-        uncheckAndroid(m)
         let chosen = m.rows.filter { m.selected.contains($0.device.device.udid) }
         let chosenIDs = Set(chosen.map(\.device.device.udid))
         let expectedFreed = chosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
@@ -250,7 +248,6 @@ import Testing
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
-        uncheckAndroid(m)
         let rows = m.rows, selection = m.selected
 
         m.deleteSelected()
@@ -268,7 +265,6 @@ import Testing
         let m = SimulatorsModel(runner: FakeCommandRunner(), detect: { detections += 1; return SimulatorToolDetection(devicesFolderExists: false, simctlPath: nil) },
                                 environment: [:], home: missing, now: { self.now }, demo: true, confirm: { _, _, _, _ in true }, notify: { _ in })
         m.scan()
-        uncheckAndroid(m)
         m.deleteSelected()
         #expect(m.rows.count < DemoData.simulators(now: now).filter { $0.size >= DeviceSuggestions.smallDeviceThreshold }.count, "la suppression de démo a bien eu lieu")
         #expect(detections == 0)

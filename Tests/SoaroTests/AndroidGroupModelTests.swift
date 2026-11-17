@@ -50,13 +50,13 @@ import Testing
     }
 
     func model(_ runner: CommandRunner, home box: Sandbox, detection: SimulatorToolDetection? = nil, environment: [String: String] = [:],
-               gate: SimulatorDeletionGate? = nil, measure: ScriptedMeasure) -> SimulatorsModel {
+               gate: SimulatorDeletionGate? = nil, preselect: Bool? = nil, measure: ScriptedMeasure) -> SimulatorsModel {
         let detection = detection ?? present
         return SimulatorsModel(runner: runner, detect: { detection },
                                locateTool: { $0 == ToolLocator.processListCandidates ? "/bin/ps" : "/usr/bin/xcrun" },
                                environment: environment, home: box.root, now: { self.now },
                                measure: { measure.measure($0) }, demo: false, confirm: { _, _, _, _ in false },
-                               deletionGate: gate ?? SimulatorDeletionGate(), notify: { _ in })
+                               deletionGate: gate ?? SimulatorDeletionGate(), androidPreselects: preselect ?? DeviceSuggestions.androidPreselectionEnabled, notify: { _ in })
     }
 
     func run(_ m: SimulatorsModel) async {
@@ -137,9 +137,9 @@ import Testing
 
     // MARK: Sélection
 
-    @Test func anInactiveAvdIsPreSelectedAndARecentOneIsNot() async throws {
+    @Test func withTheSwitchOnAnInactiveAvdIsPreSelectedAndARecentOneIsNot() async throws {
         let box = try home([phone, tablet])
-        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
+        let m = model(runner(ps: ""), home: box, detection: absent, preselect: true, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
         await run(m)
         #expect(m.androidSelected == ["Test_Phone_A"])
         #expect(m.selectedCount == 1)
@@ -149,7 +149,7 @@ import Testing
     @Test func aRunningAvdIsNeverSelectedAndToggleDoesNothing() async throws {
         let box = try home([phone, tablet])
         let m = model(runner(ps: "emulator -avd Test_Phone_A\n"), home: box, detection: absent,
-                      measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
+                      preselect: true, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
         await run(m)
         let running = try #require(m.androidRows.first { $0.device.device.name == "Test_Phone_A" })
         #expect(running.isRunning)
@@ -167,7 +167,7 @@ import Testing
         let fiftyFour = AVD(name: "Test_Phone_A", display: "Test Phone A", days: 54)
         let box = try home([fiftyFour])
         let fake = runner(ps: "")
-        let m = model(fake, home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        let m = model(fake, home: box, detection: absent, preselect: true, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
         await run(m)
         #expect(m.androidSelected.isEmpty, "54 jours à la limite de 60 : listé, pas pré-sélectionné")
         #expect(m.androidRows.count == 1)
@@ -192,7 +192,7 @@ import Testing
     @Test func theSharedTotalsAddBothGroups() async throws {
         let box = try home([phone])
         let m = model(runner(ios: [Self.u1], ps: ""), home: box,
-                      measure: ScriptedMeasure([Self.u1: 700_000_000, "Test_Phone_A.avd": Self.big]))
+                      preselect: true, measure: ScriptedMeasure([Self.u1: 700_000_000, "Test_Phone_A.avd": Self.big]))
         await run(m)
         #expect(m.rows.count == 1 && m.androidRows.count == 1)
         #expect(m.listedCount == 2)
@@ -203,15 +203,74 @@ import Testing
         #expect(!m.showsNothingToSuggest)
     }
 
-    @Test func nothingToSuggestNeedsAListedRowInEitherGroupAndNothingPreSelectedInBoth() async throws {
+    @Test func nothingToSuggestNeedsAListedRowInEitherGroupAndNothingPreSelectedInBothWithTheSwitchOn() async throws {
         let box = try home([tablet])
-        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Tablet_B.avd": Self.big]))
+        let m = model(runner(ps: ""), home: box, detection: absent, preselect: true, measure: ScriptedMeasure(["Test_Tablet_B.avd": Self.big]))
         await run(m)
         #expect(m.showsNothingToSuggest, "une ligne Android listée, aucune pré-sélection nulle part")
         let none = try home([])
-        let empty = model(runner(ps: ""), home: none, detection: absent, measure: ScriptedMeasure([:]))
+        let empty = model(runner(ps: ""), home: none, detection: absent, preselect: true, measure: ScriptedMeasure([:]))
         await run(empty)
         #expect(!empty.showsNothingToSuggest)
+    }
+
+    // MARK: Pas de pré-sélection Android avant SL11 (décision de l'auteur)
+
+    @Test func theSwitchIsOffAndTheModelUsesItByDefault() {
+        #expect(!DeviceSuggestions.androidPreselectionEnabled, "SL11 l'active avec la suppression, et ce test avec lui")
+    }
+
+    @Test func byDefaultAnInactiveAvdIsListedWithItsReasonButNeverPreSelected() async throws {
+        let box = try home([phone, tablet])
+        let m = model(runner(ps: ""), home: box, detection: absent,
+                      measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
+        await run(m)
+        let inactive = try #require(m.androidRows.first { $0.device.device.name == "Test_Phone_A" })
+        #expect(inactive.isInactive, "la raison « inactive for N d » reste calculée")
+        #expect(inactive.isPreSelected, "la fonction pure garde sa règle (utilisée par --scan)")
+        #expect(m.androidSelected.isEmpty, "mais l'application ne coche rien")
+        #expect(m.selectedCount == 0 && m.selectedSize == 0)
+        m.setLimit(30)
+        #expect(m.androidSelected.isEmpty, "un changement de limite ne coche rien non plus")
+    }
+
+    @Test func byDefaultDeleteStaysUsableForIosAndOnlyACheckByHandOnAnAndroidRowDisablesIt() async throws {
+        let box = try home([phone])
+        let m = model(runner(ios: [Self.u1], ps: ""), home: box,
+                      measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
+        await run(m)
+        let ios = try #require(m.rows.first)
+        m.toggle(ios)
+        #expect(m.canDelete, "aucune ligne Android n'est cochée d'office")
+        let android = try #require(m.androidRows.first)
+        m.toggle(android)
+        #expect(m.androidSelected == ["Test_Phone_A"], "l'utilisateur peut cocher une ligne Android à la main")
+        #expect(!m.canDelete, "la règle est gardée : Delete désactivé")
+        m.toggle(android)
+        #expect(m.canDelete)
+    }
+
+    @Test func aRunningAvdStaysUnselectableWhateverTheSwitch() async throws {
+        let box = try home([phone])
+        let m = model(runner(ps: "emulator -avd Test_Phone_A\n"), home: box, detection: absent,
+                      measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        await run(m)
+        let running = try #require(m.androidRows.first)
+        m.toggle(running)
+        #expect(m.androidSelected.isEmpty)
+    }
+
+    @Test func theBannerIgnoresAndroidWhileItIsNotPreSelected() async throws {
+        // Android seul : rien n'est suggéré PAR CONCEPTION, le bandeau « Nothing to suggest… » ne s'affiche pas.
+        let box = try home([phone])
+        let androidOnly = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        await run(androidOnly)
+        #expect(!androidOnly.showsNothingToSuggest)
+        // iOS listé sans rien de pré-sélectionné : le bandeau reste, quel que soit Android.
+        let both = model(runner(ios: [Self.u1], ps: ""), home: try home([phone]),
+                         measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
+        await run(both)
+        #expect(both.showsNothingToSuggest)
     }
 
     // MARK: Échec Android, iOS intact
@@ -260,7 +319,7 @@ import Testing
     @Test func deleteIsDisabledWhileAnAndroidRowIsCheckedAndEnabledOnceUnchecked() async throws {
         let box = try home([phone])
         let m = model(runner(ios: [Self.u1], ps: ""), home: box,
-                      measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
+                      preselect: true, measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
         await run(m)
         let ios = try #require(m.rows.first)
         m.toggle(ios)
