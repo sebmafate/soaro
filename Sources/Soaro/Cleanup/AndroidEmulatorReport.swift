@@ -5,8 +5,7 @@ import Foundation
 /// `--scan` : volontairement ni `String(localized:)` ni clé de catalogue. Aucun chemin n'est jamais affiché.
 enum AndroidEmulatorReport {
     static func lines(scan: AndroidScan, suggestions: DeviceSuggestions.AndroidResult, now: Date, locale: Locale,
-                      timeZone: TimeZone = .current,
-                      appPreselects: Bool = DeviceSuggestions.androidPreselectionEnabled) -> [String] {
+                      timeZone: TimeZone = .current) -> [String] {
         var out = ["== Android emulators"]
         switch scan.status {
         case .sdkNotFound:
@@ -45,7 +44,7 @@ enum AndroidEmulatorReport {
             if row.isRunning { parts.append("running") }
             if row.isPreSelected { parts.append("pre-selected: inactive") }
             out.append(parts.joined(separator: "  "))
-            // La date de CHAQUE fichier du signal qui existe : l'auteur compare fichier par fichier pour confirmer ou changer le signal.
+            // La date de CHAQUE fichier de diagnostic qui existe : l'auteur compare fichier par fichier ; seuls ceux de `lastUsedFiles` comptent (le gagnant est nommé sur la ligne de l'appareil).
             let files = device.fileDates.map { "\($0.file) \(day($0.date)) (\(DeviceSuggestions.wholeDays(from: $0.date, to: now)) d)" }
             out.append("    files: " + (files.isEmpty ? "none" : files.joined(separator: ", ")))
         }
@@ -54,9 +53,9 @@ enum AndroidEmulatorReport {
             let n = suggestions.hiddenSmallCount
             out.append("\(n) small \(n == 1 ? "device" : "devices") (\(Format.fileBytes(suggestions.hiddenSmallSize, locale: locale))) not listed")
         }
-        // `pre-selected: inactive` est la sortie de la RÈGLE ; tant que l'application ne pré-sélectionne pas Android, on le dit.
-        if !appPreselects && suggestions.preSelectedCount > 0 {
-            out.append("note: the app does not pre-select Android devices until the last-used signal is settled (the rule's output is shown above)")
+        // Dit quel fichier donne la date (les autres lignes `files:` ne sont là que pour comparer).
+        if !suggestions.rows.isEmpty {
+            out.append("note: the last-used date is the newest modification date among \(AndroidEmulatorScanner.lastUsedFiles.joined(separator: ", ")); the other files are shown for comparison")
         }
         if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
         if let sdk = scan.sdk { out.append("SDK source: \(sdk.source.rawValue)") }

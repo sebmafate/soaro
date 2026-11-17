@@ -173,8 +173,9 @@ import Testing
         let inactive = m.androidRows.first { $0.isInactive }
         #expect((inactive?.daysSinceLastUse ?? 0) > 60)
         #expect(inactive.map { m.size(of: $0) ?? 0 } ?? 0 >= DeviceSuggestions.smallDeviceThreshold)
-        #expect(inactive?.isPreSelected == true, "la règle le pré-sélectionnerait")
-        #expect(m.androidSelected.isEmpty, "mais l'application ne pré-sélectionne pas Android (condition d'entrée de SL10 non remplie) : rien n'est coché d'office")
+        #expect(inactive?.isPreSelected == true)
+        #expect(m.androidSelected == ["Demo_Phone_A"], "SL10b : l'application pré-sélectionne Android : l'appareil de démo inactif depuis plus de 60 jours est coché d'office")
+        #expect(inactive.map { m.androidSelected.contains($0.device.device.name) } == true)
         let running = m.androidRows.first { $0.isRunning }
         #expect(running != nil, "un appareil en cours d'exécution")
         #expect(running.map { !m.androidSelected.contains($0.device.device.name) } == true)
@@ -202,16 +203,31 @@ import Testing
         #expect(!text.contains("/Users/") && !text.contains(".android"))
     }
 
-    @Test func aCheckedDemoAndroidRowCanBeDeletedAndTheRowLeavesTheList() async {
+    @Test func thePreSelectedDemoAndroidRowIsCountedInTheSelectionAndTheTotalsAreRecomputedWithTheLimit() {
+        let m = demoModel(runner: FakeCommandRunner())
+        m.scan()
+        let android = m.androidRows.first { $0.device.device.name == "Demo_Phone_A" }
+        let size = android.flatMap { m.size(of: $0) } ?? 0
+        #expect(size > 0)
+        let iosSelectedSize = m.rows.filter { m.selected.contains($0.device.device.udid) }.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
+        #expect(m.selectedSize == iosSelectedSize + size, "le pied de page et le résumé comptent l'appareil Android de démo")
+        #expect(m.selectedCount == m.selected.count + 1)
+        m.setLimit(90)
+        #expect(m.androidSelected.isEmpty, "70 jours ne dépassent pas 90")
+        m.setLimit(60)
+        #expect(m.androidSelected == ["Demo_Phone_A"])
+    }
+
+    @Test func aPreSelectedDemoAndroidRowCanBeDeletedAndTheRowLeavesTheList() async {
         let runner = FakeCommandRunner()
         let measure = ScriptedMeasure([:])
         let confirm = RecordingConfirm(answer: true)
         let toasts = Toasts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts)
         m.scan()
-        #expect(m.androidSelected.isEmpty, "rien d'Android n'est coché d'office")
+        #expect(m.androidSelected == ["Demo_Phone_A"], "SL10b : l'appareil de démo inactif est coché d'office")
         let checkable = try! #require(m.androidRows.first { !$0.isRunning })
-        m.toggle(checkable)
+        #expect(m.androidSelected.contains(checkable.device.device.name))
         #expect(m.canDelete, "SL11 : une ligne Android cochée laisse Delete utilisable")
         let size = m.selectedSize                  // les lignes iOS pré-sélectionnées de la démo et la ligne Android cochée
         #expect(size >= (m.size(of: checkable) ?? 0))
@@ -234,8 +250,8 @@ import Testing
         m.scan()
         let ios = try #require(m.rows.first { !$0.isRunning && !m.selected.contains($0.device.device.udid) })
         let android = try #require(m.androidRows.first { !$0.isRunning })
+        #expect(m.androidSelected.contains(android.device.device.name), "SL10b : déjà coché d'office")
         m.toggle(ios)
-        m.toggle(android)
         let total = m.selectedCount
         let expected = (m.size(of: ios) ?? 0) + (m.size(of: android) ?? 0)
         let selectedBefore = m.selectedSize
@@ -272,7 +288,7 @@ import Testing
         // Seule la ligne Android est cochée : les lignes iOS pré-sélectionnées de la démo sont décochées.
         for row in m.rows where m.selected.contains(row.device.device.udid) { m.toggle(row) }
         let android = try #require(m.androidRows.first { !$0.isRunning })
-        m.toggle(android)
+        #expect(m.androidSelected == [android.device.device.name], "SL10b : la ligne Android est déjà cochée d'office")
         #expect(m.canDelete)
         let size = try #require(m.size(of: android))
         let iosBefore = m.rows
@@ -296,7 +312,7 @@ import Testing
         let counts = Counts()
         let m = confirmingModel(runner: runner, measure: measure, confirm: confirm, toasts: toasts, counts: counts)
         m.scan()
-        m.toggle(try #require(m.androidRows.first { !$0.isRunning }))
+        #expect(m.androidSelected == ["Demo_Phone_A"], "SL10b : cochée d'office")
         let rows = m.rows, androidRows = m.androidRows, selected = m.selected, androidSelected = m.androidSelected
 
         m.deleteSelected()
@@ -350,8 +366,7 @@ import Testing
         func usage(_ path: String) -> AndroidSystemImage.Usage? { m.imageRows.first { $0.key.path == path }?.usage }
         let phone = "android-36/google_apis_playstore/arm64-v8a"
         if case .usedBy(let devices)? = usage(phone) { #expect(devices.map(\.displayName) == ["Demo Phone A"]) } else { Issue.record("la 36 est utilisée au départ") }
-        let row = try #require(m.androidRows.first { $0.device.device.name == "Demo_Phone_A" })
-        m.toggle(row)
+        #expect(m.androidSelected == ["Demo_Phone_A"], "SL10b : cochée d'office")
 
         m.deleteSelected()
 
@@ -377,16 +392,18 @@ import Testing
         m.scan()
         let chosen = m.rows.filter { m.selected.contains($0.device.device.udid) }
         let chosenIDs = Set(chosen.map(\.device.device.udid))
-        let expectedFreed = chosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
+        // SL10b : l'appareil Android de démo inactif est aussi coché d'office ; la confirmation et le message comptent les deux groupes.
+        let androidChosen = m.androidRows.filter { m.androidSelected.contains($0.device.device.name) }
+        let expectedFreed = chosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) } + androidChosen.reduce(UInt64(0)) { $0 + (m.size(of: $1) ?? 0) }
         let rowsBefore = m.rows.count
-        #expect(chosen.count >= 2 && expectedFreed > 0)
+        #expect(chosen.count >= 2 && androidChosen.count == 1 && expectedFreed > 0)
         #expect(m.canDelete)
 
         m.deleteSelected()
 
         // Même confirmation que dans l'application, pour l'écran S3.
         #expect(confirm.asks.count == 1)
-        #expect(confirm.asks.first?.title == "Delete the selected devices? (\(chosen.count))")
+        #expect(confirm.asks.first?.title == "Delete the selected devices? (\(chosen.count + androidChosen.count))")
         #expect(confirm.asks.first?.message.hasPrefix(Format.fileBytes(expectedFreed)) == true)
         #expect(confirm.asks.first?.button == "Delete" && confirm.asks.first?.critical == true)
         // Tout de suite : rien à attendre.

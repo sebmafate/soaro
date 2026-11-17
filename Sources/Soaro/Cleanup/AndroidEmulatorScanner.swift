@@ -63,7 +63,7 @@ enum AndroidEmulatorScanner {
 
 // MARK: - Liste sur le disque (lecture seule)
 
-/// La date de modification d'un fichier du signal « dernière utilisation » (`AndroidEmulatorScanner.lastUsedFiles`).
+/// La date de modification d'un fichier de diagnostic (`AndroidEmulatorScanner.diagnosticFiles`).
 struct AndroidFileDate: Equatable {
     /// Chemin relatif au dossier de l'AVD.
     let file: String
@@ -80,14 +80,14 @@ struct AndroidDevice: Equatable {
     let systemVersion: String?
     /// Dossier `.avd`, standardisé et sans lien symbolique, STRICTEMENT dans le dossier personnel.
     let folder: URL
-    /// Date de dernière utilisation (proposition, voir `AndroidEmulatorScanner.lastUsedFiles`), `nil` si inconnue.
+    /// Date de dernière utilisation (voir `AndroidEmulatorScanner.lastUsedFiles` : la plus récente de quatre fichiers), `nil` si inconnue.
     let lastUsed: Date?
     /// Le fichier (relatif au dossier de l'AVD) qui a donné la date, `nil` si inconnue. Affiché par `--scan`.
     let lastUsedSource: String?
     /// Un processus tourne avec `-avd <nom>` (rempli par `AndroidEmulatorScanner.list`).
     let isRunning: Bool
-    /// La date de CHAQUE fichier de `lastUsedFiles` qui existe, dans l'ordre de la constante (pour que l'auteur compare
-    /// fichier par fichier avec `--scan`). Vide : aucun de ces fichiers.
+    /// La date de CHAQUE fichier de `diagnosticFiles` qui existe, dans l'ordre de la constante (pour que l'auteur compare
+    /// fichier par fichier avec `--scan`) ; seule celle de `lastUsedFiles` donne `lastUsed`. Vide : aucun de ces fichiers.
     let fileDates: [AndroidFileDate]
     /// Les AUTRES inscriptions (`<nom>.ini`) qui désignent le même dossier, dans l'ordre des noms : une ligne par dossier, mais un
     /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 refuse toute
@@ -149,11 +149,31 @@ struct AndroidAVDListing: Equatable {
 }
 
 extension AndroidEmulatorScanner {
-    /// Les fichiers que l'émulateur écrit quand l'appareil tourne, relatifs au dossier de l'AVD. Le signal « dernière utilisation »
-    /// est la date de modification la plus récente parmi eux (PROPOSITION de SL10, à confirmer par l'auteur : un changement
-    /// après la revue tient en cette seule constante). `config.ini`, `multiinstance.lock` et le `.ini` sont EXCLUS exprès :
-    /// Android Studio écrit les deux premiers sans que l'appareil serve, et le verrou existe même quand rien ne tourne (ADR 0009).
-    static let lastUsedFiles = [
+    /// Le signal « dernière utilisation » : la date de modification la PLUS RÉCENTE parmi quatre fichiers : `userdata-qemu.img.qcow2`
+    /// (la surcouche), `userdata-qemu.img`, `snapshots/default_boot/snapshot.pb` et `hardware-qemu.ini` (décision de l'auteur, 2026-11-17).
+    /// Constaté sur UN SEUL AVD réel de l'auteur, l'émulateur ayant tourné 3 jours avant : la surcouche, le snapshot et `hardware-qemu.ini`
+    /// avaient 3 jours, le fichier brut `userdata-qemu.img` en avait 56. Ce sont donc les fichiers observés comme bougeant quand l'émulateur
+    /// tourne ; le fichier brut a été observé comme NE bougeant PAS à l'usage (il date de la création ou du dernier effacement) et ne reste
+    /// dans la liste que parce que prendre la date la plus récente ne peut que rendre un appareil plus récent (le côté sûr). Ce n'est pas
+    /// une règle générale : une observation.
+    /// SONT EXCLUS : `emulator-user.ini`, `config.ini` (d'autres outils peuvent les toucher sans que l'appareil serve), `cache.img.qcow2`
+    /// et `multiinstance.lock` (le verrou existe même quand rien ne tourne, ADR 0009). Un AVD touché par un outil paraît récent, donc n'est
+    /// jamais pré-sélectionné à tort. NON VÉRIFIÉ, côté non sûr : un appareil utilisé d'une façon qui n'écrit aucun de ces quatre fichiers
+    /// (lancement `-read-only` ou multi-instance, autre version de l'émulateur, AVD créé par un autre outil) paraîtrait ancien et pourrait
+    /// être pré-sélectionné une fois arrêté ; la confirmation, le bouton par défaut « Cancel » et la revérification « en cours » juste avant
+    /// la suppression limitent les dégâts. Un AVD sans aucun de ces fichiers a une date INCONNUE : jamais pré-sélectionné.
+    /// Un lien symbolique vers un fichier est suivi (la date est celle de la cible) : un lien vers un fichier ancien donnerait une date
+    /// ancienne. À égalité de date, le gagnant nommé est le premier dans l'ordre de `diagnosticFiles`. Un changement du signal tient en
+    /// cette seule constante.
+    static let lastUsedFiles = ["userdata-qemu.img.qcow2", "userdata-qemu.img", "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"]
+
+    /// Une date de modification AVANT le 2005-01-01 (UTC) n'est pas un usage (l'émulateur n'existait pas : remise à zéro, 1970) : elle rend
+    /// la date de l'appareil INCONNUE (jamais pré-sélectionné). Une date future reste telle quelle (elle compte pour 0 jour).
+    static let earliestPlausibleDate = Date(timeIntervalSince1970: 1_104_537_600)
+
+    /// Les fichiers dont `--scan` montre la date et l'âge, pour que l'auteur compare fichier par fichier. Ils ne donnent PAS la date
+    /// de dernière utilisation (seul `lastUsedFiles` la donne) ; `lastUsedFiles` en est un sous-ensemble.
+    static let diagnosticFiles = [
         "hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2", "userdata-qemu.img",
         "cache.img.qcow2", "snapshots/default_boot/snapshot.pb",
     ]
@@ -205,7 +225,8 @@ extension AndroidEmulatorScanner {
             firstIndexByFolder[resolvedPath(folder)] = devices.count
             let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
             let dates = fileDates(in: folder)
-            let used = dates.max { $0.date < $1.date }
+            // La date ne vient QUE de `lastUsedFiles` ; `dates` (diagnostic) montre aussi les autres fichiers.
+            let used = lastUsedDate(among: dates)
             devices.append(AndroidDevice(name: name,
                                          displayName: displayName(config: config, avdName: name),
                                          systemVersion: systemVersion(imageSysdir: config["image.sysdir.1"]),
@@ -268,11 +289,19 @@ extension AndroidEmulatorScanner {
         return parseINI(data)
     }
 
-    /// La date de modification (contenu) de chaque fichier de `lastUsedFiles` qui existe (fichiers ordinaires, liens suivis),
-    /// dans l'ordre de la constante. Le signal est la plus récente ; à égalité, le premier de la liste.
+    /// La dernière utilisation : la date la plus récente parmi les fichiers de `lastUsedFiles` (à égalité, le premier dans l'ordre de
+    /// `diagnosticFiles`). `nil` (inconnue) : aucun de ces fichiers, ou l'un d'eux a une date avant `earliestPlausibleDate` (le côté sûr).
+    static func lastUsedDate(among dates: [AndroidFileDate]) -> AndroidFileDate? {
+        let sourceDates = dates.filter { lastUsedFiles.contains($0.file) }
+        guard !sourceDates.contains(where: { $0.date < earliestPlausibleDate }) else { return nil }
+        return sourceDates.max { $0.date < $1.date }
+    }
+
+    /// La date de modification (contenu) de chaque fichier de `diagnosticFiles` qui existe (fichiers ordinaires, liens suivis),
+    /// dans l'ordre de la constante. Seules celles de `lastUsedFiles` donnent la date de dernière utilisation (la plus récente).
     private static func fileDates(in folder: URL) -> [AndroidFileDate] {
         var result: [AndroidFileDate] = []
-        for file in lastUsedFiles {
+        for file in diagnosticFiles {
             var info = stat()
             guard stat(folder.appendingPathComponent(file).path, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG else { continue }
             let date = Date(timeIntervalSince1970: TimeInterval(info.st_mtimespec.tv_sec) + TimeInterval(info.st_mtimespec.tv_nsec) / 1e9)

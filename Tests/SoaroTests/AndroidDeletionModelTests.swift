@@ -196,6 +196,36 @@ final class GatedRunner: CommandRunner, @unchecked Sendable {
         #expect(ask.critical)
     }
 
+    /// SL10b T5 : l'AVD inactif est coché d'office ; un Delete rapide demande quand même la confirmation, qui nomme l'appareil (et iOS)
+    /// avec la taille, et Annuler ne change rien (le bouton par défaut reste « Cancel » : voir `ConfirmationTests`).
+    @Test func aPreSelectedInactiveAvdIsNamedInTheConfirmationAndCancelRemovesNothing() async throws {
+        let box = try home([phone, tablet])
+        let old = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/userdata-qemu.img")
+        try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-90 * 86_400)], ofItemAtPath: old.path)
+        let runner = fake(ios: [[Self.u1]])
+        let m = model(runner, home: box)
+        m.scan()
+        await m.scanTask?.value
+        #expect(m.androidSelected == ["Test_Phone_A"], "inactif depuis 90 jours, coché d'office ; la tablette (date récente) ne l'est pas")
+        m.toggle(try #require(m.rows.first))
+        #expect(m.selected == [Self.u1])
+        try requireSandbox(m)
+        let before = runner.calls.count
+        confirm.answer = false
+
+        m.deleteSelected()
+        await m.deleteTask?.value
+
+        let ask = try #require(confirm.asks.first)
+        #expect(confirm.asks.count == 1)
+        #expect(ask.title == "Delete the selected devices? (2)")
+        #expect(ask.message == "\(Format.fileBytes(2 * Self.big)) \(Self.messageTail)\n\n• Device 1\n• Test Phone A")
+        #expect(ask.button == "Delete" && ask.critical)
+        #expect(runner.calls.count == before && recorder.calls.isEmpty, "Annuler : aucun appel, aucune suppression")
+        #expect(m.androidSelected == ["Test_Phone_A"] && !m.isDeleting && toasts.messages.isEmpty)
+        #expect(box.exists(".android/avd/Test_Phone_A.ini") && box.exists(".android/avd/Test_Phone_A.avd/config.ini"))
+    }
+
     @Test func cancellingTheConfirmationChangesNothing() async throws {
         let box = try home([phone, tablet])
         let runner = fake(ios: [[Self.u1]])

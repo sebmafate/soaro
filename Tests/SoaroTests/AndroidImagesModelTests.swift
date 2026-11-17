@@ -211,13 +211,22 @@ final class ImageMeasure: @unchecked Sendable {
         #expect(m.listedCount == 1)
         #expect(m.measuredSizeTotal == measure.otherSize)
         #expect(m.hiddenSmallCount == 0)
-        #expect(!m.showsNothingToSuggest, "les images ne comptent pas comme des appareils à suggérer")
+        // SL10b : Android est pré-sélectionné ; l'AVD listé n'a pas de date (aucun fichier source), il n'est donc pas suggéré.
+        #expect(m.showsNothingToSuggest, "un appareil listé sans date et rien de pré-sélectionné : le bandeau s'affiche")
         measure.release.signal()
         measure.release.signal()
         await m.scanTask?.value
         #expect(m.selectedSize == measure.otherSize, "les images ne comptent pas dans la taille cochée")
         #expect(m.measuredSizeTotal == measure.otherSize, "ni dans le total")
         #expect(m.listedCount == 1)
+    }
+
+    @Test func imagesAloneAreNeverDevicesToSuggestSoTheBannerStaysHidden() async throws {
+        let box = try home(images: [Self.path36, Self.path34], avds: [])
+        let m = try model(runner(), home: box, measure: ImageMeasure([Self.path36: 7_000_000_000, Self.path34: 3_000_000_000]))
+        await run(m)
+        #expect(m.imageRows.count == 2 && m.listedCount == 0)
+        #expect(!m.showsNothingToSuggest, "les images ne comptent pas comme des appareils à suggérer")
     }
 
     @Test func noImageIsSelectedAndThereIsNoImageGroupForSelectAll() async throws {

@@ -10,11 +10,11 @@ enum DeviceSuggestions {
     /// confirmée par l'auteur (contrôle sur 5 appareils, 2026-11-17)
     static let defaultLimitDays = 60
 
-    /// Le réglage UNIQUE de la pré-sélection des appareils Android dans l'application : désactivé jusqu'à ce que l'auteur règle le
-    /// signal « dernière utilisation » (condition d'entrée de SL10 non remplie en SL11 : la suppression existe, mais les lignes se
-    /// cochent à la main). `suggestAndroid` garde sa règle et `--scan` la montre ; seul `SimulatorsModel` consulte ce réglage.
-    /// L'activer tient en cette seule ligne.
-    static let androidPreselectionEnabled = false
+    /// Le réglage UNIQUE de la pré-sélection des appareils Android dans l'application : allumé (décision de l'auteur, 2026-11-17 :
+    /// le signal « dernière utilisation » est la date la plus récente de quatre fichiers de l'émulateur, voir `AndroidEmulatorScanner.lastUsedFiles`).
+    /// Règles inchangées : inactif au-delà de la limite en jours entiers, jamais un appareil en cours d'exécution ni sans date.
+    /// Seul `SimulatorsModel` consulte ce réglage ; l'éteindre tient en cette seule ligne.
+    static let androidPreselectionEnabled = true
 
     /// Sous ce seuil (strictement), un appareil est compté mais pas listé : 100 Mo (100 000 000 octets).
     static let smallDeviceThreshold: UInt64 = 100_000_000

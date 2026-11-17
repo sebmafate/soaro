@@ -257,7 +257,7 @@ enum DemoData {
             SizedAndroidDevice(
                 device: AndroidDevice(name: name, displayName: display, systemVersion: version,
                                       folder: URL(fileURLWithPath: "/demo-folder/\(name).avd"),
-                                      lastUsed: now.addingTimeInterval(-days * 86_400), lastUsedSource: "emulator-user.ini",
+                                      lastUsed: now.addingTimeInterval(-days * 86_400), lastUsedSource: "userdata-qemu.img.qcow2",
                                       isRunning: running, imageSysdir: "system-images/\(image)/"),
                 size: size)
         }

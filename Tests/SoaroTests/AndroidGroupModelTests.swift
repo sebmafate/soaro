@@ -18,7 +18,7 @@ import Testing
     struct AVD {
         let name: String
         let display: String
-        /// Jours depuis la dernière utilisation (date de `emulator-user.ini`), `nil` : aucun fichier daté.
+        /// Jours depuis la dernière utilisation (date de `userdata-qemu.img`), `nil` : aucun fichier daté.
         let days: Double?
     }
 
@@ -34,7 +34,7 @@ import Testing
             try box.write(".android/avd/\(avd.name).avd/config.ini",
                           "avd.ini.displayname=\(avd.display)\nimage.sysdir.1=system-images/android-36/google_apis/arm64-v8a/\n")
             if let days = avd.days {
-                let file = box.root.appendingPathComponent(".android/avd/\(avd.name).avd/emulator-user.ini")
+                let file = box.root.appendingPathComponent(".android/avd/\(avd.name).avd/userdata-qemu.img")
                 try Data(count: 3).write(to: file)
                 try FileManager.default.setAttributes([.modificationDate: ago(days)], ofItemAtPath: file.path)
             }
@@ -214,41 +214,113 @@ import Testing
         #expect(!empty.showsNothingToSuggest)
     }
 
-    // MARK: Pas de pré-sélection Android (décision de l'auteur : le signal « dernière utilisation » n'est pas réglé)
+    // MARK: Pré-sélection Android allumée (décision de l'auteur, 2026-11-17 : la date la plus récente de quatre fichiers de l'émulateur)
 
-    @Test func theSwitchIsOffAndTheModelUsesItByDefault() {
-        #expect(!DeviceSuggestions.androidPreselectionEnabled, "éteint tant que l'auteur n'a pas réglé le signal « dernière utilisation » (condition d'entrée de SL10 non remplie en SL11)")
+    @Test func theSwitchIsOnAndTheModelUsesItByDefault() {
+        #expect(DeviceSuggestions.androidPreselectionEnabled, "allumé : l'auteur a réglé le signal « dernière utilisation » le 2026-11-17 (condition d'entrée de SL10 remplie)")
     }
 
-    @Test func byDefaultAnInactiveAvdIsListedWithItsReasonButNeverPreSelected() async throws {
+    @Test func byDefaultAnInactiveAvdIsPreSelectedAndARecentOneIsNot() async throws {
         let box = try home([phone, tablet])
         let m = model(runner(ps: ""), home: box, detection: absent,
                       measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
         await run(m)
         let inactive = try #require(m.androidRows.first { $0.device.device.name == "Test_Phone_A" })
-        #expect(inactive.isInactive, "la raison « inactive for N d » reste calculée")
-        #expect(inactive.isPreSelected, "la fonction pure garde sa règle (utilisée par --scan)")
-        #expect(m.androidSelected.isEmpty, "mais l'application ne coche rien")
-        #expect(m.selectedCount == 0 && m.selectedSize == 0)
-        m.setLimit(30)
-        #expect(m.androidSelected.isEmpty, "un changement de limite ne coche rien non plus")
+        #expect(inactive.isInactive && inactive.isPreSelected)
+        #expect(m.androidSelected == ["Test_Phone_A"], "l'application coche l'AVD inactif depuis 80 jours, pas celui de 10 jours")
+        #expect(m.selectedCount == 1 && m.selectedSize == Self.big)
     }
 
-    @Test func byDefaultDeleteIsUsableForIosAndStaysUsableWhenAnAndroidRowIsCheckedByHand() async throws {
+    @Test func byDefaultTheLimitMenuRecomputesTheAndroidSelectionAndDropsHandChecks() async throws {
+        let box = try home([phone, tablet])
+        let fake = runner(ps: "")
+        let m = model(fake, home: box, detection: absent,
+                      measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
+        await run(m)
+        let calls = fake.calls.count
+        #expect(m.androidSelected == ["Test_Phone_A"])
+        m.toggle(try #require(m.androidRows.first { $0.device.device.name == "Test_Tablet_B" }))
+        #expect(m.androidSelected == ["Test_Phone_A", "Test_Tablet_B"])
+        m.setLimit(90)
+        #expect(m.androidSelected.isEmpty, "80 jours ne dépasse pas 90 ; la case cochée à la main est remplacée")
+        m.setLimit(30)
+        #expect(m.androidSelected == ["Test_Phone_A"], "10 jours ne dépasse pas 30")
+        m.setLimit(180)
+        #expect(m.androidSelected.isEmpty)
+        #expect(fake.calls.count == calls, "aucun appel de plus")
+    }
+
+    @Test func byDefaultTheLimitIsStrictlyExceededInWholeDays() async throws {
+        let sixty = AVD(name: "Test_Phone_A", display: "Test Phone A", days: 60.5)
+        let sixtyOne = AVD(name: "Test_Tablet_B", display: "Test Tablet B", days: 61.5)
+        let box = try home([sixty, sixtyOne])
+        let m = model(runner(ps: ""), home: box, detection: absent,
+                      measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big, "Test_Tablet_B.avd": Self.big]))
+        await run(m)
+        #expect(m.androidSelected == ["Test_Tablet_B"], "60 jours entiers à la limite de 60 : pas pré-sélectionné ; 61 : oui")
+    }
+
+    @Test func byDefaultAnAvdWithNoSourceFileHasNoDateAndIsNeverPreSelected() async throws {
+        let unknown = AVD(name: "Test_Phone_A", display: "Test Phone A", days: nil)
+        let box = try home([unknown])
+        // Les fichiers exclus du signal, très anciens, ne donnent pas la date non plus.
+        for file in ["emulator-user.ini", "cache.img.qcow2"] {
+            let other = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/\(file)")
+            try Data(count: 3).write(to: other)
+            try FileManager.default.setAttributes([.modificationDate: ago(400)], ofItemAtPath: other.path)
+        }
+        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        await run(m)
+        let row = try #require(m.androidRows.first)
+        #expect(row.device.device.lastUsed == nil && row.daysSinceLastUse == nil)
+        #expect(!row.isInactive && !row.isPreSelected)
+        #expect(m.androidSelected.isEmpty)
+        m.setLimit(30)
+        #expect(m.androidSelected.isEmpty, "une date inconnue n'est jamais cochée, quelle que soit la limite")
+    }
+
+    /// Le cas réel de l'auteur : fichier brut de 56 jours, surcouche, snapshot et `hardware-qemu.ini` de 3 jours.
+    @Test func byDefaultARecentOverlayKeepsAnOldRawImageUnselectedAtEveryLimit() async throws {
+        let old = AVD(name: "Test_Phone_A", display: "Test Phone A", days: 56)
+        let box = try home([old])
+        for file in ["userdata-qemu.img.qcow2", "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"] {
+            let url = box.root.appendingPathComponent(".android/avd/Test_Phone_A.avd/\(file)")
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(count: 3).write(to: url)
+            try FileManager.default.setAttributes([.modificationDate: ago(3)], ofItemAtPath: url.path)
+        }
+        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+        await run(m)
+        let row = try #require(m.androidRows.first)
+        #expect(row.daysSinceLastUse == 3 && !row.isInactive)
+        #expect(m.androidSelected.isEmpty, "récent : jamais pré-sélectionné")
+        m.setLimit(30)
+        #expect(m.androidSelected.isEmpty)
+    }
+
+    @Test func byDefaultAnAvdUnder100MbStaysHiddenAndIsNeverPreSelected() async throws {
+        let box = try home([phone])
+        let m = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": 99_000_000]))
+        await run(m)
+        #expect(m.androidRows.isEmpty && m.hiddenSmallCount == 1)
+        #expect(m.androidSelected.isEmpty)
+    }
+
+    @Test func byDefaultDeleteIsUsableAsSoonAsAnInactiveAvdIsPreSelectedAndAnyRowCanBeUnchecked() async throws {
         let box = try home([phone])
         let m = model(runner(ios: [Self.u1], ps: ""), home: box,
                       measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
         await run(m)
+        #expect(m.androidSelected == ["Test_Phone_A"])
+        #expect(m.canDelete, "l'AVD inactif est coché d'office : Delete est utilisable")
         let ios = try #require(m.rows.first)
         m.toggle(ios)
-        #expect(m.canDelete, "aucune ligne Android n'est cochée d'office")
+        #expect(m.canDelete)
         let android = try #require(m.androidRows.first)
         m.toggle(android)
-        #expect(m.androidSelected == ["Test_Phone_A"], "l'utilisateur peut cocher une ligne Android à la main")
-        #expect(m.canDelete, "SL11 : une ligne Android cochée ne désactive plus Delete")
+        #expect(m.androidSelected.isEmpty)
+        #expect(m.canDelete, "iOS seul coché : Delete reste utilisable")
         m.toggle(ios)
-        #expect(m.canDelete, "Android seul coché : Delete reste utilisable")
-        m.toggle(android)
         #expect(!m.canDelete, "plus rien de coché")
     }
 
@@ -262,17 +334,27 @@ import Testing
         #expect(m.androidSelected.isEmpty)
     }
 
-    @Test func theBannerIgnoresAndroidWhileItIsNotPreSelected() async throws {
-        // Android seul : rien n'est suggéré PAR CONCEPTION, le bandeau « Nothing to suggest… » ne s'affiche pas.
-        let box = try home([phone])
-        let androidOnly = model(runner(ps: ""), home: box, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
+    @Test func theBannerConsidersAndroidAgain() async throws {
+        // Android seul, inactif : quelque chose est suggéré, pas de bandeau « Nothing to suggest… ».
+        let phoneBox = try home([phone])
+        let androidOnly = model(runner(ps: ""), home: phoneBox, detection: absent, measure: ScriptedMeasure(["Test_Phone_A.avd": Self.big]))
         await run(androidOnly)
         #expect(!androidOnly.showsNothingToSuggest)
-        // iOS listé sans rien de pré-sélectionné : le bandeau reste, quel que soit Android.
-        let both = model(runner(ios: [Self.u1], ps: ""), home: try home([phone]),
+        // Android seul, récent : une ligne listée et rien de pré-sélectionné, le bandeau s'affiche.
+        let tabletBox = try home([tablet])
+        let recent = model(runner(ps: ""), home: tabletBox, detection: absent, measure: ScriptedMeasure(["Test_Tablet_B.avd": Self.big]))
+        await run(recent)
+        #expect(recent.showsNothingToSuggest)
+        // iOS listé sans rien de pré-sélectionné MAIS un AVD pré-sélectionné : pas de bandeau.
+        let both = model(runner(ios: [Self.u1], ps: ""), home: phoneBox,
                          measure: ScriptedMeasure([Self.u1: Self.big, "Test_Phone_A.avd": Self.big]))
         await run(both)
-        #expect(both.showsNothingToSuggest)
+        #expect(!both.showsNothingToSuggest)
+        // Les deux listés, aucun pré-sélectionné : le bandeau s'affiche.
+        let none = model(runner(ios: [Self.u1], ps: ""), home: tabletBox,
+                         measure: ScriptedMeasure([Self.u1: Self.big, "Test_Tablet_B.avd": Self.big]))
+        await run(none)
+        #expect(none.showsNothingToSuggest)
     }
 
     // MARK: Échec Android, iOS intact

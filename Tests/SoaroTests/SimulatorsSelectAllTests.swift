@@ -115,7 +115,7 @@ import Testing
         // Pré-sélection allumée dans ce test seulement : l'AVD en cours d'exécution est inactif (la règle le suggérerait s'il ne tournait pas).
         let (m, box, _) = try fixture(androidPreselects: true)
         for name in ["Test_Phone_A", "Test_Tablet_B", "Test_Watch_C"] {
-            let file = box.root.appendingPathComponent(".android/avd/\(name).avd/emulator-user.ini")
+            let file = box.root.appendingPathComponent(".android/avd/\(name).avd/userdata-qemu.img")
             try Data(count: 3).write(to: file)
             try FileManager.default.setAttributes([.modificationDate: now.addingTimeInterval(-90 * 86_400)], ofItemAtPath: file.path)
         }
