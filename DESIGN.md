@@ -135,7 +135,7 @@ Deleting         action bar disabled with a spinner; the list updates at the end
 **S1, as built by SL6 (the NuGet row)**
 
 - **Position and text:** after "Cargo cache (Rust)" and before "Xcode iOS DeviceSupport" in Developer; title "NuGet packages", detail "Downloaded packages, downloaded again when needed" (the npm text). The row is shown only when the folder exists and holds something (size above 0); the existing `CleanupRow` states are unchanged.
-- **Confirmation (S3):** unchanged text: title "Clean “NuGet packages”?", message "• NuGet packages", then "About 13 GB will be freed." (size of the last scan). **Toast:** unchanged rules: "13 GB freed", with " (N items in use were skipped)" when some were; the first error replaces it. In demo mode the toast shows the demo size and nothing is deleted.
+- **Confirmation (S3):** unchanged text: title "Clean “NuGet packages”?", message "• NuGet packages", then "About 13 GB will be freed." (size of the last scan). **Toast:** unchanged rules: "13 GB freed", with " (N items in use were skipped)" when some were; the first error replaces it. In demo mode the toast shows the demo size and nothing is deleted. The same holds in the four tools (Large files, Inactive projects, Uninstaller, Startup items): the confirmation is shown with the same texts, then the rows leave the list and the toast shows the made-up size, with no file moved and no system command run; the Overview "Quit" button only shows its toast.
 
 **S3**
 
