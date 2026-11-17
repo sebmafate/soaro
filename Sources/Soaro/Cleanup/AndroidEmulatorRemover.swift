@@ -94,3 +94,66 @@ extension AndroidEmulatorScanner {
         }
     }
 }
+
+// MARK: - Suppression du couple et espace libéré
+
+/// Le suppresseur réel : le SEUL endroit des fichiers Android qui supprime quoi que ce soit (un test de source le vérifie).
+/// Suppression directe, pas la corbeille (D8 : la corbeille ne libérerait rien ; ADR 0006 supprime directement ce qui se reconstruit).
+enum AndroidEmulatorRemover {
+    /// Supprime un fichier ou un dossier. Le chemin a déjà passé `CleanupService.isSafeToDelete` (voir `prepareRemoval`).
+    static func removeFile(_ url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+    }
+}
+
+extension AndroidEmulatorScanner {
+    /// Supprime UN appareil, dans cet ordre, synchrone (jamais sur l'acteur principal) :
+    /// 1. `checkBeforeRemoval` : listage frais puis `ps` frais ; refusé, déjà disparu, illisible, en cours d'exécution : on s'arrête, rien n'est
+    ///    mesuré ni supprimé ;
+    /// 2. taille avant : le dossier, plus chaque `.ini` du plan ;
+    /// 3. le DOSSIER d'abord (D3). S'il échoue, ou s'il existe encore : `failed`, AUCUN `.ini` n'est supprimé (l'appareil reste visible et
+    ///    peut être réessayé : l'inverse laisserait un dossier orphelin invisible) ;
+    /// 4. puis chaque `.ini` du plan (le principal, puis les alias par nom) ; tous sont essayés, un seul échec donne `failed` ;
+    /// 5. si tout a disparu : taille après, `removed(freed: avant moins après)`, plancher à zéro (R7).
+    /// Un échec n'ajoute rien à l'espace libéré, même si une partie a été supprimée (D7 : on sous-estime, on ne promet jamais trop).
+    /// Jamais touchés : l'appareil voisin, le dossier `avd` lui-même, tout autre fichier. Aucun outil du SDK, aucun interpréteur ; le seul
+    /// appel au lanceur est `ps`. Un appareil Android ne rend jamais `timedOut`.
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0009).
+    ///   - psPath: chemin absolu de `ps` (`ToolLocator.processListCandidates`), `nil` s'il est absent.
+    ///   - removeFile: sans valeur par défaut ici ; le modèle donne `AndroidEmulatorRemover.removeFile`.
+    static func remove(runner: CommandRunner,
+                       psPath: String?,
+                       home: URL,
+                       measure: (URL) -> UInt64,
+                       removeFile: (URL) throws -> Void,
+                       target: AndroidRemovalTarget) -> SimulatorRemovalResult {
+        let plan: AndroidRemovalPlan
+        switch checkBeforeRemoval(runner: runner, psPath: psPath, home: home, target: target) {
+        case .stop(let result): return result
+        case .proceed(let found): plan = found
+        }
+
+        let paths = [plan.folder] + plan.registrations
+        let before = paths.reduce(UInt64(0)) { $0 + measure($1) }
+
+        do { try removeFile(plan.folder) } catch { return .failed }
+        guard !exists(plan.folder) else { return .failed }
+
+        var failed = false
+        for registration in plan.registrations {
+            do { try removeFile(registration) } catch { failed = true }
+            if exists(registration) { failed = true }
+        }
+        guard !failed else { return .failed }
+
+        let after = paths.reduce(UInt64(0)) { $0 + measure($1) }
+        return .removed(freed: before > after ? before - after : 0)
+    }
+
+    /// Le chemin existe encore (un lien, même cassé, compte comme présent).
+    private static func exists(_ url: URL) -> Bool {
+        var info = stat()
+        return lstat(url.path, &info) == 0
+    }
+}
