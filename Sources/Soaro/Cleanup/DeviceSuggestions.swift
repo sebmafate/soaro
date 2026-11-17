@@ -122,7 +122,7 @@ extension DeviceSuggestions {
     }
 
     struct AndroidResult: Equatable {
-        /// Appareils listés (≥ 100 Mo), du plus gros au plus petit (égalité : nom affiché, puis nom d'AVD).
+        /// Appareils listés (≥ 100 Mo), du plus gros au plus petit (égalité : `AndroidDevice.isOrderedBefore`).
         let rows: [AndroidRow]
         let hiddenSmallCount: Int
         let hiddenSmallSize: UInt64
@@ -151,9 +151,7 @@ extension DeviceSuggestions {
         }
         rows.sort { a, b in
             if a.device.size != b.device.size { return a.device.size > b.device.size }
-            let (x, y) = (a.device.device.displayName, b.device.device.displayName)
-            if x != y { return x < y }
-            return a.device.device.name < b.device.device.name
+            return AndroidDevice.isOrderedBefore(a.device.device, b.device.device)
         }
         let selected = rows.filter(\.isPreSelected)
         return AndroidResult(rows: rows, hiddenSmallCount: hiddenCount, hiddenSmallSize: hiddenSize,

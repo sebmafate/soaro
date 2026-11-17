@@ -346,6 +346,23 @@ import Testing
         #expect(r.rows.map(\.device.device.name) == ["N4", "N1", "N2", "N3", "N5"])
     }
 
+    @Test func theTieBreakIgnoresCaseLikeTheListingOrder() {
+        let r = DeviceSuggestions.suggestAndroid([avd("N1", size: 200_000_000, display: "Beta"), avd("N2", size: 200_000_000, display: "alpha")],
+                                                 now: now, limitDays: 60)
+        #expect(r.rows.map(\.device.device.name) == ["N2", "N1"], "« alpha » avant « Beta » : un seul comparateur partagé")
+    }
+
+    @Test func theSharedComparatorOrdersByLowercasedDisplayNameThenName() {
+        func device(_ name: String, _ display: String) -> AndroidDevice {
+            AndroidDevice(name: name, displayName: display, systemVersion: nil, folder: URL(fileURLWithPath: "/x/\(name).avd"),
+                          lastUsed: nil, lastUsedSource: nil)
+        }
+        #expect(AndroidDevice.isOrderedBefore(device("Z", "alpha"), device("A", "Beta")))
+        #expect(!AndroidDevice.isOrderedBefore(device("A", "Beta"), device("Z", "alpha")))
+        #expect(AndroidDevice.isOrderedBefore(device("A", "Same"), device("B", "same")))
+        #expect(!AndroidDevice.isOrderedBefore(device("A", "Same"), device("A", "same")))
+    }
+
     @Test func thereIsNoOlderCopyRuleForAndroid() {
         // Deux appareils récents du même système : aucun n'est pré-sélectionné.
         let r = DeviceSuggestions.suggestAndroid([avd("Test_Phone_A", days: 3), avd("Test_Phone_B", days: 4)], now: now, limitDays: 60)

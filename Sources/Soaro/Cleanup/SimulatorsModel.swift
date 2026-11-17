@@ -447,7 +447,7 @@ final class SimulatorsModel: ObservableObject {
     private func recomputeAndroid(selection: SelectionUpdate) {
         let sized = androidDevices.map { SizedAndroidDevice(device: $0, size: androidSizes[$0.name] ?? DeviceSuggestions.smallDeviceThreshold) }
         let result = DeviceSuggestions.suggestAndroid(sized, now: now(), limitDays: limitDays)
-        androidRows = androidMeasuring ? result.rows.sorted(by: Self.androidListingOrder) : result.rows
+        androidRows = androidMeasuring ? result.rows.sorted { AndroidDevice.isOrderedBefore($0.device.device, $1.device.device) } : result.rows
         androidNothingPreSelected = result.preSelectedCount == 0
         switch selection {
         case .replace: androidSelected = Set(result.rows.filter(\.isPreSelected).map(\.device.device.name))
@@ -455,13 +455,6 @@ final class SimulatorsModel: ObservableObject {
         }
         androidHiddenSmallCount = result.hiddenSmallCount
         androidHiddenSmallSize = result.hiddenSmallSize
-    }
-
-    /// Ordre du listage Android : nom affiché (sans tenir compte de la casse), puis nom d'AVD.
-    private static func androidListingOrder(_ a: DeviceSuggestions.AndroidRow, _ b: DeviceSuggestions.AndroidRow) -> Bool {
-        let (x, y) = (a.device.device, b.device.device)
-        let (nx, ny) = (x.displayName.lowercased(), y.displayName.lowercased())
-        return nx != ny ? nx < ny : x.name < y.name
     }
 
     private func recomputeIOS(selection: SelectionUpdate) {

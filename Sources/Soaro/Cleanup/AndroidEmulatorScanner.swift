@@ -101,6 +101,13 @@ struct AndroidDevice: Equatable {
         self.fileDates = fileDates
     }
 
+    /// L'ordre des appareils Android, PARTAGÉ (listage, départage des suggestions, lignes pendant la mesure) : nom affiché sans tenir
+    /// compte de la casse, puis nom d'AVD.
+    static func isOrderedBefore(_ a: AndroidDevice, _ b: AndroidDevice) -> Bool {
+        let (x, y) = (a.displayName.lowercased(), b.displayName.lowercased())
+        return x != y ? x < y : a.name < b.name
+    }
+
     func withRunning(_ running: Bool) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
                       lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates)
@@ -179,10 +186,7 @@ extension AndroidEmulatorScanner {
                                          folder: folder.resolvingSymlinksInPath().standardizedFileURL,
                                          lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates))
         }
-        devices.sort { a, b in
-            let (x, y) = (a.displayName.lowercased(), b.displayName.lowercased())
-            return x != y ? x < y : a.name < b.name
-        }
+        devices.sort(by: AndroidDevice.isOrderedBefore)
         return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped)
     }
 
