@@ -35,11 +35,11 @@ enum AndroidSystemImageScanner {
         guard let imageSysdir else { return nil }
         let parts = imageSysdir.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard let index = parts.firstIndex(of: "system-images"), index + 3 < parts.count,
-              let version = version(ofFolderName: parts[index + 1]) else { return nil }
+              let versionNumber = version(ofFolderName: parts[index + 1]) else { return nil }
         let variant = parts[index + 2]
         let abi = parts[index + 3]
         guard AndroidEmulatorScanner.isValidAVDName(variant), AndroidEmulatorScanner.isValidAVDName(abi) else { return nil }
-        return AndroidSystemImageKey(version: version, variant: variant, abi: abi)
+        return AndroidSystemImageKey(version: versionNumber, variant: variant, abi: abi)
     }
 }
 
@@ -137,7 +137,7 @@ extension AndroidSystemImageScanner {
             var versionIsDirectory: ObjCBool = false
             guard FileManager.default.fileExists(atPath: versionURL.path, isDirectory: &versionIsDirectory),
                   versionIsDirectory.boolValue else { continue }
-            guard let version = version(ofFolderName: versionEntry),
+            guard let versionNumber = version(ofFolderName: versionEntry),
                   AndroidEmulatorScanner.isStrictlyInside(versionURL, homePath: homePath),
                   let variants = subfolders(of: versionURL) else {
                 skipped += 1
@@ -158,7 +158,7 @@ extension AndroidSystemImageScanner {
                         skipped += 1
                         continue
                     }
-                    let key = AndroidSystemImageKey(version: version, variant: variant.name, abi: abi.name)
+                    let key = AndroidSystemImageKey(version: versionNumber, variant: variant.name, abi: abi.name)
                     // Un second nom du même dossier (lien) : on garde SA clé aussi (un appareil peut l'écrire dans `image.sysdir.1`),
                     // sans nouvelle ligne ; il reste compté comme écarté (une seule ligne par dossier).
                     if let index = groupIndex[resolved] {
@@ -325,9 +325,9 @@ extension AndroidSystemImageScanner {
             return AndroidSystemImageListing(status: .ok, sdk: sdk, skippedCount: folders.skippedCount)
         }
         let avds = AndroidEmulatorScanner.listAVDs(home: home)
-        let incompleteness = incompleteness(environment: environment, avds: avds)
-        return AndroidSystemImageListing(status: .ok, images: usage(images: folders.images, devices: avds.devices, incompleteness: incompleteness),
-                                         sdk: sdk, skippedCount: folders.skippedCount, incompleteness: incompleteness)
+        let reasons = incompleteness(environment: environment, avds: avds)
+        return AndroidSystemImageListing(status: .ok, images: usage(images: folders.images, devices: avds.devices, incompleteness: reasons),
+                                         sdk: sdk, skippedCount: folders.skippedCount, incompleteness: reasons)
     }
 }
 

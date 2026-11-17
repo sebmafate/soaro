@@ -7,11 +7,11 @@ import Testing
     private func key(_ value: String?) -> AndroidSystemImageKey? { AndroidSystemImageScanner.imageKey(imageSysdir: value) }
 
     @Test func aRelativeValueWithATrailingSlashGivesTheKey() throws {
-        let key = try #require(key("system-images/android-36/google_apis_playstore/arm64-v8a/"))
-        #expect(key.path == "android-36/google_apis_playstore/arm64-v8a")
-        #expect(key.version == "36")
-        #expect(key.variant == "google_apis_playstore")
-        #expect(key.abi == "arm64-v8a")
+        let parsed = try #require(key("system-images/android-36/google_apis_playstore/arm64-v8a/"))
+        #expect(parsed.path == "android-36/google_apis_playstore/arm64-v8a")
+        #expect(parsed.version == "36")
+        #expect(parsed.variant == "google_apis_playstore")
+        #expect(parsed.abi == "arm64-v8a")
     }
 
     @Test func theTrailingSlashIsOptional() {
@@ -20,15 +20,15 @@ import Testing
     }
 
     @Test func aMinorVersionIsKept() throws {
-        let key = try #require(key("system-images/android-36.1/google_apis/arm64-v8a/"))
-        #expect(key.version == "36.1")
-        #expect(key.path == "android-36.1/google_apis/arm64-v8a")
+        let parsed = try #require(key("system-images/android-36.1/google_apis/arm64-v8a/"))
+        #expect(parsed.version == "36.1")
+        #expect(parsed.path == "android-36.1/google_apis/arm64-v8a")
     }
 
     @Test func anAbsoluteValueGivesTheSameKey() throws {
-        let key = try #require(key("/Users/test/Library/Android/sdk/system-images/android-34/default/arm64-v8a"))
-        #expect(key.path == "android-34/default/arm64-v8a")
-        #expect(key.version == "34")
+        let parsed = try #require(key("/Users/test/Library/Android/sdk/system-images/android-34/default/arm64-v8a"))
+        #expect(parsed.path == "android-34/default/arm64-v8a")
+        #expect(parsed.version == "34")
     }
 
     @Test func invalidValuesGiveNil() {
@@ -53,8 +53,8 @@ import Testing
             "system-images/android-36/google_apis/", nil, "",
         ]
         for value in values {
-            if let key = key(value) {
-                #expect(AndroidEmulatorScanner.systemVersion(imageSysdir: value) == key.version, "\(value ?? "nil")")
+            if let parsed = key(value) {
+                #expect(AndroidEmulatorScanner.systemVersion(imageSysdir: value) == parsed.version, "\(value ?? "nil")")
             }
         }
     }
