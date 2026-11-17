@@ -63,7 +63,23 @@ extension AndroidEmulatorScanner {
         let names = [device.name] + device.aliases
         let registrations = names.map { avdFolder.appendingPathComponent("\($0).ini") }
         guard CleanupService.isSafeToDelete(freshFolder), registrations.allSatisfy(CleanupService.isSafeToDelete) else { return .refused }
+        // Chaque inscription est un fichier ordinaire (ou un lien vers un fichier) : un DOSSIER nommé `<nom>.ini` serait supprimé
+        // récursivement.
+        guard registrations.allSatisfy(isRegistrationFile) else { return .refused }
         return .plan(AndroidRemovalPlan(displayName: device.displayName, names: names, folder: freshFolder, registrations: registrations))
+    }
+}
+
+extension AndroidEmulatorScanner {
+    /// Un fichier ordinaire, ou un lien symbolique vers un fichier ordinaire. Tout le reste (dossier, fichier spécial, lien cassé) : non.
+    static func isRegistrationFile(_ url: URL) -> Bool {
+        var info = stat()
+        guard lstat(url.path, &info) == 0 else { return false }
+        switch info.st_mode & S_IFMT {
+        case S_IFREG: return true
+        case S_IFLNK: return stat(url.path, &info) == 0 && (info.st_mode & S_IFMT) == S_IFREG
+        default: return false
+        }
     }
 }
 

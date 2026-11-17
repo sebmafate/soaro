@@ -182,6 +182,32 @@ import Testing
         #expect(prepare(box, AndroidRemovalTarget(name: "", folder: folder)) == .refused)
     }
 
+    // MARK: Les inscriptions doivent être des fichiers
+
+    @Test func aDirectoryNamedLikeTheRegistrationIsRefusedAndNeverRemovedRecursively() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        // `<nom>.ini` devient un DOSSIER (avec un fichier dedans) : le listage garde l'appareil par le dossier par défaut.
+        try FileManager.default.removeItem(at: box.root.appendingPathComponent(".android/avd/Test_Phone_A.ini"))
+        try box.write(".android/avd/Test_Phone_A.ini/precious.txt", "x")
+        let target = try scanTarget(box, "Test_Phone_A")
+
+        #expect(prepare(box, target) == .refused)
+        #expect(box.exists(".android/avd/Test_Phone_A.ini/precious.txt"))
+    }
+
+    @Test func aRegistrationThatIsASymlinkToAFileInsideTheHomeIsStillAccepted() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        try box.write("elsewhere/real.ini", "path=\(folder.path)\n")
+        let alias = box.root.appendingPathComponent(".android/avd/Test_Phone_B.ini")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: box.root.appendingPathComponent("elsewhere/real.ini"))
+        let target = try scanTarget(box, "Test_Phone_A")
+
+        guard case .plan(let plan) = prepare(box, target) else { Issue.record("un plan était attendu"); return }
+        #expect(plan.names == ["Test_Phone_A", "Test_Phone_B"])
+    }
+
     // MARK: Illisible
 
     @Test func anUnreadableAvdFolderMeansCouldNotCheck() throws {
