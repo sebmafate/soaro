@@ -53,7 +53,8 @@ final class SimulatorsModel: ObservableObject {
     var isDeleting: Bool { gate.isBusy }
     /// Un scan a été demandé alors que l'écran n'était pas scanné et qu'une suppression tournait : il part à la fin du lot.
     private var pendingScan = false
-    private let gate: SimulatorDeletionGate
+    /// La porte de suppression de ce modèle (lecture seule ; `SimulatorDeletionGate.shared` sauf si un test en donne une).
+    let gate: SimulatorDeletionGate
     private var gateObservation: AnyCancellable?
 
     /// La tâche du scan en cours ou du dernier scan : les tests l'attendent (`await model.scanTask?.value`) sans dormir.

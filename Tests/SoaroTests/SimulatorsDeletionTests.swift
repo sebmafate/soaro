@@ -525,9 +525,15 @@ final class RecordingConfirm {
         #expect(!gate.isBusy, "outil disparu")
     }
 
-    @Test func theSharedGateIsTheDefaultOfTheApplicationModels() {
-        let m = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
-        #expect(m.isDeleting == SimulatorDeletionGate.shared.isBusy)
+    @Test func aModelBuiltWithoutAGateUsesTheSharedOneAndAnExplicitGateIsUsedAsIs() {
+        // CleanupTab ne passe aucune porte : la porte commune du processus est ce qui relie le panneau et la fenêtre.
+        let byDefault = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        #expect(byDefault.gate === SimulatorDeletionGate.shared)
+        let other = SimulatorsModel(runner: FakeCommandRunner(), demo: false, confirm: { _, _, _, _ in false }, notify: { _ in })
+        #expect(other.gate === byDefault.gate, "deux modèles de l'application partagent la même porte")
+
+        #expect(model(sizes: PerDeviceSizes([:])).gate === gate)
+        #expect(gate !== SimulatorDeletionGate.shared)
     }
 
     @Test func backBeforeTheFirstDeviceStartsGivesNoToastAndNoCall() async {
