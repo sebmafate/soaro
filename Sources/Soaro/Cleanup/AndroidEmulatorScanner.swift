@@ -251,3 +251,53 @@ extension AndroidEmulatorScanner {
         return runningNames(fromProcessList: String(decoding: output.stdout, as: UTF8.self))
     }
 }
+
+// MARK: - Un seul listage : SDK, AVD, processus
+
+/// Résultat d'un listage Android : l'état, les appareils SANS taille (avec `isRunning`), et le SDK trouvé.
+struct AndroidListing: Equatable {
+    enum Status: Equatable {
+        /// Lu (éventuellement aucun appareil).
+        case ok
+        /// Pas de SDK : le groupe n'existe pas (R18), même s'il reste des AVD.
+        case sdkNotFound
+        /// Dossier des AVD illisible, ou liste des processus indisponible : « Could not read the Android emulators. »
+        case couldNotRead
+    }
+
+    let status: Status
+    let devices: [AndroidDevice]
+    /// Le SDK trouvé (`nil` : `sdkNotFound`). Sa source est affichée par `--scan`.
+    let sdk: AndroidSDKLocation?
+
+    init(status: Status, devices: [AndroidDevice] = [], sdk: AndroidSDKLocation? = nil) {
+        self.status = status
+        self.devices = devices
+        self.sdk = sdk
+    }
+}
+
+extension AndroidEmulatorScanner {
+    /// Le listage complet, synchrone, dans cet ordre :
+    /// 1. le SDK (`ToolLocator.androidSDK`) : absent, `sdkNotFound`, rien n'est lu ni lancé ;
+    /// 2. les AVD (`listAVDs`) : illisibles, `couldNotRead` ; aucun, `ok` et vide, sans appeler `ps` ;
+    /// 3. `ps` : indisponible, `couldNotRead` (un état « en cours » invérifiable n'est jamais proposé) ;
+    /// 4. sinon `ok`, chaque appareil portant `isRunning`.
+    /// Les tailles sont mesurées par l'appelant (espace alloué, R7), dossier par dossier, avec `AndroidDevice.folder`.
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0009).
+    ///   - psPath: chemin absolu de `ps` (`ToolLocator.processListCandidates`), `nil` s'il est absent.
+    ///   - environment: injecté, jamais lu sur la machine ici.
+    static func list(runner: CommandRunner, psPath: String?, environment: [String: String], home: URL) -> AndroidListing {
+        guard let sdk = ToolLocator.androidSDK(environment: environment, home: home) else {
+            return AndroidListing(status: .sdkNotFound)
+        }
+        let avds = listAVDs(home: home)
+        guard avds.status == .ok else { return AndroidListing(status: .couldNotRead, sdk: sdk) }
+        if avds.devices.isEmpty { return AndroidListing(status: .ok, sdk: sdk) }
+        guard let running = runningAVDNames(runner: runner, psPath: psPath) else {
+            return AndroidListing(status: .couldNotRead, sdk: sdk)
+        }
+        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(running.contains($0.name)) }, sdk: sdk)
+    }
+}
