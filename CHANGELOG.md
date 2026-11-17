@@ -17,7 +17,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Fixed
 
-- In demo mode (`SOARO_DEMO=1`), confirming an action in Cleanup (the rows, Large files, Inactive projects, Uninstaller, Startup items) no longer deletes, trashes or removes real files, changes real login items or quits real apps.
+- In demo mode (`SOARO_DEMO=1`), confirming in the Cleanup rows, Large files, Inactive projects, the Uninstaller and Startup items no longer deletes, trashes or removes real files or changes real login items, and the Quit buttons no longer quit real apps.
 - French: the battery explanation no longer shows "100 %%" (SL2; AI-assisted wording, to review by the author).
 
 ## [1.0.1] - 2026-11-15

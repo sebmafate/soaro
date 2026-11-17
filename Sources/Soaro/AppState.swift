@@ -131,6 +131,8 @@ final class AppState: ObservableObject {
 
     /// Mode démo, et les actions qui touchent au vrai système : remplaçables pour que les tests vérifient
     /// qu'en démo rien n'est nettoyé et aucune vraie app n'est quittée. Par défaut, le comportement réel.
+    /// Ce drapeau ne couvre que les actions qui touchent au système (`cleanup`, `scanCleanup`, `quitApp`) ;
+    /// les autres vérifications du mode démo lisent encore `DemoMode.isEnabled` directement.
     private let demo: Bool
     private let confirm: ConfirmHandler
     private let cleanAction: @Sendable (CleanupKind) -> CleanupResult
