@@ -93,9 +93,11 @@ struct AndroidDevice: Equatable {
     /// émulateur lancé sous l'un de ces noms rend le dossier « en cours d'exécution » (la suppression de SL11 refuse toute
     /// inscription en cours d'exécution).
     let aliases: [String]
+    /// La valeur brute de `image.sysdir.1` de `config.ini`, `nil` si absente (SL12a : sert à rattacher l'appareil à une image système).
+    let imageSysdir: String?
 
     init(name: String, displayName: String, systemVersion: String?, folder: URL, lastUsed: Date?, lastUsedSource: String?,
-         isRunning: Bool = false, fileDates: [AndroidFileDate] = [], aliases: [String] = []) {
+         isRunning: Bool = false, fileDates: [AndroidFileDate] = [], aliases: [String] = [], imageSysdir: String? = nil) {
         self.name = name
         self.displayName = displayName
         self.systemVersion = systemVersion
@@ -105,6 +107,7 @@ struct AndroidDevice: Equatable {
         self.isRunning = isRunning
         self.fileDates = fileDates
         self.aliases = aliases
+        self.imageSysdir = imageSysdir
     }
 
     /// L'ordre des appareils Android, PARTAGÉ (listage, départage des suggestions, lignes pendant la mesure) : nom affiché sans tenir
@@ -116,12 +119,12 @@ struct AndroidDevice: Equatable {
 
     func withRunning(_ running: Bool) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates, aliases: aliases)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: running, fileDates: fileDates, aliases: aliases, imageSysdir: imageSysdir)
     }
 
     func withAliases(_ aliases: [String]) -> AndroidDevice {
         AndroidDevice(name: name, displayName: displayName, systemVersion: systemVersion, folder: folder,
-                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: isRunning, fileDates: fileDates, aliases: aliases)
+                      lastUsed: lastUsed, lastUsedSource: lastUsedSource, isRunning: isRunning, fileDates: fileDates, aliases: aliases, imageSysdir: imageSysdir)
     }
 }
 
@@ -201,7 +204,8 @@ extension AndroidEmulatorScanner {
                                          displayName: displayName(config: config, avdName: name),
                                          systemVersion: systemVersion(imageSysdir: config["image.sysdir.1"]),
                                          folder: folder.resolvingSymlinksInPath().standardizedFileURL,
-                                         lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates))
+                                         lastUsed: used?.date, lastUsedSource: used?.file, fileDates: dates,
+                                         imageSysdir: config["image.sysdir.1"]))
         }
         devices.sort(by: AndroidDevice.isOrderedBefore)
         return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped)

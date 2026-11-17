@@ -66,6 +66,14 @@ import Testing
         #expect(list(box).devices.map(\.name) == ["Zeta", "A_One", "B_Two"])
     }
 
+    @Test func theRawImageSysdirIsCarriedByTheDevice() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        try makeAVD(box, name: "Test_Tablet_B", system: nil)
+        let devices = list(box).devices
+        #expect(devices.map(\.imageSysdir) == ["system-images/android-36/google_apis_playstore/arm64-v8a/", nil])
+    }
+
     // MARK: Date de dernière utilisation
 
     @Test func theNewestListedFileGivesTheDate() throws {
