@@ -171,6 +171,12 @@ final class SimulatorsModel: ObservableObject {
         }
     }
 
+    /// Texte de l'attente de l'écran (« non scanné » ou en cours de listage) : « Deleting… » quand une suppression tourne,
+    /// même ailleurs (écran rouvert pendant un lot), sinon « Looking for… ».
+    var progressMessage: String {
+        isDeleting ? String(localized: "Deleting…") : String(localized: "Looking for simulators and emulators…")
+    }
+
     // MARK: Scan
 
     /// Lance la lecture de la liste, hors de l'acteur principal. Pendant le listage un nouveau déclenchement est ignoré

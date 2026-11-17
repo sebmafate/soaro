@@ -15,11 +15,8 @@ struct SimulatorsView: View {
         }
         // Le scan démarre à l'ouverture ; revenir sur un écran déjà scanné garde ses résultats.
         .onAppear { if model.phase == .notScanned { model.scan() } }
-        // Retour pendant une suppression, puis retour sur l'écran avant la fin : le scan demandé à l'ouverture a été ignoré
-        // (suppression en cours) ; il est relancé à la fin du lot.
-        .onChange(of: model.isDeleting) { _, deleting in
-            if !deleting && model.phase == .notScanned { model.scan() }
-        }
+        // Pendant une suppression (même lancée ailleurs), le scan demandé à l'ouverture est retenu par le modèle, qui le relance
+        // à la fin du lot.
     }
 
     // MARK: En-tête : résumé, menu de limite, « Scan again » (peut passer sur deux lignes dans le panneau)
@@ -75,7 +72,7 @@ struct SimulatorsView: View {
         case .notScanned, .listing:
             VStack(spacing: 10) {
                 ProgressView()
-                Text("Looking for simulators and emulators…").font(.caption).supportingText()
+                Text(verbatim: model.progressMessage).font(.caption).supportingText()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .failed:

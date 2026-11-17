@@ -122,10 +122,11 @@ import Testing
         #expect(text.contains(".disabled(!model.canScanAgain)"), "« Scan again » (canScanAgain est faux pendant une suppression)")
     }
 
-    @Test func aScreenLeftDuringADeletionRescansWhenItEnds() throws {
-        // Retour pendant la suppression : l'écran « non scanné » se relance à la fin du lot s'il est de nouveau affiché.
+    @Test func theRescanAfterABatchLivesInTheModelNotInTheView() throws {
+        // Le scan demandé pendant une suppression est retenu et relancé par le modèle (testé dans SimulatorsDeletionTests).
         let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
-        #expect(text.contains("onChange(of: model.isDeleting"))
+        #expect(!text.contains("onChange(of: model.isDeleting"))
+        #expect(text.contains("model.progressMessage"), "« Deleting… » pendant une suppression, même sur un écran rouvert")
     }
 
     @MainActor

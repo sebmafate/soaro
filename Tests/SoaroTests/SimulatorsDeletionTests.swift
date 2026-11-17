@@ -538,12 +538,14 @@ final class RecordingConfirm {
         #expect(m.phase == .notScanned)
         m.scan()                                      // l'écran est rouvert avant la fin : ignoré, mais retenu
         #expect(m.phase == .notScanned)
+        #expect(m.progressMessage == "Deleting…", "pas « Looking for… » pendant la suppression, même pour un modèle neuf")
 
         for _ in 0..<20 { blocking.release.signal() }
         await m.deleteTask?.value
         await m.scanTask?.value
 
         #expect(m.phase == .listed, "le scan retenu part à la fin du lot")
+        #expect(m.progressMessage == "Looking for simulators and emulators…")
         #expect(!gate.isBusy)
     }
 
