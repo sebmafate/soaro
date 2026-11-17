@@ -6,7 +6,7 @@ The manual procedure ([releasing.md](releasing.md)) still works and uses the sam
 
 ## What the pipeline does
 
-The workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml). It runs on a `macos-15` runner (free for a public repository).
+The workflow is [`.github/workflows/release.yml`](../.github/workflows/release.yml). It runs on a `macos-26` runner (Xcode 26, Swift 6.2 or later; free for a public repository). The release needs it: an older runner builds an app without Liquid Glass and without translations (see [ADR 0008](adr/0008-release-built-on-github-actions-xcode-26.md)).
 
 | # | Step | Fails when |
 | --- | --- | --- |
