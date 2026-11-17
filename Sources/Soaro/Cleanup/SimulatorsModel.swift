@@ -357,9 +357,13 @@ final class SimulatorsModel: ObservableObject {
         let iosTargets = rows.map(\.device.device.udid).filter { selected.contains($0) }
         let androidTargets = androidRows.map(\.device.device).filter { androidSelected.contains($0.name) }
             .map { AndroidRemovalTarget(name: $0.name, folder: $0.folder) }
+        // La confirmation nomme les appareils (ADR 0009, règle 2) : leurs noms, tels quels, après le texte localisé (aucune clé nouvelle).
+        let names = rows.filter { selected.contains($0.device.device.udid) }.map(\.device.device.name)
+            + androidRows.filter { androidSelected.contains($0.device.device.name) }.map(\.device.device.displayName)
         guard confirm(
             String(localized: "Delete the selected devices? (\(iosTargets.count + androidTargets.count))"),
-            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."),
+            String(localized: "\(Format.fileBytes(selectedSize)) will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio.")
+                + SimulatorPresentation.confirmationNames(names),
             String(localized: "Delete"), true
         ) else { return }
 

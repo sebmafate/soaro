@@ -213,4 +213,23 @@ import Testing
     @Test func theWordRuntimeNeverAppearsInTheEnglishTexts() {
         for key in newKeys { #expect(!key.localizedCaseInsensitiveContains("runtime")) }
     }
+
+    // MARK: Noms dans la confirmation (SL11, ADR 0009 règle 2)
+
+    @Test func theConfirmationNamesAreBulletLinesAfterABlankLine() {
+        #expect(SimulatorPresentation.confirmationNames(["iPhone 15", "Test Phone A"]) == "\n\n• iPhone 15\n• Test Phone A")
+        #expect(SimulatorPresentation.confirmationNames([]) == "")
+    }
+
+    @Test func theConfirmationNamesAreCappedAtEightThenOneEllipsisLine() {
+        let eight = (1...8).map { "Test Device \($0)" }
+        #expect(SimulatorPresentation.confirmationNames(eight) == "\n\n" + eight.map { "• \($0)" }.joined(separator: "\n"))
+        let nine = eight + ["Test Device 9"]
+        #expect(SimulatorPresentation.confirmationNames(nine) == "\n\n" + eight.map { "• \($0)" }.joined(separator: "\n") + "\n…")
+        #expect(!SimulatorPresentation.confirmationNames(nine).contains("Test Device 9"))
+    }
+
+    @Test func aNameWithLineBreaksStaysOnOneLineAndOtherwiseVerbatim() {
+        #expect(SimulatorPresentation.confirmationNames(["Test\nPhone\r\nA", "“Quoted” 100 %"]) == "\n\n• Test Phone A\n• “Quoted” 100 %")
+    }
 }

@@ -191,7 +191,7 @@ final class GatedRunner: CommandRunner, @unchecked Sendable {
         let ask = try #require(confirm.asks.first)
         #expect(confirm.asks.count == 1)
         #expect(ask.title == "Delete the selected devices? (2)")
-        #expect(ask.message == "\(Format.fileBytes(2 * Self.big)) \(Self.messageTail)")
+        #expect(ask.message == "\(Format.fileBytes(2 * Self.big)) \(Self.messageTail)\n\n• Device 1\n• Test Phone A", "iOS puis Android, noms verbatim")
         #expect(ask.button == "Delete")
         #expect(ask.critical)
     }

@@ -216,6 +216,8 @@ import Testing
         let ask = try #require(confirm.asks.first)
         #expect(ask.title == "Delete the selected devices? (\(total))", "la confirmation compte les deux groupes")
         #expect(ask.message.hasPrefix(Format.fileBytes(freed)))
+        #expect(ask.message.contains("\n\n• "), "la confirmation de démo nomme aussi les appareils (inventés)")
+        #expect(ask.message.contains("• \(android.device.device.displayName)") && ask.message.contains("• \(ios.device.device.name)"))
         #expect(ask.button == "Delete" && ask.critical)
         #expect(!m.rows.contains { iosGone.contains($0.device.device.udid) })
         #expect(!m.androidRows.contains { androidGone.contains($0.device.device.name) })

@@ -16,6 +16,24 @@ enum SimulatorPresentation {
         return platform == "xrOS" ? "visionOS \(version)" : name
     }
 
+    // MARK: Noms dans la confirmation
+
+    /// Combien de noms la confirmation en liste au plus (puis une ligne « … »).
+    static let confirmationNameLimit = 8
+
+    /// Les noms des appareils cochés, en lignes à puce, à ajouter APRÈS le texte localisé de la confirmation (ADR 0009, règle 2 : la
+    /// confirmation nomme la cible). Des DONNÉES, jamais des clés de catalogue : insérées telles quelles (seuls les sauts de ligne
+    /// deviennent des espaces), donc aucun texte à traduire. Au plus `confirmationNameLimit` noms, puis une seule ligne « … ».
+    /// - Returns: `""` sans nom, sinon une ligne vide puis « • nom » par ligne.
+    static func confirmationNames(_ names: [String]) -> String {
+        guard !names.isEmpty else { return "" }
+        var lines = names.prefix(confirmationNameLimit).map { name in
+            "• " + name.components(separatedBy: .newlines).filter { !$0.isEmpty }.joined(separator: " ")
+        }
+        if names.count > confirmationNameLimit { lines.append("…") }
+        return "\n\n" + lines.joined(separator: "\n")
+    }
+
     // MARK: Raison
 
     /// « Running · quit it first » pour un appareil en cours d'exécution (variante « indisponible » de SL3), `nil` sinon.

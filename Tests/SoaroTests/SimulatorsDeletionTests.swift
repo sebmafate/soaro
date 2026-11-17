@@ -153,7 +153,8 @@ final class RecordingConfirm {
         let ask = try #require(confirm.asks.first)
         #expect(confirm.asks.count == 1)
         #expect(ask.title == "Delete the selected devices? (2)")
-        #expect(ask.message == "\(Format.fileBytes(900_000_000)) \(Self.confirmMessageTail)")
+        // Le texte localisé de SL9, tel quel, puis les noms des appareils cochés (des données, jamais des clés), en ordre d'affichage.
+        #expect(ask.message == "\(Format.fileBytes(900_000_000)) \(Self.confirmMessageTail)\n\n• iPhone 1\n• iPhone 2")
         #expect(ask.button == "Delete")
         #expect(ask.critical)
     }
