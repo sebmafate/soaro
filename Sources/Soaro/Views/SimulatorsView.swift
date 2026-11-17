@@ -107,7 +107,7 @@ struct SimulatorsView: View {
                         deviceRow(row)
                     }
                 } header: {
-                    SectionHeader(title: "iOS Simulators")
+                    SectionHeader(title: "iOS Simulators", selectAll: selectAll(.ios, name: String(localized: "iOS Simulators")))
                 } footer: {
                     footer(explanation: placement.explanationUnderIos, smallCount: placement.smallCountUnder == .ios)
                 }
@@ -129,7 +129,7 @@ struct SimulatorsView: View {
                         androidRow(row)
                     }
                 } header: {
-                    SectionHeader(title: "Android emulators")
+                    SectionHeader(title: "Android emulators", selectAll: selectAll(.android, name: String(localized: "Android emulators")))
                 } footer: {
                     footer(explanation: false, smallCount: placement.smallCountUnder == .android)
                 }
@@ -146,6 +146,13 @@ struct SimulatorsView: View {
             }
         }
         .listStyle(.plain)
+    }
+
+    /// La case « Select all » de l'en-tête d'un groupe listé : à trois états sur les lignes sélectionnables (jamais une ligne en cours
+    /// d'exécution), inactive sans ligne sélectionnable et pendant une suppression, sans aucun raccourci clavier.
+    private func selectAll(_ group: SimulatorsModel.Group, name: String) -> SelectAllControl {
+        SelectAllControl(state: model.selectAllState(group), enabled: model.canSelectAll(group), sectionName: name,
+                         action: { model.toggleAll(group) })
     }
 
     /// Un groupe dont la lecture a échoué : message neutre, icône d'avertissement, jeton « texte de soutien » (l'autre groupe reste utilisable).
