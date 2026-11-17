@@ -109,6 +109,18 @@ import Testing
         #expect(runner.calls.isEmpty)
     }
 
+    @Test func theListingCarriesTheSkippedCount() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeSDK(box)
+        try makeAVD(box, "Test_Phone_A")
+        try box.write(".android/avd/Gone.ini", "path.rel=avd/Gone.avd\n")
+        let runner = FakeCommandRunner()
+        runner.script(.finished(stdout: ""), executable: "/bin/ps", arguments: psArguments)
+        let listing = list(box, runner: runner)
+        #expect(listing.devices.count == 1)
+        #expect(listing.skippedCount == 1)
+    }
+
     @Test func theSdkFromTheEnvironmentIsReported() throws {
         let box = try Sandbox(insideHome: true)
         try box.dir("elsewhere/sdk")

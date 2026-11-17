@@ -17,6 +17,7 @@ enum AndroidEmulatorReport {
         case .ok:
             if scan.devices.isEmpty {
                 out.append("no Android virtual device")
+                if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
                 return out
             }
         }
@@ -51,7 +52,14 @@ enum AndroidEmulatorReport {
             let n = suggestions.hiddenSmallCount
             out.append("\(n) small \(n == 1 ? "device" : "devices") (\(Format.fileBytes(suggestions.hiddenSmallSize, locale: locale))) not listed")
         }
+        if let skipped = skippedLine(scan.skippedCount) { out.append(skipped) }
         if let sdk = scan.sdk { out.append("SDK source: \(sdk.source.rawValue)") }
         return out
+    }
+
+    /// « N registrations skipped (…) » : décompte seulement (jamais de nom ni de chemin), pour diagnostiquer p. ex. un `~/.android` en lien.
+    private static func skippedLine(_ count: Int) -> String? {
+        guard count > 0 else { return nil }
+        return "\(count) \(count == 1 ? "registration" : "registrations") skipped (folder missing, outside the home or not an AVD folder)"
     }
 }

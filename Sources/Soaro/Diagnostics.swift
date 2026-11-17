@@ -50,7 +50,7 @@ enum Diagnostics {
         let listing = AndroidEmulatorScanner.list(runner: runner, psPath: locate(ToolLocator.processListCandidates),
                                                   environment: environment, home: home)
         let sized = listing.devices.map { SizedAndroidDevice(device: $0, size: measure($0.folder)) }
-        return AndroidScan(status: listing.status, sdk: listing.sdk, devices: sized)
+        return AndroidScan(status: listing.status, sdk: listing.sdk, devices: sized, skippedCount: listing.skippedCount)
     }
 
     /// `Soaro --scan` : lance les scanners de nettoyage en LECTURE SEULE sur le vrai dossier personnel.

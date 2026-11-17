@@ -118,6 +118,9 @@ struct AndroidAVDListing: Equatable {
 
     let status: Status
     let devices: [AndroidDevice]
+    /// Inscriptions (`<nom>.ini` de nom valide) qui n'ont donné aucun appareil : dossier absent, hors du dossier personnel,
+    /// qui ne ressemble pas à un AVD, ou déjà pris par une autre inscription. Un décompte, jamais de nom ni de chemin.
+    var skippedCount = 0
 }
 
 extension AndroidEmulatorScanner {
@@ -156,13 +159,17 @@ extension AndroidEmulatorScanner {
         var devices: [AndroidDevice] = []
         // Dossiers déjà pris (chemin résolu) : deux `.ini` vers le même dossier ne donnent qu'une ligne (le premier par nom).
         var seenFolders = Set<String>()
+        var skipped = 0
         for entry in entries.sorted() where entry.hasSuffix(".ini") {
             let name = String(entry.dropLast(".ini".count))
             guard isValidAVDName(name) else { continue }
             let registration = readINI(avdFolder.appendingPathComponent(entry)) ?? [:]
             guard let folder = deviceFolder(name: name, registration: registration, androidFolder: androidFolder, avdFolder: avdFolder),
                   isStrictlyInside(folder, homePath: homePath), looksLikeAVDFolder(folder),
-                  seenFolders.insert(resolvedPath(folder)).inserted else { continue }
+                  seenFolders.insert(resolvedPath(folder)).inserted else {
+                skipped += 1
+                continue
+            }
             let config = readINI(folder.appendingPathComponent("config.ini")) ?? [:]
             let dates = fileDates(in: folder)
             let used = dates.max { $0.date < $1.date }
@@ -176,7 +183,7 @@ extension AndroidEmulatorScanner {
             let (x, y) = (a.displayName.lowercased(), b.displayName.lowercased())
             return x != y ? x < y : a.name < b.name
         }
-        return AndroidAVDListing(status: .ok, devices: devices)
+        return AndroidAVDListing(status: .ok, devices: devices, skippedCount: skipped)
     }
 
     /// Le premier candidat qui est un dossier existant (`path=` absolu, `path.rel`, dossier par défaut). `nil` sinon.
@@ -306,11 +313,14 @@ struct AndroidListing: Equatable {
     let devices: [AndroidDevice]
     /// Le SDK trouvé (`nil` : `sdkNotFound`). Sa source est affichée par `--scan`.
     let sdk: AndroidSDKLocation?
+    /// Inscriptions ignorées (voir `AndroidAVDListing.skippedCount`).
+    let skippedCount: Int
 
-    init(status: Status, devices: [AndroidDevice] = [], sdk: AndroidSDKLocation? = nil) {
+    init(status: Status, devices: [AndroidDevice] = [], sdk: AndroidSDKLocation? = nil, skippedCount: Int = 0) {
         self.status = status
         self.devices = devices
         self.sdk = sdk
+        self.skippedCount = skippedCount
     }
 }
 
@@ -331,11 +341,12 @@ extension AndroidEmulatorScanner {
         }
         let avds = listAVDs(home: home)
         guard avds.status == .ok else { return AndroidListing(status: .couldNotRead, sdk: sdk) }
-        if avds.devices.isEmpty { return AndroidListing(status: .ok, sdk: sdk) }
+        if avds.devices.isEmpty { return AndroidListing(status: .ok, sdk: sdk, skippedCount: avds.skippedCount) }
         guard let running = runningAVDNames(runner: runner, psPath: psPath) else {
             return AndroidListing(status: .couldNotRead, sdk: sdk)
         }
-        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(isRunning($0.name, in: running)) }, sdk: sdk)
+        return AndroidListing(status: .ok, devices: avds.devices.map { $0.withRunning(isRunning($0.name, in: running)) }, sdk: sdk,
+                              skippedCount: avds.skippedCount)
     }
 }
 
@@ -346,4 +357,6 @@ struct AndroidScan: Equatable {
     let status: AndroidListing.Status
     let sdk: AndroidSDKLocation?
     let devices: [SizedAndroidDevice]
+    /// Inscriptions ignorées (décompte, voir `AndroidAVDListing.skippedCount`).
+    var skippedCount = 0
 }

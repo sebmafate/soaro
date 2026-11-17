@@ -52,6 +52,18 @@ import Testing
         ])
     }
 
+    @Test func aSkippedCountIsPrintedBeforeTheSdkSourceAndOnlyWhenNotZero() {
+        let sdk = AndroidSDKLocation(path: "/x", source: .androidHome)
+        let one = sized("Test_Phone_A", days: 5, size: 500_000_000)
+        let lines = report(AndroidScan(status: .ok, sdk: sdk, devices: [one], skippedCount: 2))
+        #expect(lines.suffix(2) == ["2 registrations skipped (folder missing, outside the home or not an AVD folder)", "SDK source: ANDROID_HOME"])
+        #expect(!report(AndroidScan(status: .ok, sdk: sdk, devices: [one])).joined(separator: "\n").contains("skipped"))
+        // Aucun appareil listé mais des inscriptions ignorées : c'est justement le cas à diagnostiquer.
+        #expect(report(AndroidScan(status: .ok, sdk: sdk, devices: [], skippedCount: 1))
+                == ["== Android emulators", "no Android virtual device",
+                    "1 registration skipped (folder missing, outside the home or not an AVD folder)"])
+    }
+
     @Test func aDeviceWithNoListedFilePrintsNoneAndNoPerFileDates() {
         let scan = AndroidScan(status: .ok, sdk: AndroidSDKLocation(path: "/x", source: .defaultLocation),
                                devices: [sized("Test_Phone_A", days: nil, size: 500_000_000)])
@@ -118,6 +130,7 @@ import Testing
         #expect(scan.devices.map(\.device.name) == ["Test_Phone_A", "Test_Tablet_B"])
         #expect(scan.devices.map(\.device.isRunning) == [false, true])
         #expect(scan.devices.map(\.size) == [300_000_000, 300_000_000])
+        #expect(scan.skippedCount == 0)
         #expect(measured.names == ["Test_Phone_A.avd", "Test_Tablet_B.avd"])
         #expect(runner.calls.count == 1)
     }

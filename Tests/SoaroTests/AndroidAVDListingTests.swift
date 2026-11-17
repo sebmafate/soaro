@@ -282,6 +282,30 @@ import Testing
         #expect(listing.devices.map(\.name) == ["Test_Phone_A"], "le premier par nom, de façon déterministe")
     }
 
+    @Test func skippedRegistrationsAreCounted() throws {
+        let box = try Sandbox(insideHome: true)
+        let outside = try Sandbox()
+        try outside.dir("Out.avd")
+        try outside.write("Out.avd/config.ini", "x=1\n")
+        let good = try makeAVD(box, name: "Test_Phone_A")
+        try box.write(".android/avd/Gone.ini", "path.rel=avd/Gone.avd\n")                                 // aucun dossier
+        try box.write(".android/avd/Outside.ini", "path=\(outside.root.path)/Out.avd\n")                   // hors du dossier personnel
+        try box.dir("Documents")
+        try box.write(".android/avd/Docs.ini", "path=\(box.root.path)/Documents\n")                       // pas un dossier d'AVD
+        try box.write(".android/avd/Twin.ini", "path=\(good.path)\n")                                    // même dossier : doublon
+        try box.write(".android/avd/bad name.ini", "path=\(good.path)\n")                                 // nom invalide : pas une inscription
+        let listing = list(box)
+        #expect(listing.devices.map(\.name) == ["Test_Phone_A"])
+        #expect(listing.skippedCount == 4, "Gone, Outside, Docs, Twin")
+    }
+
+    @Test func nothingSkippedWhenEverythingIsListed() throws {
+        let box = try Sandbox(insideHome: true)
+        try makeAVD(box, name: "Test_Phone_A")
+        #expect(list(box).skippedCount == 0)
+        #expect(AndroidEmulatorScanner.listAVDs(home: try Sandbox(insideHome: true).root).skippedCount == 0)
+    }
+
     // MARK: Inscription
 
     @Test func anOrphanAvdFolderWithoutItsIniIsIgnored() throws {
