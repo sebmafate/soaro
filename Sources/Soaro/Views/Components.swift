@@ -92,7 +92,7 @@ struct StatCard: View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: systemImage)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.supportingText)
                 .labelStyle(.titleAndIcon)
                 .lineLimit(1)
 
@@ -115,7 +115,7 @@ struct StatCard: View {
 
             Text(subtitle)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.supportingText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
@@ -164,7 +164,7 @@ struct KeyValueRow: View {
 
     var body: some View {
         HStack {
-            Text(label).foregroundStyle(.secondary)
+            Text(label).foregroundStyle(.supportingText)
             Spacer()
             if let color { Circle().fill(color).frame(width: 7, height: 7) }
             Text(value).monospacedDigit()
@@ -201,7 +201,7 @@ struct CoreBars: View {
                     .frame(height: 44)
                     Text(cpu.coreLabel(index))
                         .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.supportingText)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -269,7 +269,7 @@ struct RecommendationRow: View {
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 4) {
                 Text(rec.title).font(.callout.weight(.semibold))
-                Text(rec.detail).font(.caption).foregroundStyle(.secondary)
+                Text(rec.detail).font(.caption).foregroundStyle(.supportingText)
                     .fixedSize(horizontal: false, vertical: true)
                 if let action = rec.action, let label = rec.actionLabel {
                     Button(label) { onAction(action) }
@@ -297,7 +297,7 @@ struct AdviceRow: View {
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 4) {
                 Text(advice.title).font(.callout.weight(.semibold))
-                Text(advice.detail).font(.caption).foregroundStyle(.secondary)
+                Text(advice.detail).font(.caption).foregroundStyle(.supportingText)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {
                     if let action = advice.action, let label = advice.actionLabel {
@@ -342,7 +342,7 @@ struct ProcessRow: View {
 
     private func column(_ text: String, highlighted: Bool, width: CGFloat) -> some View {
         Text(text)
-            .foregroundStyle(highlighted ? .primary : .tertiary)
+            .foregroundStyle(highlighted ? AnyShapeStyle(.primary) : AnyShapeStyle(.supportingText))
             .frame(width: width, alignment: .trailing)
             .lineLimit(1)
     }
@@ -359,7 +359,7 @@ struct CleanupRow: View {
             Image(systemName: kind.systemImage).frame(width: 20).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(kind.title).font(.callout)
-                Text(kind.detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                Text(kind.detail).font(.caption2).foregroundStyle(.supportingText).lineLimit(2).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             if busy {
@@ -367,7 +367,7 @@ struct CleanupRow: View {
             } else {
                 Text(size.map { Format.fileBytes($0) } ?? "—")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.supportingText)
                     .help(size == nil && kind == .trash
                           ? "macOS protects the Trash: its size cannot be read without “Full Disk Access”, but Soaro can still empty it."
                           : "")

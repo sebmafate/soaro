@@ -16,10 +16,8 @@ import Testing
         "Views/CleanupTab.swift": 1,
     ]
 
-    /// Nombres exacts des fichiers pas encore migrés (mesurés par `scan`, commentaires exclus).
+    /// Nombres exacts des fichiers pas encore migrés (commentaires exclus).
     static let pending: [String: Int] = [
-        "Views/Components.swift": 11,
-        "Views/SelectionComponents.swift": 3,
         "Views/CleanupTab.swift": 4,
         "Views/CleanupToolViews.swift": 18,
         "Views/NetworkTab.swift": 10,
@@ -146,5 +144,26 @@ import Testing
         let text = try source("Sources/Soaro/Views/SimulatorsView.swift")
         #expect(!text.contains("supporting: true"))
         #expect(!text.contains("supporting:"))
+    }
+
+    // MARK: Les autres lignes partagées (T4)
+
+    @Test func theProcessColumnsUseTheTokenExceptTheHighlightedOne() throws {
+        let body = try typeBody("struct ProcessRow", in: "Sources/Soaro/Views/Components.swift")
+        #expect(!body.contains(".tertiary"))
+        #expect(!body.contains(".secondary"))
+        #expect(body.contains("supportingText"))
+        #expect(body.contains("highlighted ? AnyShapeStyle(.primary)"), "la colonne triée reste en .primary")
+    }
+
+    @Test func theSharedRowsUseTheTokenForTheirSecondaryText() throws {
+        for type in ["struct StatCard", "struct KeyValueRow", "struct CoreBars", "struct RecommendationRow", "struct AdviceRow"] {
+            let body = try typeBody(type, in: "Sources/Soaro/Views/Components.swift")
+            #expect(body.contains("supportingText"), "\(type) doit utiliser le jeton")
+            #expect(!body.contains(".secondary"), "\(type) ne doit plus utiliser .secondary")
+        }
+        let cleanupRow = try typeBody("struct CleanupRow", in: "Sources/Soaro/Views/Components.swift")
+        #expect(cleanupRow.contains("supportingText"))
+        #expect(cleanupRow.contains("Image(systemName: kind.systemImage).frame(width: 20).foregroundStyle(.secondary)"), "l'icône du type reste .secondary")
     }
 }
