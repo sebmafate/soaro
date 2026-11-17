@@ -61,12 +61,15 @@ enum CleanupService {
         var failures = 0
         for item in items {
             guard isSafeToDelete(item) else { failures += 1; continue }
-            let size = allocatedSize(of: item)
+            let before = allocatedSize(of: item)
             do {
                 try FileManager.default.removeItem(at: item)
-                freed += size
+                freed += before
             } catch {
                 failures += 1   // fichier en cours d'utilisation, protégé, etc.
+                // Suppression interrompue : on compte ce qui a vraiment disparu (avant moins après, jamais négatif).
+                let after = allocatedSize(of: item)
+                if before > after { freed += before - after }
             }
         }
         return CleanupResult(freed: freed, failures: failures, error: nil)
