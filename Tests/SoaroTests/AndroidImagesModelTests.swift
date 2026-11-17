@@ -211,7 +211,7 @@ final class ImageMeasure: @unchecked Sendable {
         #expect(m.listedCount == 1)
         #expect(m.measuredSizeTotal == measure.otherSize)
         #expect(m.hiddenSmallCount == 0)
-        // SL10b : Android est pré-sélectionné ; l'AVD listé n'a pas de date (aucun userdata-qemu.img), il n'est donc pas suggéré.
+        // SL10b : Android est pré-sélectionné ; l'AVD listé n'a pas de date (aucun fichier source), il n'est donc pas suggéré.
         #expect(m.showsNothingToSuggest, "un appareil listé sans date et rien de pré-sélectionné : le bandeau s'affiche")
         measure.release.signal()
         measure.release.signal()

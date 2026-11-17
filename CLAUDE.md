@@ -25,7 +25,7 @@ Verified on 2026-11-17 in a fresh worktree of `main` unless marked.
 
 ```sh
 swift build                          # debug build
-swift test                           # 1034 tests in 91 suites; about 40 s from a clean build, about 3 s when already built
+swift test                           # 1035 tests in 91 suites; about 40 s from a clean build, about 3 s when already built
 scripts/build-app.sh                 # builds build/Soaro.app (ad hoc signature); --install copies to /Applications
 SOARO_DEMO=1 build/Soaro.app/Contents/MacOS/Soaro    # run on made-up data (no measurement, nothing written)
 DYLD_FRAMEWORK_PATH=.build/debug .build/debug/Soaro --diagnostics   # print all measurements (read-only)
@@ -37,7 +37,7 @@ scripts/release-notes.sh 1.0.1       # prints the CHANGELOG section of a version
 
 Notes on the commands:
 
-- The debug binary does not know where Sparkle is: started alone it stops with `Library not loaded: @rpath/Sparkle.framework/...`. `DYLD_FRAMEWORK_PATH=.build/debug` fixes it (`.build/debug` is a link to `.build/out/Products/Debug`, where `Sparkle.framework` sits). `build/Soaro.app` needs nothing: `scripts/build-app.sh` puts the framework in `Contents/Frameworks` and adds the matching run path.
+- The debug binary does not know where Sparkle is: started alone it stops with `Library not loaded: @rpath/Sparkle.framework/...`. `DYLD_FRAMEWORK_PATH=.build/debug` fixes it (`.build/debug` is a link to `.build/out/Products/Debug`, where `Sparkle.framework` sits). In a FRESH worktree `.build/debug` may not hold `Sparkle.framework` yet (the link target is missing until a build has produced it); the alternative is `DYLD_FRAMEWORK_PATH=.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64` (the downloaded binary, checked with `ls` on 2026-11-17). `build/Soaro.app` needs nothing: `scripts/build-app.sh` puts the framework in `Contents/Frameworks` and adds the matching run path.
 - A first `swift build` downloads the Sparkle binary. If it hangs (it did, for about 10 minutes, during SL1), copy an existing `.build/artifacts` folder into the new checkout's `.build/` and run it again.
 - Checked on 2026-11-17: `swift build`, `swift test`, `scripts/build-app.sh` (builds, ad hoc signature), `--diagnostics`, `--scan` (with the variable above) and `scripts/release-notes.sh`. Not run that day: `SOARO_DEMO=1 build/Soaro.app/Contents/MacOS/Soaro` (it opens the app), `--install` and `scripts/release.sh` (needs the Developer ID).
 

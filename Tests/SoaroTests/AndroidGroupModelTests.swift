@@ -214,7 +214,7 @@ import Testing
         #expect(!empty.showsNothingToSuggest)
     }
 
-    // MARK: Pré-sélection Android allumée (décision de l'auteur, 2026-11-17 : seul userdata-qemu.img donne la date)
+    // MARK: Pré-sélection Android allumée (décision de l'auteur, 2026-11-17 : la date la plus récente de quatre fichiers de l'émulateur)
 
     @Test func theSwitchIsOnAndTheModelUsesItByDefault() {
         #expect(DeviceSuggestions.androidPreselectionEnabled, "allumé : l'auteur a réglé le signal « dernière utilisation » le 2026-11-17 (condition d'entrée de SL10 remplie)")

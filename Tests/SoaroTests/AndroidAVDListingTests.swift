@@ -86,7 +86,7 @@ import Testing
 
     // MARK: Date de dernière utilisation
 
-    /// Les quatre fichiers écrits pendant l'usage (décision de l'auteur, 2026-11-17).
+    /// Les quatre fichiers de `lastUsedFiles` (décision de l'auteur, 2026-11-17).
     private let sources = ["userdata-qemu.img.qcow2", "userdata-qemu.img", "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"]
 
     @Test func eachOfTheFourSourceFilesAloneGivesTheDate() throws {
@@ -110,6 +110,22 @@ import Testing
         try touch(folder, "userdata-qemu.img.qcow2", daysAgo: 25)
         let device = try #require(list(box).devices.first)
         #expect(device.lastUsed == daysAgo(20))
+        #expect(device.lastUsedSource == "hardware-qemu.ini")
+    }
+
+    @Test func twoSourceFilesWithTheSameDateNameTheFirstInDiagnosticOrderAndKeepTheDate() throws {
+        let box = try Sandbox(insideHome: true)
+        let folder = try makeAVD(box, name: "Test_Phone_A")
+        // Même date sur trois fichiers source : l'ordre de `diagnosticFiles` est hardware-qemu.ini, …qcow2, userdata-qemu.img, snapshot.pb.
+        try touch(folder, "snapshots/default_boot/snapshot.pb", daysAgo: 7)
+        try touch(folder, "userdata-qemu.img", daysAgo: 7)
+        try touch(folder, "userdata-qemu.img.qcow2", daysAgo: 7)
+        var device = try #require(list(box).devices.first)
+        #expect(device.lastUsed == daysAgo(7))
+        #expect(device.lastUsedSource == "userdata-qemu.img.qcow2")
+        try touch(folder, "hardware-qemu.ini", daysAgo: 7)
+        device = try #require(list(box).devices.first)
+        #expect(device.lastUsed == daysAgo(7))
         #expect(device.lastUsedSource == "hardware-qemu.ini")
     }
 
@@ -240,7 +256,7 @@ import Testing
     }
 
     @Test func theSignalIsOneNamedConstantAndTheDiagnosisListIsAnother() {
-        // Décision de l'auteur, 2026-11-17 : les quatre fichiers écrits pendant l'usage ; ni emulator-user.ini, config.ini, cache.img.qcow2 ni le verrou.
+        // Décision de l'auteur, 2026-11-17 : les quatre fichiers de l'émulateur ; ni emulator-user.ini, config.ini, cache.img.qcow2 ni le verrou.
         #expect(AndroidEmulatorScanner.lastUsedFiles == ["userdata-qemu.img.qcow2", "userdata-qemu.img",
                                                         "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"])
         #expect(AndroidEmulatorScanner.diagnosticFiles == ["hardware-qemu.ini", "emulator-user.ini", "userdata-qemu.img.qcow2",

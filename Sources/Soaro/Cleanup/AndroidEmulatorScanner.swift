@@ -149,16 +149,22 @@ struct AndroidAVDListing: Equatable {
 }
 
 extension AndroidEmulatorScanner {
-    /// Le signal « dernière utilisation » : la date de modification la PLUS RÉCENTE parmi les fichiers écrits pendant que l'appareil
-    /// sert : `userdata-qemu.img.qcow2` (la surcouche, écrite à chaque exécution), `userdata-qemu.img`,
-    /// `snapshots/default_boot/snapshot.pb` et `hardware-qemu.ini` (décision de l'auteur, 2026-11-17). Constaté sur un AVD réel de
-    /// l'auteur : le fichier brut `userdata-qemu.img` avait 56 jours alors que la surcouche, le snapshot et `hardware-qemu.ini` en avaient 3
-    /// (l'émulateur avait tourné il y a 3 jours) : le fichier brut seul date de la création ou d'un effacement, pas de l'usage.
+    /// Le signal « dernière utilisation » : la date de modification la PLUS RÉCENTE parmi quatre fichiers : `userdata-qemu.img.qcow2`
+    /// (la surcouche), `userdata-qemu.img`, `snapshots/default_boot/snapshot.pb` et `hardware-qemu.ini` (décision de l'auteur, 2026-11-17).
+    /// Constaté sur UN SEUL AVD réel de l'auteur, l'émulateur ayant tourné 3 jours avant : la surcouche, le snapshot et `hardware-qemu.ini`
+    /// avaient 3 jours, le fichier brut `userdata-qemu.img` en avait 56. Ce sont donc les fichiers observés comme bougeant quand l'émulateur
+    /// tourne ; le fichier brut a été observé comme NE bougeant PAS à l'usage (il date de la création ou du dernier effacement) et ne reste
+    /// dans la liste que parce que prendre la date la plus récente ne peut que rendre un appareil plus récent (le côté sûr). Ce n'est pas
+    /// une règle générale : une observation.
     /// SONT EXCLUS : `emulator-user.ini`, `config.ini` (d'autres outils peuvent les toucher sans que l'appareil serve), `cache.img.qcow2`
-    /// et `multiinstance.lock` (le verrou existe même quand rien ne tourne, ADR 0009). Le côté sûr : un AVD touché par un outil paraît
-    /// récent, donc n'est jamais pré-sélectionné à tort. Un AVD sans aucun de ces fichiers a une date INCONNUE : jamais pré-sélectionné.
+    /// et `multiinstance.lock` (le verrou existe même quand rien ne tourne, ADR 0009). Un AVD touché par un outil paraît récent, donc n'est
+    /// jamais pré-sélectionné à tort. NON VÉRIFIÉ, côté non sûr : un appareil utilisé d'une façon qui n'écrit aucun de ces quatre fichiers
+    /// (lancement `-read-only` ou multi-instance, autre version de l'émulateur, AVD créé par un autre outil) paraîtrait ancien et pourrait
+    /// être pré-sélectionné une fois arrêté ; la confirmation, le bouton par défaut « Cancel » et la revérification « en cours » juste avant
+    /// la suppression limitent les dégâts. Un AVD sans aucun de ces fichiers a une date INCONNUE : jamais pré-sélectionné.
     /// Un lien symbolique vers un fichier est suivi (la date est celle de la cible) : un lien vers un fichier ancien donnerait une date
-    /// ancienne. Un changement du signal tient en cette seule constante.
+    /// ancienne. À égalité de date, le gagnant nommé est le premier dans l'ordre de `diagnosticFiles`. Un changement du signal tient en
+    /// cette seule constante.
     static let lastUsedFiles = ["userdata-qemu.img.qcow2", "userdata-qemu.img", "snapshots/default_boot/snapshot.pb", "hardware-qemu.ini"]
 
     /// Une date de modification AVANT le 2005-01-01 (UTC) n'est pas un usage (l'émulateur n'existait pas : remise à zéro, 1970) : elle rend

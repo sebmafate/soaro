@@ -11,7 +11,7 @@ enum DeviceSuggestions {
     static let defaultLimitDays = 60
 
     /// Le réglage UNIQUE de la pré-sélection des appareils Android dans l'application : allumé (décision de l'auteur, 2026-11-17 :
-    /// le signal « dernière utilisation » est la date la plus récente de quatre fichiers écrits pendant l'usage, voir `AndroidEmulatorScanner.lastUsedFiles`).
+    /// le signal « dernière utilisation » est la date la plus récente de quatre fichiers de l'émulateur, voir `AndroidEmulatorScanner.lastUsedFiles`).
     /// Règles inchangées : inactif au-delà de la limite en jours entiers, jamais un appareil en cours d'exécution ni sans date.
     /// Seul `SimulatorsModel` consulte ce réglage ; l'éteindre tient en cette seule ligne.
     static let androidPreselectionEnabled = true
