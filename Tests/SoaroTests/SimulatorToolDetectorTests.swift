@@ -179,7 +179,7 @@ private final class FakeToolFileSystem: ToolFileSystem {
         fs.executables.insert(xcodeSimctl)
         fs.directories.insert(devicesPath)
         let detection = SimulatorToolDetector.detect(home: home, fileSystem: fs)
-        #expect(SimulatorToolDetection.showsToolsRow(detection: detection, demo: false))
+        #expect(SimulatorToolDetection.showsToolsRow(detection: detection, androidSDK: nil, demo: false))
 
         let runner = FakeCommandRunner()
         let model = SimulatorsModel(runner: runner, detect: { detection }, locateTool: { _ in "/usr/bin/xcrun" },

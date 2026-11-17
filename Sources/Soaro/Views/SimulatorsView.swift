@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// Écran « Simulators and emulators » (S2). Le bouton « Delete » (barre d'action « danger ») est disponible quand `canDelete`
+/// Écran « Simulators and emulators » (S2) : deux sections, iOS puis Android (SL10), choisies par `SimulatorsScreen.layout`.
+/// Un groupe en échec montre son en-tête et son message (l'autre reste utilisable) ; un groupe caché ou vide est absent. Une ligne
+/// Android en cours d'exécution est « indisponible » (jamais cochable). Le bouton « Delete » (barre d'action « danger ») est disponible quand `canDelete`
 /// l'autorise ; il demande d'abord la confirmation (S3, injectée dans le modèle). Pendant la suppression : barre occupée,
 /// menu de limite et « Scan again » désactivés. Aucun raccourci clavier ni action par défaut : Retour ne supprime jamais (R8).
 /// Textes d'appoint (tailles, résumés, pieds de page) : jeton « texte de soutien » (`supportingText`), pas de style système estompé.
@@ -38,8 +40,8 @@ struct SimulatorsView: View {
                 ProgressView().controlSize(.small)
                 Text("Measuring sizes…").font(.caption).supportingText()
             }
-        } else if model.phase == .listed {
-            Text(SimulatorPresentation.headerSummary(count: model.rows.count, size: model.measuredSizeTotal))
+        } else if model.phase == .listed || model.androidPhase == .listed {
+            Text(SimulatorPresentation.headerSummary(count: model.listedCount, size: model.measuredSizeTotal))
                 .font(.caption).supportingText()
         }
     }
@@ -68,19 +70,22 @@ struct SimulatorsView: View {
     // MARK: Corps
 
     @ViewBuilder private var content: some View {
-        switch model.phase {
-        case .notScanned, .listing:
+        switch SimulatorsScreen.layout(ios: model.phase, android: model.androidPhase) {
+        case .spinner:
             VStack(spacing: 10) {
                 ProgressView()
                 Text(verbatim: model.progressMessage).font(.caption).supportingText()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .failed:
+        case .nothingFound:
+            hint(SimulatorsScreen.nothingFoundMessage, systemImage: "info.circle")
+        case .failedOnly(.ios):
             hint(model.message ?? "", systemImage: "exclamationmark.triangle")
-        case .empty, .hidden:
-            hint(model.message ?? "", systemImage: "info.circle")
-        case .listed:
-            listed
+        case .failedOnly(.android):
+            hint(model.androidMessage ?? "", systemImage: "exclamationmark.triangle")
+        case let .sections(ios, android):
+            sections(ios: ios, android: android)
+            if SimulatorsScreen.showsActionBar(.sections(ios: ios, android: android)) { actionBar }
         }
     }
 
@@ -89,22 +94,66 @@ struct SimulatorsView: View {
             .padding(14).frame(maxHeight: .infinity, alignment: .top)
     }
 
-    @ViewBuilder private var listed: some View {
+    @ViewBuilder private func sections(ios: SimulatorsScreen.Section, android: SimulatorsScreen.Section) -> some View {
         if model.showsNothingToSuggest {
             hintBanner
         }
         List {
-            Section {
-                ForEach(model.rows, id: \.device.device.udid) { row in
-                    deviceRow(row)
+            switch ios {
+            case .listed:
+                Section {
+                    ForEach(model.rows, id: \.device.device.udid) { row in
+                        deviceRow(row)
+                    }
+                } header: {
+                    SectionHeader(title: "iOS Simulators")
+                } footer: {
+                    if android == .absent { footer }
                 }
-            } header: {
-                SectionHeader(title: "iOS Simulators")
-            } footer: {
-                footer
+            case .failed:
+                Section {
+                    failedGroup(model.message ?? "")
+                } header: {
+                    SectionHeader(title: "iOS Simulators")
+                } footer: {
+                    if android == .absent { footer }
+                }
+            case .absent:
+                EmptyView()
+            }
+            switch android {
+            case .listed:
+                Section {
+                    ForEach(model.androidRows, id: \.device.device.name) { row in
+                        androidRow(row)
+                    }
+                } header: {
+                    SectionHeader(title: "Android emulators")
+                } footer: {
+                    footer
+                }
+            case .failed:
+                Section {
+                    failedGroup(model.androidMessage ?? "")
+                } header: {
+                    SectionHeader(title: "Android emulators")
+                } footer: {
+                    footer
+                }
+            case .absent:
+                EmptyView()
             }
         }
         .listStyle(.plain)
+    }
+
+    /// Un groupe dont la lecture a échoué : message neutre, icône d'avertissement, jeton « texte de soutien » (l'autre groupe reste utilisable).
+    private func failedGroup(_ message: String) -> some View {
+        EmptyHint(verbatim: message, systemImage: "exclamationmark.triangle", supporting: true)
+            .font(.caption)
+    }
+
+    private var actionBar: some View {
         ActionBar(
             summary: model.isDeleting
                 ? String(localized: "Deleting…")
@@ -154,6 +203,39 @@ struct SimulatorsView: View {
                 HStack(spacing: 4) {
                     Text(verbatim: device.name).font(.callout).lineLimit(1).truncationMode(.tail)
                         .help(device.name)
+                    Text(verbatim: "· \(system)").font(.caption).supportingText().lineLimit(1).fixedSize()
+                        .layoutPriority(1)
+                }
+                if !reason.isEmpty {
+                    Text(verbatim: reason).font(.caption)
+                }
+            }
+            Spacer(minLength: 8)
+            Text(verbatim: SimulatorPresentation.sizeText(size, locale: locale))
+                .font(.caption.monospacedDigit()).supportingText()
+                .lineLimit(1).fixedSize()
+                .layoutPriority(2)
+        }
+    }
+
+    /// Une ligne Android : nom affiché, « · API 36 », ligne de raison, taille ; en cours d'exécution : ligne indisponible.
+    private func androidRow(_ row: DeviceSuggestions.AndroidRow) -> some View {
+        let device = row.device.device
+        let size = model.size(of: row)
+        let locale = Locale.current
+        let system = AndroidEmulatorPresentation.systemLabel(version: device.systemVersion, locale: locale)
+        let reason = AndroidEmulatorPresentation.reasonLine(for: row, locale: locale)
+        return SelectionRow(
+            name: device.displayName,
+            isOn: model.androidSelected.contains(device.name),
+            unavailableReason: AndroidEmulatorPresentation.unavailableReason(for: row),
+            details: AndroidEmulatorPresentation.accessibilityDetails(row: row, size: size, locale: locale),
+            toggle: { model.toggle(row) }
+        ) {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(verbatim: device.displayName).font(.callout).lineLimit(1).truncationMode(.tail)
+                        .help(device.displayName)
                     Text(verbatim: "· \(system)").font(.caption).supportingText().lineLimit(1).fixedSize()
                         .layoutPriority(1)
                 }

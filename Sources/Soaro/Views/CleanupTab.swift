@@ -55,6 +55,8 @@ struct CleanupTab: View {
     @StateObject private var simulators: SimulatorsModel
     /// Résultat de la détection de l'outil des simulateurs (sur le disque, rien n'est lancé) ; `nil` tant qu'elle n'a pas eu lieu.
     @State private var simulatorDetection: SimulatorToolDetection?
+    /// Le SDK Android trouvé (variables d'environnement du processus, sinon le dossier par défaut), `nil` s'il n'y en a pas.
+    @State private var androidSDK: AndroidSDKLocation?
 
     init() {
         // `notify` est rebranché sur l'état au premier affichage (voir `body`).
@@ -99,7 +101,7 @@ struct CleanupTab: View {
                 developerSection
                 SectionHeader(title: "Tools")
                 VStack(spacing: 6) {
-                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, demo: DemoMode.isEnabled))) { item in
+                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, androidSDK: androidSDK, demo: DemoMode.isEnabled))) { item in
                         Button { open(item) } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: item.systemImage).font(.title3).frame(width: 26).foregroundStyle(Color.accentColor)
@@ -124,10 +126,13 @@ struct CleanupTab: View {
         .task {
             // Mode démo : la rangée est toujours visible, rien n'est lu sur le disque.
             guard !DemoMode.isEnabled else { return }
-            let found = await Task.detached(priority: .utility) {
-                SimulatorToolDetector.detect(home: URL(fileURLWithPath: NSHomeDirectory()))
+            let (found, sdk) = await Task.detached(priority: .utility) { () -> (SimulatorToolDetection, AndroidSDKLocation?) in
+                let home = URL(fileURLWithPath: NSHomeDirectory())
+                return (SimulatorToolDetector.detect(home: home),
+                        ToolLocator.androidSDK(environment: ProcessInfo.processInfo.environment, home: home))
             }.value
             simulatorDetection = found
+            androidSDK = sdk
         }
     }
 
