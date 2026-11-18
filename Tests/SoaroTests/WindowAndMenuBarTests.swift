@@ -26,7 +26,7 @@ import Testing
             .stacked(label: "RAM", value: Format.percent(0.8125)),
             .stacked(label: "SSD", value: Format.percent(0.86), level: .medium),
             .pair(top: "↑ 99 KB/s", bottom: "↓ 13 KB/s"),
-            .stacked(label: "BAT ⚡︎", value: Format.percent(1)),
+            .battery(percent: 100, charging: true),
         ])
     }
 
