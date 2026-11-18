@@ -159,9 +159,21 @@ enum LabelShapes {
             context.saveGState()
             context.setBlendMode(.destinationOut)
             context.setFillColor(CGColor(gray: 0, alpha: 1))
-            context.addPath(halo)
-            context.addPath(path)
-            context.fillPath()
+            if outline.alpha < 1 {
+                // Encre translucide (les cartes, SL24 : le jeton « texte de soutien » à 56 %) : deux remplissages, le halo puis le repère. Dans un seul
+                // tracé, les deux contours ont des sens opposés et leurs rotations s'annulent à l'intérieur de la bande du halo, où le remplissage
+                // restait : le repère s'y superposait au remplissage (0,56 + 0,56 x 0,44 = 0,80, plus sombre).
+                context.addPath(halo)
+                context.fillPath()
+                context.addPath(path)
+                context.fillPath()
+            } else {
+                // Encre opaque (le libellé de la barre de menus) : un seul tracé, comme depuis SL23 (le repère est peint par-dessus en encre pleine, le
+                // reste du remplissage ne se voit pas ; garder ce tracé garde le libellé identique au pixel près).
+                context.addPath(halo)
+                context.addPath(path)
+                context.fillPath()
+            }
             context.restoreGState()
             context.setFillColor(outline)
             context.addPath(path)

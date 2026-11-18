@@ -48,19 +48,21 @@ struct OverviewTab: View {
                         tint: .blue, history: state.netDownHistory, autoScaleFloor: 50_000
                     )
                 }
-                if let b = s.battery {
-                    StatCard(
-                        title: "Battery", systemImage: "", value: Format.percent(b.percent / 100),
-                        subtitle: Self.batterySubtitle(b),
-                        tint: BatteryGlyphColors.barTint(for: b, thresholds: PressureThresholds.load().battery), fraction: b.percent / 100,
-                        icon: AnyView(BatteryGlyph(percent: b.percent, power: b.powerState, level: .battery(b, thresholds: PressureThresholds.load().battery),
-                                                   body: BatteryGlyphGeometry.cardBody))
-                    )
-                }
+                if let b = s.battery { Self.batteryCard(b, thresholds: PressureThresholds.load().battery) }
             }
         } else {
             ProgressView().frame(maxWidth: .infinity, minHeight: 90)
         }
+    }
+
+    /// La carte « Battery » : l'icône dessinée (SL21, SL24 : la même image nette que le libellé de la barre de menus), le niveau, l'état de charge.
+    static func batteryCard(_ b: BatteryStats, thresholds: LevelThresholds) -> some View {
+        StatCard(
+            title: "Battery", systemImage: "", value: Format.percent(b.percent / 100),
+            subtitle: batterySubtitle(b),
+            tint: BatteryGlyphColors.barTint(for: b, thresholds: thresholds), fraction: b.percent / 100,
+            icon: AnyView(BatteryGlyphImage(percent: b.percent, power: b.powerState, level: .battery(b, thresholds: thresholds), body: BatteryGlyphGeometry.cardBody))
+        )
     }
 
     static func batterySubtitle(_ b: BatteryStats) -> String {
