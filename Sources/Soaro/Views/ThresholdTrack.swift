@@ -24,11 +24,15 @@ extension ThresholdTrackLogic.Band {
 
 /// Une piste de 0 à 100 % avec trois poignées rondes glissables (SL17), à la place des trois Steppers d'un groupe de seuils.
 ///
-/// - Les bandes de couleur suivent les poignées en direct ; les poignées ne se croisent jamais ; le pas est de 5 et l'écart minimal de 5
-///   (`ThresholdTrackLogic`, qui porte les règles et leurs tests).
-/// - Chaque poignée est un élément « réglable » pour VoiceOver (incrément / décrément de 5), atteignable au clavier
-///   (flèches : 5, Maj : 10, Début et Fin : les bornes) ; la zone cliquable fait 24 x 24 pt ; la valeur est toujours écrite
-///   (la couleur n'est jamais le seul signal).
+/// - Les bandes de couleur suivent les poignées en direct ; les poignées ne se croisent jamais ; le pas et l'écart minimal sont
+///   `ThresholdTrackLogic.step` et `.minimumGap` (1 depuis la décision du 2026-11-18), qui portent aussi les règles et leurs tests.
+/// - Une seule rangée d'étiquettes au-dessus de la piste : chacune est centrée sur sa poignée quand il y a de la place, sinon elles
+///   s'écartent au minimum, et un trait fin les relie à leur poignée (`ThresholdTrackLogic.labelCentres`).
+/// - Les poignées se recouvrent quand les seuils sont proches : UN seul geste sur la piste choisit la poignée la plus proche du pointeur
+///   (`pickHandle`), la poignée saisie passe au-dessus des autres, et à égalité exacte le sens du glisser décide (`resolve`).
+/// - Chaque poignée est un élément « réglable » pour VoiceOver (incrément / décrément d'un pas), atteignable au clavier
+///   (flèches : un pas, Maj : 5 points, Début et Fin : les bornes) ; la zone cliquable fait 24 x 24 pt ; la valeur est toujours écrite
+///   (la couleur n'est jamais le seul signal). L'ordre de focus est orange, rouge, écarlate.
 /// - Aucune animation : « Réduire les animations » est sans objet.
 struct ThresholdTrack: View {
     @Binding var thresholds: LevelThresholds
@@ -40,11 +44,17 @@ struct ThresholdTrack: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     @FocusState private var focused: ThresholdHandle?
-    /// Poignée en cours de glisser et sa valeur au début du geste.
-    @State private var drag: (handle: ThresholdHandle, origin: Int)?
+    /// Le geste en cours : la poignée saisie (ou les poignées à égalité en attendant le sens du geste) et sa valeur au début.
+    @State private var drag: DragState?
+
+    private struct DragState {
+        /// Poignée saisie, `nil` tant que l'égalité n'est pas levée ou si le pointeur n'est sur aucune poignée.
+        var handle: ThresholdHandle?
+        var pending: [ThresholdHandle] = []
+        var origin = 0
+    }
 
     private typealias Metrics = ThresholdTrackMetrics
-
     private static let trackSpaceName = "soaro.threshold-track"
 
     private var increasedContrast: Bool { contrast == .increased }
@@ -53,16 +63,24 @@ struct ThresholdTrack: View {
         GeometryReader { geometry in
             let width = Double(geometry.size.width)
             let unit = Metrics.pointsPerUnit(forWidth: width)
-            let placements = ThresholdTrackLogic.labelPlacements(for: thresholds, pointsPerUnit: unit)
+            let placements = ThresholdTrackLogic.labelPlacements(for: thresholds, pointsPerUnit: unit, width: width)
             ZStack(alignment: .topLeading) {
                 bands(unit: unit)
                 nowMarker(unit: unit)
+                leaders(placements)
                 ForEach(ThresholdHandle.allCases, id: \.self) { handle in
-                    handleView(handle, unit: unit, placement: placements[handle] ?? .init(raised: false, shift: 0))
+                    if let placement = placements[handle] {
+                        valueLabel(handle, placement: placement)
+                    }
+                }
+                ForEach(ThresholdHandle.allCases, id: \.self) { handle in
+                    handleView(handle, unit: unit)
                 }
             }
             .frame(width: geometry.size.width, height: Metrics.totalHeight, alignment: .topLeading)
+            .contentShape(Rectangle())
             .coordinateSpace(name: Self.trackSpaceName)
+            .gesture(dragGesture(unit: unit))
         }
         .frame(height: Metrics.totalHeight)
     }
@@ -104,104 +122,123 @@ struct ThresholdTrack: View {
             }
             .frame(width: 40, height: 18)
             .position(x: x(clamped, unit: unit), y: Metrics.centreY)
+            .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(ThresholdTrackLogic.nowAccessibilityText(current))
         }
     }
 
+    // MARK: Étiquettes et traits de rappel
+
+    /// Un trait fin de chaque étiquette (son bas, au centre) à sa poignée (son centre, sous la poignée dessinée par-dessus).
+    /// Droit quand l'étiquette est au-dessus de sa poignée, oblique quand elle a dû s'écarter. Ils ne se croisent jamais.
+    private func leaders(_ placements: [ThresholdHandle: ThresholdTrackLogic.LabelPlacement]) -> some View {
+        ZStack {
+            ForEach(ThresholdHandle.allCases, id: \.self) { handle in
+                if let p = placements[handle] {
+                    Path { path in
+                        path.move(to: CGPoint(x: p.labelCentre, y: Double(Metrics.labelTop + Metrics.labelHeight)))
+                        path.addLine(to: CGPoint(x: p.handleX, y: Double(Metrics.centreY)))
+                    }
+                    .stroke(handle.color, lineWidth: 1.5)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func valueLabel(_ handle: ThresholdHandle, placement: ThresholdTrackLogic.LabelPlacement) -> some View {
+        Text(ThresholdTrackLogic.percentText(ThresholdTrackLogic.value(of: handle, in: thresholds)))
+            .font(.caption2.weight(.semibold)).monospacedDigit()
+            .lineLimit(1).minimumScaleFactor(0.8)
+            .foregroundStyle(.primary)
+            .frame(width: CGFloat(Metrics.labelWidth), height: Metrics.labelHeight)
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color(nsColor: .controlBackgroundColor)))
+            .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(handle.color, lineWidth: 1.5))
+            .position(x: placement.labelCentre, y: Metrics.labelTop + Metrics.labelHeight / 2)
+            .allowsHitTesting(false)         // l'étiquette ne prend jamais le pointeur à une poignée
+            .accessibilityHidden(true)       // la poignée dit déjà sa valeur
+    }
+
     // MARK: Poignée
 
-    private func handleView(_ handle: ThresholdHandle, unit: Double, placement: ThresholdTrackLogic.LabelPlacement) -> some View {
+    private func handleView(_ handle: ThresholdHandle, unit: Double) -> some View {
         let value = ThresholdTrackLogic.value(of: handle, in: thresholds)
         let centre = x(Double(value), unit: unit)
         let isFocused = focused == handle
         let ring = ThresholdTrackStyle.ringWidth(increasedContrast: increasedContrast)
         return ZStack {
-            // Étiquette de la valeur, au-dessus de la poignée ; relevée sur une seconde rangée, avec une tige, quand la voisine est trop près.
-            valueLabel(handle, value: value, placement: placement, centre: centre)
-            ZStack {
-                Circle().fill(Color.white)
-                Circle().strokeBorder(handle.color, lineWidth: ring)
-                if increasedContrast {
-                    Circle().stroke(Color.black, lineWidth: 1)
-                }
-            }
-            .frame(width: Metrics.handleSize, height: Metrics.handleSize)
-            .shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
-            .overlay {
-                if isFocused {
-                    Circle().stroke(Color.accentColor, lineWidth: 3)
-                        .frame(width: Metrics.handleSize + 8, height: Metrics.handleSize + 8)
-                }
-            }
-            .frame(width: ThresholdTrackMetrics.hitSize, height: ThresholdTrackMetrics.hitSize)
-            .contentShape(Circle())
-            .position(x: centre, y: Metrics.centreY)
-            .gesture(dragGesture(handle, unit: unit))
-            // `.activate` : focalisable avec la navigation au clavier (Full Keyboard Access) seulement, pas de focus au clic ni à l'ouverture.
-            .focusable(true, interactions: .activate)
-            .focused($focused, equals: handle)
-            .focusEffectDisabled()
-            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .home, .end], phases: [.down, .repeat]) { press in
-                guard let key = Self.key(for: press.key) else { return .ignored }
-                move(handle, ThresholdTrackLogic.command(for: key, shift: press.modifiers.contains(.shift)))
-                return .handled
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(ThresholdTrackLogic.name(of: handle))
-            .accessibilityValue(ThresholdTrackLogic.valueText(value, ascending: ascending))
-            .accessibilityAdjustableAction { direction in
-                switch direction {
-                case .increment: move(handle, .step(1))
-                case .decrement: move(handle, .step(-1))
-                @unknown default: break
-                }
+            Circle().fill(Color.white)
+            Circle().strokeBorder(handle.color, lineWidth: ring)
+            if increasedContrast {
+                Circle().stroke(Color.black, lineWidth: 1)
             }
         }
-        .zIndex(drag?.handle == handle || isFocused ? 1 : 0)
-    }
-
-    private func valueLabel(_ handle: ThresholdHandle, value: Int, placement: ThresholdTrackLogic.LabelPlacement, centre: CGFloat) -> some View {
-        let top = placement.raised ? Metrics.raisedLabelTop : Metrics.labelTop
-        let labelCentre = centre + CGFloat(placement.shift)
-        return ZStack {
-            if placement.raised {
-                // Tige fine de l'étiquette relevée jusqu'à la poignée.
-                let stemTop = top + Metrics.labelHeight
-                let stemBottom = Metrics.centreY - Metrics.handleSize / 2
-                Rectangle().fill(handle.color).frame(width: 2, height: max(0, stemBottom - stemTop))
-                    .position(x: centre, y: (stemTop + stemBottom) / 2)
+        .frame(width: Metrics.handleSize, height: Metrics.handleSize)
+        .shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
+        .overlay {
+            if isFocused {
+                Circle().stroke(Color.accentColor, lineWidth: 3)
+                    .frame(width: Metrics.handleSize + 8, height: Metrics.handleSize + 8)
             }
-            Text(ThresholdTrackLogic.percentText(value))
-                .font(.caption2.weight(.semibold)).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.8)
-                .foregroundStyle(.primary)
-                .frame(width: CGFloat(Metrics.labelWidth), height: Metrics.labelHeight)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Color(nsColor: .controlBackgroundColor)))
-                .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(handle.color, lineWidth: 1.5))
-                .position(x: labelCentre, y: top + Metrics.labelHeight / 2)
         }
-        .allowsHitTesting(false)         // l'étiquette ne prend jamais le pointeur à une poignée
-        .accessibilityHidden(true)      // la poignée dit déjà sa valeur
+        .frame(width: ThresholdTrackMetrics.hitSize, height: ThresholdTrackMetrics.hitSize)
+        .contentShape(Circle())
+        .allowsHitTesting(false)             // le geste de la piste choisit la poignée (`pickHandle`) ; elles se recouvrent
+        .position(x: centre, y: Metrics.centreY)
+        // `.activate` : focalisable avec la navigation au clavier (Full Keyboard Access) seulement, pas de focus au clic ni à l'ouverture.
+        .focusable(true, interactions: .activate)
+        .focused($focused, equals: handle)
+        .focusEffectDisabled()
+        .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .home, .end], phases: [.down, .repeat]) { press in
+            guard let key = Self.key(for: press.key) else { return .ignored }
+            move(handle, ThresholdTrackLogic.command(for: key, shift: press.modifiers.contains(.shift)))
+            return .handled
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(ThresholdTrackLogic.name(of: handle))
+        .accessibilityValue(ThresholdTrackLogic.valueText(value, ascending: ascending))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: move(handle, .step(1))
+            case .decrement: move(handle, .step(-1))
+            @unknown default: break
+            }
+        }
+        .zIndex(drag?.handle == handle || isFocused ? 1 : 0)       // la poignée saisie (ou au clavier) passe au-dessus des autres
     }
 
     // MARK: Geste et clavier
 
-    private func dragGesture(_ handle: ThresholdHandle, unit: Double) -> some Gesture {
+    /// Un seul geste pour la piste : à la pression on choisit la poignée la plus proche du pointeur ; à égalité exacte on attend le premier
+    /// mouvement et le sens du glisser décide. La poignée suit le déplacement du pointeur (elle ne saute pas sous lui).
+    private func dragGesture(unit: Double) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.trackSpaceName))
             .onChanged { gesture in
-                let origin: Int
-                if let drag, drag.handle == handle {
-                    origin = drag.origin
-                } else {
-                    origin = ThresholdTrackLogic.value(of: handle, in: thresholds)
-                    drag = (handle, origin)
+                var state = drag ?? Self.startDrag(gesture.startLocation, thresholds: thresholds, unit: unit, ascending: ascending)
+                if state.handle == nil, state.pending.count > 1, abs(gesture.translation.width) >= 1 {
+                    let chosen = ThresholdTrackLogic.resolve(state.pending, direction: gesture.translation.width > 0 ? 1 : -1,
+                                                             in: thresholds, ascending: ascending)
+                    state.handle = chosen
+                    state.origin = ThresholdTrackLogic.value(of: chosen, in: thresholds)
                 }
-                let value = ThresholdTrackLogic.draggedValue(from: origin, translation: Double(gesture.translation.width), pointsPerUnit: unit,
+                drag = state
+                guard let handle = state.handle else { return }
+                let value = ThresholdTrackLogic.draggedValue(from: state.origin, translation: Double(gesture.translation.width), pointsPerUnit: unit,
                                                             handle: handle, in: thresholds, ascending: ascending)
                 set(handle, to: value)
             }
             .onEnded { _ in drag = nil }
+    }
+
+    private static func startDrag(_ start: CGPoint, thresholds: LevelThresholds, unit: Double, ascending: Bool) -> DragState {
+        switch ThresholdTrackLogic.pickHandle(pointerX: Double(start.x), pointerY: Double(start.y), thresholds: thresholds,
+                                              pointsPerUnit: unit, ascending: ascending) {
+        case .none: return DragState()
+        case .handle(let handle): return DragState(handle: handle, origin: ThresholdTrackLogic.value(of: handle, in: thresholds))
+        case .undecided(let handles): return DragState(pending: handles)
+        }
     }
 
     private func set(_ handle: ThresholdHandle, to value: Int) {
