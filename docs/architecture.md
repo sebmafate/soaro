@@ -35,7 +35,8 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `DemoData.swift` | Demo mode (`SOARO_DEMO=1`): a made-up Mac for screenshots (including made-up simulators and Android emulators), see [website.md](website.md) |
 | `Updater.swift` | Sparkle integration. It stays inactive in a development build (see [updates.md](updates.md)) |
 | `Views/MainWindow.swift`, `MachineInfo.swift` | Standalone window (AppKit, created on demand, destroyed on close) and the "This Mac" screen |
-| `Views/MenuBarWidgets.swift` | Compact menu bar label, drawn in a template image |
+| `Views/MenuBarWidgets.swift` | Menu bar label: items, thresholds, tooltip, and `MenuBarRenderer`, which returns one `NSImage` drawn per screen scale (template while nothing is coloured) |
+| `Views/MenuBarLabelGeometry.swift`, `MenuBarLabelShapes.swift`, `MenuBarLabelText.swift`, `MenuBarLabelDrawer.swift` | The label drawn by hand (SL23): whole-pixel geometry per scale, shapes in a `CGContext`, Core Text text, whole-point layout. The Settings preview draws the same image |
 | `Views/` | Tabbed panel. Its content is removed from the SwiftUI hierarchy when the panel is hidden, so it costs nothing when idle |
 | `Resources/Localizable.xcstrings`, `InfoPlist.xcstrings` | Translations (see [CONTRIBUTING.md](../CONTRIBUTING.md#translations)) |
 
