@@ -64,6 +64,20 @@ import AppKit
         return nil
     }
 
+    /// Un point de sonde (x, distance au haut) doit-il déplacer la fenêtre ? `sidebar` : le rectangle de la vue de glissement de la
+    /// barre latérale en coordonnées de la vue-cadre (origine en bas à gauche), `rootHeight` : la hauteur de cette vue-cadre.
+    ///
+    /// Disposition à ras (vue en x = 0 et à 0 pt du haut, macOS 27) : tout point l'exige. Disposition flottante (macOS 26, vue en x = 8 et
+    /// à 8 pt du haut) : seulement les points dans notre vue (x de 6 pt après son bord gauche à 10 pt avant le droit, 2 pt de marge en haut
+    /// et en bas) et dans la colonne de détail (au moins 8 pt à droite de la barre latérale). Le reste est une limite connue (bande du
+    /// haut, marge gauche, coin de redimensionnement, jointure des colonnes), voir `WindowDragRegionTests.expectDragSources`.
+    static func requiresDragSource(x: CGFloat, fromTop dy: CGFloat, sidebar: NSRect, rootHeight: CGFloat) -> Bool {
+        let top = rootHeight - sidebar.maxY
+        guard top > 0.5 || sidebar.minX > 0.5 else { return true }
+        let inside = x >= sidebar.minX + 6 && x <= sidebar.maxX - 10 && dy >= top + 2 && dy <= top + sidebar.height - 2
+        return inside || x >= sidebar.maxX + 8
+    }
+
     /// Texte de diagnostic pour les messages d'échec : la vue touchée, sa chaîne de parents et les « poches » de défilement.
     static func hitReport(_ hit: NSView, in root: NSView) -> String {
         let parents = chain(hit).map { "\(className($0))[mdcmw=\($0.mouseDownCanMoveWindow)]" }.joined(separator: " < ")

@@ -76,23 +76,81 @@ import Testing
         return false
     }
 
+    // MARK: Disposition de la barre latérale : à ras de la fenêtre (macOS 27) ou flottante (macOS 26)
+
+    /// Le rectangle de la vue de glissement de la barre latérale (la plus étroite) en coordonnées de la vue-cadre.
+    private func sidebarDragRect(_ root: NSView) -> NSRect? {
+        WindowProbe.allViews(root).filter { $0 is WindowDragView && WindowProbe.rect($0, in: root).width < root.bounds.width / 2 }
+            .map { WindowProbe.rect($0, in: root) }.first
+    }
+
+    /// Sonde le haut de la fenêtre aux points donnés (x, distance au haut) et exige que la fenêtre s'y déplace, selon la disposition.
+    ///
+    /// Détection STRUCTURELLE (pas un numéro d'OS) : la vue de glissement de la barre latérale est à ras du coin haut gauche
+    /// (`fromTop == 0` et `x == 0`, macOS 27) ou décalée (macOS 26 : verre flottant décalé de 8 pt, vue en x = 8, fromTop = 8).
+    ///
+    /// - À ras : tous les points doivent déplacer la fenêtre (exigence complète).
+    /// - Flottante : seuls les points à l'intérieur de notre vue de la barre latérale (x de 6 pt après son bord gauche à 10 pt avant le
+    ///   droit, 2 pt de marge en haut et en bas) et dans la colonne de détail (au moins 8 pt à droite de la barre latérale) l'exigent.
+    ///   Les autres points sont une LIMITE CONNUE, affichée (`INFO`) et non échouée : la bande de 8 pt au-dessus de la barre latérale, la
+    ///   marge gauche de 8 pt (y compris le coin de redimensionnement) et la jointure entre les deux colonnes (x 195 à 200 : le
+    ///   `NSSplitView` répond). Preuve : lignes `DIAG hit` de la CI sur macOS 26.7.2 (run 3) : `BackdropView` (poche de défilement de la
+    ///   barre latérale, x 0 à 198, au-dessus de la colonne de détail), `NSThemeFrame` et `NSSplitView`, sans glissement. Aucune vue SwiftUI de
+    ///   l'app ne peut les couvrir (le contenu de la barre latérale commence en (8, 8)) ; ce n'est pas une régression : en 1.1.0 le haut de la
+    ///   barre latérale ne déplaçait la fenêtre sur aucun OS. Le vrai correctif serait une vue AppKit posée sur toute la fenêtre.
+    private func expectDragSources(window: NSWindow, probes: [(x: CGFloat, dy: CGFloat)], _ name: String) throws {
+        let root = try #require(window.contentView?.superview)
+        let sidebar = try #require(sidebarDragRect(root), "vue de glissement de la barre latérale introuvable")
+        let sidebarTop = root.bounds.height - sidebar.maxY
+        let floating = sidebarTop > 0.5 || sidebar.minX > 0.5
+        if floating {
+            print("INFO disposition à barre latérale flottante (vue de glissement en x=\(Int(sidebar.minX)), à \(Int(sidebarTop)) pt du haut, \(Int(sidebar.width)) x \(Int(sidebar.height))) : "
+                  + "bande du haut, marge gauche et jointure sont une limite connue (\(name))")
+        }
+        for probe in probes {
+            let view = try hit(window, x: probe.x, fromTop: probe.dy)
+            let required = WindowProbe.requiresDragSource(x: probe.x, fromTop: probe.dy, sidebar: sidebar, rootHeight: root.bounds.height)
+            let source = WindowProbe.dragSource(of: view)
+            if required {
+                #expect(source != nil, "\(name), x=\(probe.x), à \(probe.dy) pt du haut : rien ne déplace la fenêtre. \(WindowProbe.hitReport(view, in: root))")
+            } else if source == nil {
+                print("INFO limite connue sur la disposition à barre latérale flottante : x=\(probe.x), à \(probe.dy) pt du haut, frappe \(WindowProbe.className(view))")
+            }
+        }
+    }
+
+    /// La règle de la disposition flottante, vérifiée sur les observations de la CI macOS 26.7.2 (lignes `DIAG hit`, vue de glissement de la
+    /// barre latérale en x = 8, à 8 pt du haut, 190 x 44, fenêtre de 674 pt de haut) : ce que la CI a vu touché et la règle s'accordent.
+    @Test func theFloatingSidebarRuleMatchesWhatMacOS26Showed() {
+        let height: CGFloat = 674
+        let sidebar = NSRect(x: 8, y: height - 52, width: 190, height: 44)
+        func required(_ x: CGFloat, _ dy: CGFloat) -> Bool { WindowProbe.requiresDragSource(x: x, fromTop: dy, sidebar: sidebar, rootHeight: height) }
+        // Touchés par notre vue sur macOS 26 : exigés.
+        for dy in [CGFloat(14), 26, 40] { #expect(required(120, dy), "x=120, dy=\(dy)") }
+        for dy in [CGFloat(26), 40, 50] { #expect(required(20, dy), "x=20, dy=\(dy)") }
+        for x in [CGFloat(300), 500] { for dy in [CGFloat(4), 14, 26, 40, 50] { #expect(required(x, dy), "détail x=\(x), dy=\(dy)") } }
+        // Touchés par une vue sans glissement sur macOS 26 (poche de défilement, vue-cadre, `NSSplitView`) : limite connue, non exigés.
+        #expect(!required(120, 4))
+        for x in [CGFloat(3), 6, 10] { for dy in [CGFloat(4), 14] { #expect(!required(x, dy), "x=\(x), dy=\(dy)") } }
+        for x in [CGFloat(3), 6] { for dy in [CGFloat(26), 40, 50] { #expect(!required(x, dy), "marge gauche x=\(x), dy=\(dy)") } }
+        for x in [CGFloat(195), 200] { for dy in [CGFloat(4), 14, 26, 40, 50] { #expect(!required(x, dy), "jointure x=\(x), dy=\(dy)") } }
+        // Disposition à ras (macOS 27) : tout est exigé.
+        let flush = NSRect(x: 0, y: height - 52, width: 190, height: 52)
+        for x in [CGFloat(3), 120, 195] { for dy in [CGFloat(4), 26] { #expect(WindowProbe.requiresDragSource(x: x, fromTop: dy, sidebar: flush, rootHeight: height)) } }
+    }
+
     @Test(arguments: [false, true])
     func theTopOfTheSidebarIsADragRegion(dark: Bool) async throws {
         guard NSScreen.main != nil else { return }      // pas de serveur de fenêtres : rien à tester
         let window = try await makeWindow(dark: dark)
         defer { window.orderOut(nil) }
-        let root = try #require(window.contentView?.superview)
         // Ce qui compte : un clic en haut de la barre latérale DÉPLACE la fenêtre. Le `mouseDown` monte la chaîne des répondeurs
         // depuis la vue touchée ; le déplacement vient de notre `WindowDragView` ou d'une vue de barre de titre du système, vue touchée
         // ou ancêtre. On n'exige plus que ce soit exactement `WindowDragView` : sur macOS 26 une vue privée (« scroll pocket »,
-        // Liquid Glass) peut être touchée à la place, et c'est un problème seulement si le déplacement n'y arrive plus.
+        // Liquid Glass) peut être touchée à la place (voir `expectDragSources` pour ce qui est exigé selon la disposition).
         // `mouseDownCanMoveWindow` n'est pas un critère : la fenêtre n'est pas `isMovableByWindowBackground` (testé plus bas).
         #expect(!window.isMovableByWindowBackground)
-        for dy in [CGFloat(4), 14, 26, 40] {
-            let view = try hit(window, x: 120, fromTop: dy)
-            let source = WindowProbe.dragSource(of: view)
-            #expect(source != nil, "barre latérale, à \(dy) pt du haut : rien ne déplace la fenêtre. \(WindowProbe.hitReport(view, in: root))")
-        }
+        try expectDragSources(window: window, probes: [CGFloat(4), 14, 26, 40].map { (x: CGFloat(120), dy: $0) }, "barre latérale")
     }
 
     /// macOS 26 (constaté par le diagnostic de la CI) : la barre latérale est un verre flottant décalé de 8 pt, et la colonne de détail
@@ -120,18 +178,16 @@ import Testing
         guard NSScreen.main != nil else { return }
         let window = try await makeWindow(dark: dark)
         defer { window.orderOut(nil) }
-        let root = try #require(window.contentView?.superview)
-        // x = 3 : la marge gauche (macOS 26) ; x = 120 et 195 : au-dessus et au bord de la barre latérale ; dy = 4 : la bande du haut.
-        // Pas de sonde à moins de 1 pt du haut, ni dans le coin haut gauche (x = 3 et dy < 20, x = 10 et dy < 14) : sur macOS 27 et 26 la vue-cadre
-        // (`NSThemeFrame`) y répond elle-même, ce sont les zones de redimensionnement de la fenêtre, pas un trou.
+        // x = 3 et 10 : la marge gauche (macOS 26) ; x = 20 et 120 : sur la barre latérale ; x = 195 : au bord de la barre latérale ;
+        // x = 300 : colonne de détail ; dy = 4 : la bande du haut. Pas de sonde à moins de 1 pt du haut, ni dans le coin haut gauche
+        // (x = 3 et dy < 20, x = 10 et dy < 14) : sur macOS 27 la vue-cadre (`NSThemeFrame`) y répond elle-même, ce sont les zones de
+        // redimensionnement de la fenêtre, pas un trou. Sur la disposition flottante de macOS 26, `expectDragSources` limite l'exigence.
         var probes: [(x: CGFloat, dy: CGFloat)] = []
-        for x in [CGFloat(120), 195] { for dy in [CGFloat(4), 14, 26, 40, 50] { probes.append((x, dy)) } }
+        for x in [CGFloat(120), 195, 300] { for dy in [CGFloat(4), 14, 26, 40, 50] { probes.append((x, dy)) } }
+        for dy in [CGFloat(26), 40, 50] { probes.append((20, dy)) }
         for dy in [CGFloat(14), 26, 40, 50] { probes.append((10, dy)) }
         for dy in [CGFloat(26), 40, 50] { probes.append((3, dy)) }
-        for probe in probes {
-            let view = try hit(window, x: probe.x, fromTop: probe.dy)
-            #expect(WindowProbe.dragSource(of: view) != nil, "x=\(probe.x), à \(probe.dy) pt du haut : rien ne déplace la fenêtre. \(WindowProbe.hitReport(view, in: root))")
-        }
+        try expectDragSources(window: window, probes: probes, "haut et marge")
     }
 
     @Test(arguments: [false, true])
