@@ -264,7 +264,8 @@ enum DemoData {
             DockerUntaggedImage(id: "000000000002", size: 220 * mb, containerCount: 0),
             DockerUntaggedImage(id: "000000000003", size: 95 * mb, containerCount: 0),
         ]
-        return DockerScan(status: .ok, usage: usage, untagged: untagged)
+        return DockerScan(status: .ok, usage: usage, untagged: untagged,
+                          engine: DockerEngine(contextName: "desktop-linux", socketPath: "/var/run/docker.sock"))
     }
 
     // MARK: Android emulators

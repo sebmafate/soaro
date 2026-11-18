@@ -12,6 +12,8 @@ import Testing
     static let untaggedArgs = DockerCommand.untaggedImages.arguments
     static let cacheArgs = DockerCommand.pruneBuildCache.arguments
     static let imageArgs = DockerCommand.pruneUntaggedImages.arguments
+    /// SL16 : les deux lectures du moteur, avant le listage et avant chaque nettoyage.
+    static let check: [[String]] = [DockerCommand.currentContext.arguments, DockerCommand.currentBuilder.arguments]
 
     /// Une porte PAR TEST (jamais la porte partagée du processus) : les suites tournent en parallèle.
     let gate = DockerCleanupGate()
@@ -19,6 +21,8 @@ import Testing
     let confirm = RecordingConfirm(answer: true)
     let toasts = ToastBox()
     let counters = Counters()
+
+    init() { runner.scriptLocalEngine() }
 
     final class ToastBox { var messages: [String] = [] }
 
@@ -75,7 +79,7 @@ import Testing
         let m = model()
         await scanned(m)
         #expect(m.phase == .listed)
-        #expect(callArguments() == [Self.usageArgs, Self.untaggedArgs])
+        #expect(callArguments() == Self.check + [Self.usageArgs, Self.untaggedArgs])
         #expect(runner.calls.allSatisfy { $0.executable == Self.docker })
         #expect(m.overview?.cleanables.map(\.prune) == [.buildCache, .untaggedImages])
         #expect(m.selected == [.buildCache, .untaggedImages])
@@ -100,10 +104,10 @@ import Testing
         #expect(m.phase == .failed(.notRunning))
         #expect(m.message == "Docker is not running. Start it, then scan again.")
         #expect(m.overview == nil && m.selected.isEmpty && !m.canClean)
-        #expect(callArguments() == [Self.usageArgs], "ni seconde lecture ni nettoyage, et Docker n'est jamais démarré")
+        #expect(callArguments() == Self.check + [Self.usageArgs], "ni seconde lecture ni nettoyage, et Docker n'est jamais démarré")
         m.cleanSelected()
         #expect(confirm.asks.isEmpty)
-        #expect(callArguments() == [Self.usageArgs])
+        #expect(callArguments() == Self.check + [Self.usageArgs])
     }
 
     @Test func anEngineThatDoesNotAnswerAndAnUnreadableOutputHaveTheirOwnMessage() async {
@@ -114,6 +118,7 @@ import Testing
         #expect(slow.message == "Docker did not answer. Try again in a moment.")
 
         let other = FakeCommandRunner()
+        other.scriptLocalEngine()
         other.script(.finished(stdout: "garbage"), executable: Self.docker, arguments: Self.usageArgs)
         let unreadable = model(other)
         await scanned(unreadable)
@@ -247,9 +252,10 @@ import Testing
         await m.cleanTask?.value
 
         let calls = Array(runner.calls.dropFirst(afterScan))
-        #expect(calls.map(\.arguments) == [Self.cacheArgs, Self.imageArgs, Self.usageArgs, Self.untaggedArgs],
-                "les deux nettoyages exacts, puis le nouveau listage ; rien d'autre")
-        #expect(calls.prefix(2).allSatisfy { $0.timeLimit == 300 && $0.outputLimit == 4 * 1024 * 1024 })
+        #expect(calls.map(\.arguments) == Self.check + [Self.cacheArgs] + Self.check + [Self.imageArgs] + Self.check + [Self.usageArgs, Self.untaggedArgs],
+                "le moteur relu avant chacun des deux nettoyages exacts, puis le nouveau listage ; rien d'autre")
+        #expect(calls.filter { DockerCommand.allCases.filter(\.isDestructive).map(\.arguments).contains($0.arguments) }
+            .allSatisfy { $0.timeLimit == 300 && $0.outputLimit == 4 * 1024 * 1024 })
         #expect(counters.frees == 2 && counters.waits == 1)
         let reported = Format.fileBytes(21_190_000_000 + 397_000_000)
         #expect(toasts.messages == ["\(Format.fileBytes(19 * Self.gb)) returned to this Mac (Docker reported \(reported))."])
@@ -266,9 +272,10 @@ import Testing
         let afterScan = runner.calls.count
         m.cleanSelected()
         await m.cleanTask?.value
-        #expect(Array(runner.calls.dropFirst(afterScan)).map(\.arguments) == [Self.cacheArgs, Self.usageArgs, Self.untaggedArgs])
+        #expect(Array(runner.calls.dropFirst(afterScan)).map(\.arguments) == Self.check + [Self.cacheArgs] + Self.check + [Self.usageArgs, Self.untaggedArgs])
 
         let second = FakeCommandRunner()
+        second.scriptLocalEngine()
         second.script(.finished(stdout: DockerReportTests.realUsage), executable: Self.docker, arguments: Self.usageArgs)
         second.script(.finished(stdout: DockerOverviewTests.removable), executable: Self.docker, arguments: Self.untaggedArgs)
         second.script(.finished(stdout: "Total reclaimed space: 397MB"), executable: Self.docker, arguments: Self.imageArgs)
@@ -278,7 +285,7 @@ import Testing
         let before = second.calls.count
         images.cleanSelected()
         await images.cleanTask?.value
-        #expect(Array(second.calls.dropFirst(before)).map(\.arguments) == [Self.imageArgs, Self.usageArgs, Self.untaggedArgs])
+        #expect(Array(second.calls.dropFirst(before)).map(\.arguments) == Self.check + [Self.imageArgs] + Self.check + [Self.usageArgs, Self.untaggedArgs])
     }
 
     @Test func aFailedPruneStopsTheBatchAndIsCountedAndTheListIsReadAgain() async {
@@ -290,7 +297,7 @@ import Testing
         let afterScan = runner.calls.count
         m.cleanSelected()
         await m.cleanTask?.value
-        #expect(Array(runner.calls.dropFirst(afterScan)).map(\.arguments) == [Self.cacheArgs, Self.usageArgs, Self.untaggedArgs],
+        #expect(Array(runner.calls.dropFirst(afterScan)).map(\.arguments) == Self.check + [Self.cacheArgs] + Self.check + [Self.usageArgs, Self.untaggedArgs],
                 "le second nettoyage n'a pas lieu")
         #expect(toasts.messages == ["Cleanups that failed: 1"])
         #expect(counters.waits == 0 && counters.frees == 1, "rien n'a réussi : pas d'attente, pas de second relevé")
@@ -405,6 +412,8 @@ import Testing
     let runner = FakeCommandRunner()
     let confirm = RecordingConfirm(answer: true)
     let toasts = DockerModelTests.ToastBox()
+
+    init() { runner.scriptLocalEngine() }
 
     func model(wait: @escaping @Sendable (TimeInterval) async -> Void = { _ in }) -> DockerModel {
         let toasts = toasts

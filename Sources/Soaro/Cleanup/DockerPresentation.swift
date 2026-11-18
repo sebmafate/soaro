@@ -64,6 +64,8 @@ enum DockerPresentation {
     static var notRunningMessage: String { String(localized: "Docker is not running. Start it, then scan again.") }
     static var notAnsweringMessage: String { String(localized: "Docker did not answer. Try again in a moment.") }
     static var couldNotReadMessage: String { String(localized: "Could not read Docker’s disk usage.") }
+    /// SL16 : le moteur ou le constructeur courant de Docker n'est pas local (ou on n'a pas pu le lire). Rien n'est listé ni nettoyé.
+    static var notLocalMessage: String { String(localized: "Soaro only cleans Docker on this Mac. The selected Docker engine or builder is not local.") }
     static var listingMessage: String { String(localized: "Looking at Docker…") }
     static var cleaningMessage: String { String(localized: "Cleaning…") }
     static var measuringMessage: String { String(localized: "Measuring…") }

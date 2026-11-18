@@ -10,7 +10,7 @@ struct DockerEngine: Equatable {
 }
 
 /// Ce que dit la vérification du moteur et du constructeur, avant le listage et juste avant chaque nettoyage.
-enum DockerEngineCheck: Equatable {
+enum DockerEngineCheck: Equatable, Error {
     /// Contexte local ET constructeur local (pilote `docker`) : on peut lister, puis nettoyer.
     case local(DockerEngine)
     /// Contexte ou constructeur non local, ou réponse vide, illisible, tronquée, en échec : rien ne tourne (échec fermé).
@@ -19,6 +19,8 @@ enum DockerEngineCheck: Equatable {
     case notRunning
     /// `docker` n'a pas répondu dans le délai.
     case timedOut
+    /// `docker` n'a pas pu être lancé.
+    case toolNotFound
 }
 
 /// L'état du constructeur buildx courant.

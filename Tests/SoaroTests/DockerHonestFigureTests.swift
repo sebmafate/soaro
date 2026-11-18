@@ -48,11 +48,16 @@ final class ScriptedFreeSpace: @unchecked Sendable {
     static let gb: UInt64 = 1_000_000_000
     static let cacheArgs = ["builder", "prune", "-a", "-f"]
     static let imageArgs = ["image", "prune", "-f"]
+    /// SL16 : avant chaque nettoyage, les deux lectures du moteur local.
+    static let ctx = "run context inspect", bld = "run buildx inspect"
 
     let events = DockerEvents()
     let runner: LoggingDockerRunner
 
-    init() { runner = LoggingDockerRunner(events: events) }
+    init() {
+        runner = LoggingDockerRunner(events: events)
+        runner.fake.scriptLocalEngine()
+    }
 
     func scriptCache(_ outcome: CommandOutcome = .finished(stdout: "ID1\nTotal:\t22.46GB\n")) {
         runner.fake.script(outcome, executable: Self.docker, arguments: Self.cacheArgs)
@@ -64,7 +69,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
 
     func run(_ targets: [DockerCleanupTarget], free: ScriptedFreeSpace, waits: WaitRecorder = WaitRecorder()) async -> DockerCleanupResult {
         let events = events
-        return await DockerCleanupFlow.run(targets: targets, runner: runner, dockerPath: Self.docker,
+        return await DockerCleanupFlow.run(targets: targets, runner: runner, dockerPath: Self.docker, expectedEngine: DockerEngineScanTests.engine,
                                            freeSpace: { free.read() },
                                            beforeWait: { events.add("measuring") },
                                            wait: { seconds in events.add("wait \(Int(seconds))"); waits.add(seconds) })
@@ -87,7 +92,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
         let free = ScriptedFreeSpace([100 * Self.gb, 119 * Self.gb], events: events)
         let waits = WaitRecorder()
         let result = await run([Self.cache], free: free, waits: waits)
-        #expect(events.all == ["free", "run builder prune -a -f", "measuring", "wait 60", "free"])
+        #expect(events.all == ["free", Self.ctx, Self.bld, "run builder prune -a -f", "measuring", "wait 60", "free"])
         #expect(waits.all == [60])
         #expect(DockerCleanupFlow.measureDelay == 60)
         #expect(result.returnedBytes == 19 * Self.gb)
@@ -107,7 +112,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
         let free = ScriptedFreeSpace([100 * Self.gb, 122 * Self.gb], events: events)
         let waits = WaitRecorder()
         let result = await run([Self.cache, Self.images], free: free, waits: waits)
-        #expect(events.all == ["free", "run builder prune -a -f", "run image prune -f", "measuring", "wait 60", "free"])
+        #expect(events.all == ["free", Self.ctx, Self.bld, "run builder prune -a -f", Self.ctx, Self.bld, "run image prune -f", "measuring", "wait 60", "free"])
         #expect(waits.all == [60])
         #expect(result.dockerBytes == 22_460_000_000 + 397_000_000)
         #expect(result.returnedBytes == 22 * Self.gb)
@@ -134,7 +139,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
         scriptCache(.finished(exit: 1)); scriptImages()
         let free = ScriptedFreeSpace([100 * Self.gb, 120 * Self.gb], events: events)
         let result = await run([Self.cache, Self.images], free: free)
-        #expect(events.all == ["free", "run builder prune -a -f"], "pas de seconde commande, pas d'attente, pas de seconde lecture")
+        #expect(events.all == ["free", Self.ctx, Self.bld, "run builder prune -a -f"], "pas de seconde commande, pas d'attente, pas de seconde lecture")
         #expect(result.succeededCount == 0 && result.failedCount == 1 && !result.timedOut)
         #expect(result.returnedBytes == nil && result.dockerBytes == nil)
         #expect(result.toast(locale: Locale(identifier: "en")) == "Cleanups that failed: 1")
@@ -143,7 +148,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
     @Test func aTimeoutStopsTheBatchAndSaysDockerDidNotAnswer() async {
         scriptCache(.timedOut); scriptImages()
         let result = await run([Self.cache, Self.images], free: ScriptedFreeSpace([100 * Self.gb], events: events))
-        #expect(events.all == ["free", "run builder prune -a -f"])
+        #expect(events.all == ["free", Self.ctx, Self.bld, "run builder prune -a -f"])
         #expect(result.timedOut)
         #expect(result.toast(locale: Locale(identifier: "en")) == "Docker did not answer. Try again in a moment.")
     }
@@ -152,7 +157,7 @@ final class ScriptedFreeSpace: @unchecked Sendable {
         scriptCache(); scriptImages(.finished(exit: 1))
         let free = ScriptedFreeSpace([100 * Self.gb, 119 * Self.gb], events: events)
         let result = await run([Self.cache, Self.images], free: free)
-        #expect(events.all == ["free", "run builder prune -a -f", "run image prune -f", "measuring", "wait 60", "free"])
+        #expect(events.all == ["free", Self.ctx, Self.bld, "run builder prune -a -f", Self.ctx, Self.bld, "run image prune -f", "measuring", "wait 60", "free"])
         #expect(result.succeededCount == 1 && result.failedCount == 1)
         #expect(result.dockerBytes == 22_460_000_000)
         #expect(result.toast(locale: Locale(identifier: "en")).hasSuffix(" · Cleanups that failed: 1"))

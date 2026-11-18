@@ -73,12 +73,15 @@ enum DockerCleanupFlow {
     /// - Parameters:
     ///   - targets: les nettoyages, dans l'ordre. Le lot s'arrête au premier échec ou délai dépassé : rien d'autre ne tourne.
     ///   - runner: sans valeur par défaut (ADR 0009).
+    ///   - expectedEngine: le moteur nommé dans la confirmation (SL16) ; relu, avec le constructeur, avant CHAQUE nettoyage : un nettoyage ne part que
+    ///     sur ce moteur-là, s'il est encore local. Un refus compte comme un échec (le lot s'arrête).
     ///   - freeSpace: espace libre du volume du dossier personnel, lu avant le premier nettoyage puis après l'attente ; jamais lu sans nettoyage.
     ///   - beforeWait: appelé juste avant l'attente (l'écran passe à « Measuring… »).
     ///   - wait: l'attente (une vraie en production, aucune dans les tests).
     static func run(targets: [DockerCleanupTarget],
                     runner: CommandRunner,
                     dockerPath: String?,
+                    expectedEngine: DockerEngine,
                     freeSpace: @Sendable () -> UInt64?,
                     beforeWait: @Sendable () async -> Void,
                     wait: @Sendable (TimeInterval) async -> Void) async -> DockerCleanupResult {
@@ -87,12 +90,12 @@ enum DockerCleanupFlow {
         var timedOut = false
         var figures: [UInt64?] = []
         for target in targets {
-            switch DockerScanner.prune(target.prune, runner: runner, dockerPath: dockerPath) {
+            switch DockerScanner.prune(target.prune, runner: runner, dockerPath: dockerPath, expectedEngine: expectedEngine) {
             case .pruned(let reported):
                 succeeded += 1
                 figures.append(reported ?? target.announcedBytes)
             case .timedOut: timedOut = true
-            case .failed, .toolNotFound: failed += 1
+            case .failed, .toolNotFound, .notLocal: failed += 1
             }
             if timedOut || failed > 0 { break }
         }
