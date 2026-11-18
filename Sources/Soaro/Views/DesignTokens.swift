@@ -76,13 +76,75 @@ enum DesignTokens {
         return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
     }
 
-    /// Rapport de contraste d'une couleur d'opacité `alpha`, composée sur `background`.
-    static func contrastRatio(_ foreground: RGB, alpha: Double, on background: RGB) -> Double {
-        let composited = RGB(
-            red: foreground.red * alpha + background.red * (1 - alpha),
+    /// Couleur d'opacité `alpha` composée sur un fond opaque.
+    static func composited(_ foreground: RGB, alpha: Double, on background: RGB) -> RGB {
+        RGB(red: foreground.red * alpha + background.red * (1 - alpha),
             green: foreground.green * alpha + background.green * (1 - alpha),
             blue: foreground.blue * alpha + background.blue * (1 - alpha))
-        return contrastRatio(composited, on: background)
+    }
+
+    /// Rapport de contraste d'une couleur d'opacité `alpha`, composée sur `background`.
+    static func contrastRatio(_ foreground: RGB, alpha: Double, on background: RGB) -> Double {
+        contrastRatio(composited(foreground, alpha: alpha, on: background), on: background)
+    }
+
+    // MARK: Barre mémoire segmentée (SL26)
+
+    /// Piste de la barre : noir (clair) ou blanc (sombre) à une opacité absolue basse, comme le texte de soutien.
+    /// Elle est identique avec « Augmenter le contraste » : ce sont les segments qui se renforcent, pas la piste.
+    static func memoryTrackBase(dark: Bool) -> RGB { dark ? .white : .black }
+
+    static func memoryTrackAlpha(dark: Bool) -> Double { dark ? 0.14 : 0.10 }
+
+    /// Piste composée sur le fond de référence : la couleur contre laquelle les segments doivent faire 3 : 1.
+    static func memoryTrackOnReference(dark: Bool) -> RGB {
+        composited(memoryTrackBase(dark: dark), alpha: memoryTrackAlpha(dark: dark),
+                   on: dark ? darkReferenceBackground : lightReferenceBackground)
+    }
+
+    /// Opacité du remplissage léger du cache (le contour, lui, est la couleur pleine du jeton).
+    static let memoryCacheFillAlpha = 0.28
+
+    /// Couleur d'un segment de la barre mémoire. Tous au moins 3 : 1 contre la piste en clair et en sombre
+    /// (éléments graphiques, WCAG 1.4.11) ; avec « Augmenter le contraste » : plus foncés en clair, plus clairs en sombre.
+    /// Les teintes (bleu, violet, sarcelle, gris) évitent le vert, l'orange et le rouge de la pression.
+    static func memorySegment(_ kind: MemorySegmentKind, dark: Bool, contrastIncreased: Bool) -> RGB {
+        let hex: UInt32
+        switch (dark, contrastIncreased) {
+        case (false, false):
+            switch kind {
+            case .app: hex = 0x1F6FEB
+            case .wired: hex = 0x7B4FC9
+            case .compressed: hex = 0x0E7C8C
+            case .cached: hex = 0x6B6B70
+            case .unattributed: hex = 0x7C7C82
+            }
+        case (false, true):
+            switch kind {
+            case .app: hex = 0x0B4FB8
+            case .wired: hex = 0x5B34A8
+            case .compressed: hex = 0x0A6573
+            case .cached: hex = 0x4A4A50
+            case .unattributed: hex = 0x5E5E64
+            }
+        case (true, false):
+            switch kind {
+            case .app: hex = 0x5AA2FF
+            case .wired: hex = 0xA98BFF
+            case .compressed: hex = 0x3CC4D8
+            case .cached: hex = 0x9A9AA2
+            case .unattributed: hex = 0x8A8A92
+            }
+        case (true, true):
+            switch kind {
+            case .app: hex = 0x7DB6FF
+            case .wired: hex = 0xC0A8FF
+            case .compressed: hex = 0x66D6E6
+            case .cached: hex = 0xBDBDC4
+            case .unattributed: hex = 0xA8A8AF
+            }
+        }
+        return RGB(hex: hex)
     }
 }
 

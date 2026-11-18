@@ -60,15 +60,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let host = NSHostingController(rootView: MainWindowView(initialSection: section).environmentObject(state))
             host.sceneBridgingOptions = [.toolbars, .title]      // la barre d'outils SwiftUI devient celle de la fenêtre
             let window = NSWindow(contentViewController: host)
-            window.title = "Soaro"
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            window.toolbarStyle = .unified
-            // Fenêtre translucide : c'est le fond flouté (WindowGlassBackground) qui se voit, pas un aplat opaque.
-            window.titlebarAppearsTransparent = true
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.setContentSize(NSSize(width: 860, height: 680))
-            window.minSize = NSSize(width: 700, height: 520)
+            Self.configure(window)
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.setFrameAutosaveName("SoaroMainWindow")
@@ -79,6 +71,19 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Réglage de la fenêtre (extrait de `show` pour que les tests construisent la même).
+    static func configure(_ window: NSWindow) {
+        window.title = "Soaro"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.toolbarStyle = .unified
+        // Fenêtre translucide : c'est le fond flouté (WindowGlassBackground) qui se voit, pas un aplat opaque.
+        window.titlebarAppearsTransparent = true
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.setContentSize(NSSize(width: 860, height: 680))
+        window.minSize = NSSize(width: 700, height: 520)
     }
 
     /// Mode trace (`SOARO_CAPTURE=<fichier.png>`) : photographie la vraie fenêtre, verre compris.
@@ -126,6 +131,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: WindowSection?
+    @State private var columnVisibility = SidebarToggle.initialVisibility      // SL20 : rien n'est mémorisé, ouverte à chaque ouverture
     @AppStorage(MainWindowController.pinnedKey) private var pinned = false
 
     init(initialSection: WindowSection) {
@@ -137,7 +143,7 @@ struct MainWindowView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 Section {
                     ForEach(sections) { section in
@@ -151,13 +157,27 @@ struct MainWindowView: View {
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
             .safeAreaInset(edge: .bottom) { statusFooter }
             .scrollContentBackground(.hidden)
+            .windowDragStrip()                   // le clic dans le haut de la barre latérale ne déplaçait pas la fenêtre
         } detail: {
             clearContainer(detail)
                 .scrollContentBackground(.hidden)
+                .windowMainAreaBackground()       // expérience 1.2.0 : zone principale opaque (interrupteur : `WindowSurface`)
                 .navigationTitle(selection?.title ?? "Soaro")
+                .windowDragStrip()
                 .overlay(alignment: .top) { TitleBarBlur() }
                 .overlay(alignment: .bottom) { toast }
                 .toolbar {
+                    ToolbarItem(placement: .navigation) {
+                        Button {
+                            withAnimation(SidebarToggle.animation(reduceMotion: reduceMotion)) {
+                                columnVisibility = SidebarToggle.toggled(columnVisibility)
+                            }
+                        } label: {
+                            Label("Toggle Sidebar", systemImage: "sidebar.left")
+                        }
+                        .help("Toggle Sidebar")
+                        .accessibilityLabel("Toggle Sidebar")
+                    }
                     ToolbarItem(placement: .primaryAction) {
                         Toggle(isOn: $pinned) {
                             Label("Always on top", systemImage: pinned ? "pin.fill" : "pin")
@@ -167,7 +187,7 @@ struct MainWindowView: View {
                     }
                 }
         }
-        .environment(\.glassSurface, true)
+        .environment(\.glassSurface, WindowSurface.cardsAreGlass)
         .background(WindowGlassBackground().ignoresSafeArea())
         .onChange(of: pinned, initial: true) { _, new in MainWindowController.shared.applyPinned(new) }
         .background(WindowVisibilityReader { visible in
@@ -239,6 +259,7 @@ struct MainWindowView: View {
             Text(toast)
                 .font(.callout)
                 .padding(.horizontal, 14).padding(.vertical, 8)
+                .windowToastBase()
                 .cardBackground()
                 .padding(.bottom, 14)
                 .toastTransition(reduceMotion: reduceMotion)
@@ -384,7 +405,9 @@ struct TitleBarBlur: View {
                 .frame(height: geometry.safeAreaInsets.top)
                 .overlay(alignment: .bottom) { Rectangle().fill(.separator).frame(height: 0.5) }
                 .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea()
+                // Bord haut seulement : à gauche la bande s'arrête au bord de la barre latérale (qui flotte sur macOS 26), elle ne
+                // passe pas dessous ; à droite elle va jusqu'à la barre de défilement.
+                .ignoresSafeArea(.container, edges: .top)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

@@ -27,7 +27,7 @@ Deux façons de l'utiliser :
 - **Le panneau de la barre de menus** : un coup d'œil, il se referme quand on clique ailleurs.
 - **La fenêtre indépendante** : barre latérale, effet de verre translucide, bouton épingle pour la garder au premier plan.
 
-Dans la barre de menus, chaque valeur choisie passe à l'**orange**, au **rouge**, puis à l'**écarlate** quand elle se dégrade. Les seuils sont réglables. Survolez l'icône pour voir pourquoi une valeur est colorée.
+Dans la barre de menus, chaque valeur choisie passe à l'**orange**, au **rouge**, puis à l'**écarlate** quand elle se dégrade. Les seuils se règlent sur une piste à trois poignées. Survolez l'icône pour voir pourquoi une valeur est colorée. Dans les Réglages, un aperçu en direct de la barre de menus permet de réordonner les éléments en les glissant et, si vous activez la recherche de l'IP publique, le drapeau du pays de votre IP publique s'affiche à côté du débit réseau.
 
 ### Recommandations et conseils
 
@@ -48,7 +48,7 @@ L'app est signée avec un Developer ID et notarisée par Apple. Elle se met à j
 ## Vie privée
 
 - Soaro travaille **en local**. L'historique reste dans `~/Library/Application Support/Soaro`, pendant 30 jours.
-- Deux options sont **désactivées par défaut** : le test de latence (un petit ping vers `1.1.1.1`) et la recherche d'IP publique et de pays. Cette recherche interroge un service tiers (ipwho.is, ou ipapi.co en secours), qui voit alors votre IP publique. La détection du VPN est entièrement locale.
+- Deux options sont **désactivées par défaut** : le test de latence (un petit ping vers `1.1.1.1`) et la recherche d'IP publique et de pays. Cette recherche interroge un service tiers (ipwho.is, ou ipapi.co en secours), qui voit alors votre IP publique. Elle l'interroge quand l'onglet Réseau est ouvert et tant que le drapeau du pays est affiché dans la barre des menus : environ toutes les 5 minutes, et de nouveau quand votre réseau ou votre VPN change. La détection du VPN est entièrement locale.
 - La vérification des mises à jour télécharge un fichier public sur soaro.app, une fois par jour, sans aucune donnée personnelle.
 - Pas de compte, pas de statistiques, pas de pistage dans l'app. Le site soaro.app compte les visites avec [Umami](https://umami.is), sans cookie.
 

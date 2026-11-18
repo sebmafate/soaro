@@ -102,35 +102,94 @@ enum MenuBarItem: Equatable {
     case stacked(label: String, value: String, level: PressureLevel = .normal)
     /// Deux lignes alignées à droite (envoi / réception).
     case pair(top: String, bottom: String)
+    /// Drapeau du pays de l'IP publique (SL19), à droite du bloc réseau. Ne porte que le code : l'adresse IP n'arrive jamais ici.
+    case flag(countryCode: String)
+    /// Batterie (SL21) : l'icône suivie du pourcentage, sur une seule ligne, sans libellé « BAT ».
+    /// `percent` est le pourcentage entier affiché (0…100) : la même valeur dessine le remplissage et écrit le texte.
+    case battery(percent: Int, power: BatteryPowerState, level: PressureLevel = .normal)
 
     var level: PressureLevel {
-        if case .stacked(_, _, let level) = self { return level }
-        return .normal
+        switch self {
+        case .stacked(_, _, let level), .battery(_, _, let level): level
+        case .pair, .flag: .normal
+        }
     }
 
-    /// Mesures choisies dans les réglages, dans un ordre fixe.
+    /// Mesures choisies dans les réglages, dans l'ordre voulu (SL22 ; sans `order`, l'ordre fixe de toujours).
+    /// Une mesure cachée ou non disponible est sautée. Le drapeau suit toujours le bloc réseau, où qu'il soit.
     static func items(for s: SystemSnapshot, cpu: Bool, gpu: Bool, memory: Bool, disk: Bool, network: Bool, battery: Bool,
-                      thresholds t: PressureThresholds = .default) -> [MenuBarItem] {
+                      thresholds t: PressureThresholds = .default, publicIPCountryCode: String? = nil,
+                      order: MenuBarOrder = .default) -> [MenuBarItem] {
         var items: [MenuBarItem] = []
-        if cpu { items.append(.stacked(label: "CPU", value: Format.percent(s.cpu.total), level: .load(s.cpu.total, thresholds: t.load))) }
-        if gpu, let g = s.gpu { items.append(.stacked(label: "GPU", value: Format.percent(g.utilization), level: .load(g.utilization, thresholds: t.load))) }
-        if memory { items.append(.stacked(label: "RAM", value: Format.percent(s.memory.usedFraction), level: .memory(s.memory))) }
-        if disk { items.append(.stacked(label: "SSD", value: Format.percent(s.disk.usedFraction), level: .disk(s.disk.usedFraction, thresholds: t.disk))) }
-        if network, let n = s.network {
-            items.append(.pair(top: "↑ " + Format.menuBarRate(n.upRate), bottom: "↓ " + Format.menuBarRate(n.downRate)))
-        }
-        if battery, let b = s.battery {
-            items.append(.stacked(label: b.isCharging ? "BAT ⚡︎" : "BAT", value: Format.percent(b.percent / 100), level: .battery(b, thresholds: t.battery)))
+        for measure in order.measures {
+            switch measure {
+            case .cpu:
+                if cpu { items.append(.stacked(label: "CPU", value: Format.percent(s.cpu.total), level: .load(s.cpu.total, thresholds: t.load))) }
+            case .gpu:
+                if gpu, let g = s.gpu { items.append(.stacked(label: "GPU", value: Format.percent(g.utilization), level: .load(g.utilization, thresholds: t.load))) }
+            case .memory:
+                if memory { items.append(.stacked(label: "RAM", value: Format.percent(s.memory.usedFraction), level: .memory(s.memory))) }
+            case .disk:
+                if disk { items.append(.stacked(label: "SSD", value: Format.percent(s.disk.usedFraction), level: .disk(s.disk.usedFraction, thresholds: t.disk))) }
+            case .network:
+                if network, let n = s.network {
+                    items.append(.pair(top: "↑ " + Format.menuBarRate(n.upRate), bottom: "↓ " + Format.menuBarRate(n.downRate)))
+                    // Seulement avec le bloc réseau, et seulement si la police d'émojis a un drapeau pour ce code.
+                    if let code = publicIPCountryCode?.uppercased(), MenuBarFlag.emoji(forCountryCode: code) != nil {
+                        items.append(.flag(countryCode: code))
+                    }
+                }
+            case .battery:
+                if battery, let b = s.battery {
+                    items.append(.battery(percent: wholePercent(b.percent), power: b.powerState, level: .battery(b, thresholds: t.battery)))
+                }
+            }
         }
         return items
     }
 
-    /// Version texte sur une ligne (style « classique »).
+    /// La mesure que montre cet élément (`nil` pour le drapeau, qui n'est pas une mesure).
+    var measure: MenuBarMeasure? {
+        switch self {
+        case .stacked(let label, _, _):
+            switch label {
+            case "CPU": .cpu
+            case "GPU": .gpu
+            case "RAM": .memory
+            case "SSD": .disk
+            default: nil
+            }
+        case .pair: .network
+        case .battery: .battery
+        case .flag: nil
+        }
+    }
+
+    /// Pourcentage entier, entre 0 et 100 : ce que montrent le texte et le remplissage de l'icône.
+    static func wholePercent(_ percent: Double) -> Int {
+        percent.isNaN ? 0 : Int(min(100, max(0, percent)).rounded())
+    }
+
+    /// Texte du pourcentage de la batterie.
+    static func batteryValue(_ percent: Int) -> String { Format.percent(Double(percent) / 100) }
+
+    /// Une image « modèle » est monochrome : un drapeau en couleur doit donc passer par une image qui porte ses couleurs.
+    var isFlag: Bool {
+        if case .flag = self { return true }
+        return false
+    }
+
+    /// Version texte sur une ligne (style « classique »). Le drapeau suit le bloc réseau, sans séparateur.
     static func inlineText(_ items: [MenuBarItem]) -> String? {
-        let parts = items.map { item -> String in
+        var parts: [String] = []
+        for item in items {
             switch item {
-            case .stacked(let label, let value, _): "\(label) \(value)"
-            case .pair(let top, let bottom): "\(bottom) \(top)"
+            case .stacked(let label, let value, _): parts.append("\(label) \(value)")
+            case .battery(let percent, let power, _): parts.append("\(power == .charging ? "BAT ⚡︎" : "BAT") \(batteryValue(percent))")
+            case .pair(let top, let bottom): parts.append("\(bottom) \(top)")
+            case .flag(let code):
+                guard let flag = MenuBarFlag.emoji(forCountryCode: code) else { continue }
+                if parts.isEmpty { parts.append(flag) } else { parts[parts.count - 1] += " " + flag }
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -139,6 +198,10 @@ enum MenuBarItem: Equatable {
 
 /// Le libellé d'un `MenuBarExtra` n'affiche que du texte et des images simples : on dessine donc tout le
 /// libellé (icône, badge d'alerte, mesures) dans une image « modèle », qui suit le thème clair/sombre de la barre.
+///
+/// **Une image dessinée à l'échelle de l'écran où elle s'affiche (SL23).** L'image est un `NSImage(size:flipped:drawingHandler:)` : AppKit
+/// appelle le dessin au moment d'afficher, avec le contexte de l'écran réel (1x, 2x…), et le rappelle quand la fenêtre change d'écran.
+/// Le dessin lit l'échelle dans le contexte, jamais dans `NSScreen.main` (l'écran de la fenêtre active, qui n'est pas celui de la barre).
 @MainActor
 enum MenuBarRenderer {
     private struct Key: Equatable {
@@ -146,25 +209,54 @@ enum MenuBarRenderer {
         var compact: Bool
         var items: [MenuBarItem]
         var darkBar: Bool
+        var increasedContrast: Bool
     }
+    /// Une seule image pour toutes les échelles : la clé ne contient PAS l'échelle (le dessin se refait par échelle, dans l'image).
     private static var cache: (key: Key, image: NSImage)?
 
     /// Recalculée seulement si une valeur affichée change.
-    static func image(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool? = nil) -> NSImage? {
+    static func image(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool? = nil, increasedContrast: Bool? = nil) -> NSImage? {
         let darkBar = darkBar ?? isMenuBarDark
+        // Le trait de l'icône de batterie s'épaissit avec « Augmenter le contraste » : `ImageRenderer` ne voit pas ce réglage, on le lit ici.
+        let contrast = increasedContrast ?? NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         // Tant que tout est normal, image « modèle » : macOS la teinte lui-même (rendu le plus fidèle).
         // Dès qu'une valeur doit être colorée, l'image porte ses propres couleurs, dont le blanc/noir du reste.
-        let colored = items.contains { $0.level > .normal }
-        let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar)
+        // Un drapeau (SL19) y oblige aussi : une image modèle est monochrome (seul son alpha compte), il deviendrait une silhouette.
+        let colored = items.contains { $0.level > .normal || $0.isFlag }
+        let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar, increasedContrast: contrast)
         if let cache, cache.key == key { return cache.image }
 
-        let base: Color = colored ? (darkBar ? .white : .black) : .black
-        let renderer = ImageRenderer(content: MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base))
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return nil }
+        let image = scaledImage(severity: severity, compact: compact, items: items, darkBar: darkBar, colored: colored, increasedContrast: contrast)
         image.isTemplate = !colored
         cache = (key, image)
         return image
+    }
+
+    /// L'image du libellé pour l'aperçu des Réglages (SL22, SL23) : le MÊME dessin que le vrai libellé, mais toujours « non modèle » et à la couleur
+    /// de la bande (blanc sur bande sombre, noir sur bande claire) : une image modèle n'est teintée que par macOS, dans la vraie barre.
+    static func previewImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkStrip: Bool, increasedContrast: Bool) -> NSImage {
+        scaledImage(severity: severity, compact: compact, items: items, darkBar: darkStrip, colored: true, increasedContrast: increasedContrast)
+    }
+
+    /// Le nombre de pixels par point d'un contexte de dessin (1, 2, 3…), arrondi à l'entier le plus proche : la grille de pixels de l'écran.
+    nonisolated static func pixelScale(of context: CGContext) -> Int {
+        let t = context.userSpaceToDeviceSpaceTransform
+        let scale = hypot(t.a, t.b)
+        return scale.isFinite && scale >= 1 ? Int(scale.rounded()) : 1
+    }
+
+    /// L'image dynamique : sa taille en points ne dépend pas de l'échelle, son dessin se refait à chaque échelle demandée (AppKit rappelle le
+    /// dessin quand la fenêtre change d'écran). Le dessin ne touche qu'à des valeurs copiées ici : il peut être appelé hors du fil principal.
+    private static func scaledImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool, colored: Bool, increasedContrast: Bool) -> NSImage {
+        let layout = MenuBarLabelLayout(items: items, compact: compact, severity: severity)
+        let base = CGColor(gray: colored && darkBar ? 1 : 0, alpha: 1)
+        let palette = LabelPalette.make(darkBar: darkBar, base: base)
+        let size = NSSize(width: layout.widthPoints, height: MenuBarLabelLayout.height)
+        return NSImage(size: size, flipped: true) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            MenuBarLabelDrawer.draw(items: items, layout: layout, palette: palette, increasedContrast: increasedContrast, scale: pixelScale(of: context), in: context)
+            return true
+        }
     }
 }
 
@@ -178,6 +270,35 @@ extension MenuBarRenderer {
             .filter { String(describing: type(of: $0)).contains("StatusBar") }
             .compactMap(\.contentView)
             .flatMap(find)
+    }
+
+    /// Met l'image dynamique du libellé sur le bouton de barre de menus, SANS y toucher (même instance : AppKit la redessine à l'échelle de
+    /// l'écran du bouton, et de nouveau quand le bouton change d'écran).
+    ///
+    /// Le `MenuBarExtra` de SwiftUI peut aplatir l'image du libellé une fois, à une seule échelle. On ne remplace donc que l'image d'un bouton
+    /// qui en porte déjà une (SwiftUI l'a posée) et qui n'est pas la nôtre ; un bouton sans image (SwiftUI y héberge une vue) n'est pas touché.
+    /// Renvoie le nombre de boutons mis à jour.
+    @discardableResult
+    static func install(_ image: NSImage, on buttons: [NSButton]) -> Int {
+        var updated = 0
+        for button in buttons where button.image != nil && button.image !== image {
+            button.image = image
+            updated += 1
+        }
+        return updated
+    }
+
+    @discardableResult
+    static func installOnStatusBarButtons(_ image: NSImage) -> Int { install(image, on: statusBarButtons) }
+
+    /// Ce que porte chaque bouton (mode `SOARO_DEBUG`) : pour savoir si SwiftUI a posé l'image telle quelle ou une copie aplatie.
+    static func describeButtons(comparedTo image: NSImage?) -> String {
+        statusBarButtons.map { button in
+            let current = button.image
+            let reps = current?.representations.map { String(describing: type(of: $0)) } ?? []
+            let same = current != nil && current === image
+            return "button image: \(current == nil ? "nil" : "oui") sameInstance=\(same) size=\(current?.size ?? .zero) template=\(current?.isTemplate ?? false) reps=\(reps) window=\(button.window?.screen?.backingScaleFactor ?? 0)x"
+        }.joined(separator: "\n")
     }
 
     private static var statusBarWindows: [NSWindow] {
@@ -273,85 +394,17 @@ struct BrandGlyph: Shape {
     }
 }
 
-struct MenuBarWidgetsView: View {
-    let severity: Severity?
-    let compact: Bool
-    let items: [MenuBarItem]
-    var baseColor: Color = .black
-
-    var body: some View {
-        HStack(spacing: compact ? 9 : 6) {
-            brand
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                switch item {
-                case .stacked(let label, let value, let level):
-                    if compact {
-                        VStack(spacing: -1) {
-                            Text(label).font(.system(size: 7.5, weight: .medium))
-                            valueText(value, level: level, size: 12)
-                        }
-                        .frame(minWidth: 31)          // largeur mini : « 9% » et « 100% » ne décalent pas les voisins
-                    } else {
-                        HStack(spacing: 3) {
-                            Text(label).font(.system(size: 13))
-                            valueText(value, level: level, size: 13)
-                        }
-                    }
-                case .pair(let top, let bottom):
-                    if compact {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            Text(top)
-                            Text(bottom)
-                        }
-                        .font(.system(size: 9, weight: .medium)).monospacedDigit()
-                        .frame(minWidth: 54, alignment: .trailing)     // largeur de « ↓ 999 KB/s » : le bloc réseau ne bouge plus
-                    } else {
-                        Text("\(bottom) \(top)").font(.system(size: 13)).monospacedDigit()
-                    }
-                }
-            }
-        }
-        .foregroundStyle(baseColor)
-        .frame(height: 22)
-        .fixedSize()
-    }
-
-    /// Orange puis rouge colorent le texte. Le niveau critique passe en pastille écarlate : sur une barre de menus,
-    /// rouge et écarlate en simple texte seraient indiscernables (et la couleur seule ne suffit pas aux daltoniens).
-    @ViewBuilder private func valueText(_ value: String, level: PressureLevel, size: CGFloat) -> some View {
-        let text = Text(value).font(.system(size: size, weight: compact ? .semibold : .regular)).monospacedDigit()
-        if level == .critical {
-            text.foregroundStyle(.white)
-                .padding(.horizontal, 3)
-                .background(PressureLevel.scarlet, in: RoundedRectangle(cornerRadius: 3.5))
-        } else if let color = level.color {
-            text.foregroundStyle(color)
-        } else {
-            text
-        }
-    }
-
-    /// L'icône de l'app est toujours là ; une alerte s'ajoute en petit badge au lieu de la remplacer.
-    private var brand: some View {
-        HStack(alignment: .top, spacing: 1.5) {
-            BrandGlyph()
-                .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                .frame(width: 16, height: 12)
-            switch severity {
-            case .critical:
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 8, weight: .bold))
-            case .warning:
-                Circle().frame(width: 4.5, height: 4.5)
-            default:
-                EmptyView()
-            }
-        }
-    }
-}
-
 /// Texte de l'infobulle : pourquoi il y a un badge d'alerte, et pourquoi une valeur est en couleur.
 enum MenuBarTooltip {
-    static func text(recommendations: [Recommendation], snapshot: SystemSnapshot?, items: [MenuBarItem]) -> String {
+    /// Langue de l'app (pas celle des réglages régionaux) pour écrire le nom du pays.
+    static var appLocale: Locale { Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en") }
+
+    /// « France », « フランス »… : calculé localement à partir du code, sans rien demander au service.
+    static func countryName(code: String, locale: Locale = appLocale) -> String {
+        locale.localizedString(forRegionCode: code) ?? code
+    }
+
+    static func text(recommendations: [Recommendation], snapshot: SystemSnapshot?, items: [MenuBarItem], locale: Locale = appLocale) -> String {
         var lines: [String] = []
 
         let alerts = recommendations.filter { $0.severity >= .warning }
@@ -372,6 +425,20 @@ enum MenuBarTooltip {
             lines.append(String(localized: "Colored values:"))
             lines.append(contentsOf: colored.map { "• \($0)" })
         }
+        // L'état d'alimentation (l'icône dessine un éclair ou une prise, l'infobulle le dit avec des mots déjà traduits).
+        if let power = items.compactMap({ item -> String? in
+            guard case .battery(let percent, let power, _) = item, power != .onBattery else { return nil }
+            let state = power == .charging ? String(localized: "Charging") : String(localized: "On power adapter")
+            return "\(String(localized: "Battery")): \(MenuBarItem.batteryValue(percent)) · \(state)"
+        }).first {
+            lines.append("")
+            lines.append(power)
+        }
+        // Le pays de l'IP publique (jamais l'adresse elle-même) quand le drapeau est affiché.
+        if let code = items.compactMap({ item -> String? in if case .flag(let code) = item { code } else { nil } }).first {
+            lines.append("")
+            lines.append(String(localized: "Public IP country: \(countryName(code: code, locale: locale))"))
+        }
         if !suggestions.isEmpty {
             lines.append("")
             lines.append(suggestions.count == 1 ? String(localized: "1 suggestion:") : String(localized: "\(suggestions.count) suggestions:"))
@@ -383,14 +450,17 @@ enum MenuBarTooltip {
     /// Une phrase par valeur colorée, avec la vraie raison (pas seulement le pourcentage).
     static func explanations(for items: [MenuBarItem], snapshot s: SystemSnapshot) -> [String] {
         items.compactMap { item in
-            guard case .stacked(let label, let value, let level) = item, level > .normal else { return nil }
-            let suffix = String(localized: "(level: \(level.label))")
+            guard item.level > .normal else { return nil }
+            let suffix = String(localized: "(level: \(item.level.label))")
+            if case .battery(let percent, _, _) = item {
+                return String(localized: "Battery at \(MenuBarItem.batteryValue(percent)), not plugged in \(suffix)")
+            }
+            guard case .stacked(let label, let value, _) = item else { return nil }
             switch label.prefix(3) {
             case "CPU": return String(localized: "Processor at \(value) \(suffix)")
             case "GPU": return String(localized: "Graphics processor at \(value) \(suffix)")
             case "RAM": return String(localized: "Memory: \(s.memory.pressure.label.lowercased()) pressure, swap \(Format.bytes(s.memory.swapUsed)) \(suffix)")
             case "SSD": return String(localized: "Disk \(value) full, \(Format.fileBytes(s.disk.available)) free \(suffix)")
-            case "BAT": return String(localized: "Battery at \(value), not plugged in \(suffix)")
             default: return "\(label) \(value) \(suffix)"
             }
         }

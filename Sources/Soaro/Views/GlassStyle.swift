@@ -8,7 +8,8 @@ private struct GlassSurfaceKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    /// `true` dans la fenêtre indépendante : les cartes y sont en verre. Le panneau de la barre de menus garde son style sobre.
+    /// `true` : les cartes sont en verre. Faux par défaut (panneau de la barre de menus, style à plat). La fenêtre indépendante
+    /// le pose depuis `WindowSurface.cardsAreGlass` : depuis l'expérience 1.2.0 (zone principale opaque) il y est faux aussi.
     var glassSurface: Bool {
         get { self[GlassSurfaceKey.self] }
         set { self[GlassSurfaceKey.self] = newValue }
@@ -60,6 +61,50 @@ struct CardBackground: ViewModifier {
 extension View {
     func cardBackground(tint: Color? = nil, flatOpacity: Double = 0.5) -> some View {
         modifier(CardBackground(tint: tint, flatOpacity: flatOpacity))
+    }
+}
+
+// MARK: - Surfaces de la fenêtre (expérience 1.2.0)
+
+/// EXPÉRIENCE 1.2.0, à confirmer par l'auteur : dans la fenêtre indépendante uniquement, le contenu de la zone principale (colonne de
+/// détail, sous la barre de titre et la barre d'outils) est opaque ; la barre latérale et la bande de la barre de titre restent
+/// translucides (le flou de `WindowGlassBackground`, posé derrière toute la fenêtre, ne se voit qu'à travers elles), et les cartes passent du verre à l'aplat doux du panneau
+/// (le verre n'aurait rien à réfracter sur un fond opaque).
+///
+/// POUR REVENIR À L'ÉTAT 1.1.0 : mettre `opaqueMainArea` à `false`. Rien d'autre à toucher.
+enum WindowSurface {
+    static let opaqueMainArea = true
+
+    /// Les cartes de la fenêtre sont en verre quand la zone principale est translucide, à plat quand elle est opaque.
+    static func cardsAreGlass(opaqueMainArea: Bool) -> Bool { !opaqueMainArea }
+    static var cardsAreGlass: Bool { cardsAreGlass(opaqueMainArea: opaqueMainArea) }
+
+    /// Fond de la zone principale : `textBackgroundColor` (blanc en clair, #1E1E1E en sombre, opaque, s'adapte au thème et à
+    /// « Augmenter le contraste »). C'est exactement le fond de référence sur lequel DESIGN.md calcule ses rapports de contraste ;
+    /// `windowBackgroundColor` (gris #ECECEC / #323232) en donnerait de plus faibles (texte de soutien ≈ 4,7 : 1 en clair).
+    static let mainAreaNSColor = NSColor.textBackgroundColor
+    static var mainAreaColor: Color { Color(nsColor: mainAreaNSColor) }
+}
+
+extension View {
+    /// Fond opaque de la colonne de détail, limité au contenu : il s'arrête sous la barre de titre et la barre d'outils, où l'on voit
+    /// le fond translucide de la fenêtre (comme la barre latérale), flouté par `TitleBarBlur` pour garder le titre lisible quand le
+    /// contenu défile dessous. Sans effet si l'expérience est coupée.
+    @ViewBuilder func windowMainAreaBackground() -> some View {
+        if WindowSurface.opaqueMainArea {
+            background(WindowSurface.mainAreaColor)
+        } else {
+            self
+        }
+    }
+
+    /// Le message passager recouvre le contenu qui défile : à plat et translucide il serait illisible, on lui donne un fond plein.
+    @ViewBuilder func windowToastBase() -> some View {
+        if WindowSurface.opaqueMainArea {
+            background(WindowSurface.mainAreaColor, in: RoundedRectangle(cornerRadius: 10))
+        } else {
+            self
+        }
     }
 }
 

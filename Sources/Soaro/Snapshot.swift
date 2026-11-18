@@ -74,11 +74,13 @@ enum Snapshot {
     private static func captureMenuBar(state: AppState, directory: String) {
         guard let snap = state.snapshot else { return }
         let compact = !CommandLine.arguments.contains("--inline")
-        let real = MenuBarItem.items(for: snap, cpu: true, gpu: true, memory: true, disk: true, network: true, battery: true)
+        let flagCode = MenuBarFlag.countryCode(lookupEnabled: state.publicIPEnabled, demo: DemoMode.isEnabled, info: state.publicIP, matchesNetwork: state.publicIPMatchesNetwork, now: Date())
+        let real = MenuBarItem.items(for: snap, cpu: true, gpu: true, memory: true, disk: true, network: true, battery: true, publicIPCountryCode: flagCode)
         let demo: [MenuBarItem] = [
             .stacked(label: "CPU", value: "34%", level: .normal), .stacked(label: "GPU", value: "72%", level: .medium),
             .stacked(label: "RAM", value: "83%", level: .high), .stacked(label: "SSD", value: "97%", level: .critical),
-            .pair(top: "↑ 6 KB/s", bottom: "↓ 8 KB/s"),
+            .pair(top: "↑ 6 KB/s", bottom: "↓ 8 KB/s"), .flag(countryCode: "FR"),
+            .battery(percent: 18, power: .onBattery, level: .medium),
         ]
         for (name, items, severity) in [("menubar", real, Severity?.none), ("menubar-demo", demo, Severity.warning)] {
             for dark in [true, false] {
@@ -99,12 +101,15 @@ enum Snapshot {
         NSRect(origin: .zero, size: size).fill()
         let rect = NSRect(x: 10 * scale, y: 4 * scale, width: image.size.width * scale, height: image.size.height * scale)
         if image.isTemplate {
-            // Simule la teinte appliquée par macOS à une image modèle.
-            image.draw(in: rect)
+            // Simule la teinte appliquée par macOS à une image modèle : l'image est teinte seule (sur fond transparent), puis posée sur le fond.
+            // (Teinter directement sur le fond opaque, avec `sourceAtop`, colorait tout le rectangle.)
+            let tinted = NSImage(size: image.size)
+            tinted.lockFocus()
+            image.draw(at: .zero, from: .zero, operation: .sourceOver, fraction: 1)
             (dark ? NSColor.white : NSColor.black).set()
-            rect.fill(using: .sourceAtop)
-            NSColor(white: dark ? 0.16 : 0.9, alpha: 1).set()
-            rect.fill(using: .destinationOver)
+            NSRect(origin: .zero, size: image.size).fill(using: .sourceAtop)
+            tinted.unlockFocus()
+            tinted.draw(in: rect)
         } else {
             image.draw(in: rect)
         }

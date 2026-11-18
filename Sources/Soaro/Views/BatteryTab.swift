@@ -19,27 +19,8 @@ struct BatteryTab: View {
     // MARK: Jauge
 
     private func gauge(_ b: BatteryStats) -> some View {
-        let fraction = b.percent / 100
-        let color: Color = b.isPluggedIn ? .green : levelColor(fraction)
-        return HStack(spacing: 18) {
-            ZStack {
-                // `inset` : le trait est centré sur le bord, sans marge il déborderait du cadre.
-                Circle().inset(by: 6).stroke(.quaternary, lineWidth: 11)
-                Circle().inset(by: 6)
-                    .trim(from: 0, to: fraction)
-                    .stroke(color, style: StrokeStyle(lineWidth: 11, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                VStack(spacing: 0) {
-                    Text(Format.percent(fraction))
-                        .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
-                    Image(systemName: b.isCharging ? "bolt.fill" : (b.isPluggedIn ? "powerplug.fill" : "battery.50percent"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: 112, height: 112)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Battery level")
-            .accessibilityValue(Format.percent(fraction))
+        HStack(spacing: 18) {
+            ring(b, thresholds: PressureThresholds.load().battery)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(statusTitle(b)).font(.headline)
@@ -51,6 +32,30 @@ struct BatteryTab: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
+    }
+
+    /// L'anneau de niveau, avec le pourcentage et l'icône de batterie (SL24 : l'image nette de la barre de menus) ; sans état, donc rendu tel quel par les tests.
+    func ring(_ b: BatteryStats, thresholds: LevelThresholds) -> some View {
+        let fraction = b.percent / 100
+        // Même niveau que le glyphe et la valeur de la barre de menus : les seuils réglés, pas une règle fixe.
+        let color = BatteryGlyphColors.barTint(for: b, thresholds: thresholds)
+        return ZStack {
+            // `inset` : le trait est centré sur le bord, sans marge il déborderait du cadre.
+            Circle().inset(by: 6).stroke(.quaternary, lineWidth: 11)
+            Circle().inset(by: 6)
+                .trim(from: 0, to: fraction)
+                .stroke(color, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            VStack(spacing: 0) {
+                Text(Format.percent(fraction))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
+                BatteryGlyphImage(percent: b.percent, power: b.powerState, level: .battery(b, thresholds: thresholds), body: BatteryGlyphGeometry.tabBody)
+            }
+        }
+        .frame(width: 112, height: 112)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Battery level")
+        .accessibilityValue(Format.percent(fraction))
     }
 
     private func statusTitle(_ b: BatteryStats) -> String {

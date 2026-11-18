@@ -1565,6 +1565,58 @@
         }
       }
     },
+    "%lld %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %%"
+          }
+        }
+      }
+    },
     "%lld %% battery left. This mode lowers brightness and background activity to extend battery life.": {
       "localizations": {
         "de": {
@@ -4058,6 +4110,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "行为"
+          }
+        }
+      }
+    },
+    "below %lld %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unter %lld %%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "por debajo de %lld %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "en dessous de %lld %%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sotto il %lld %%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% 未満"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% 미만"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abaixo de %lld %%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低于 %lld %%"
           }
         }
       }
@@ -9470,6 +9574,58 @@
         }
       }
     },
+    "from %lld %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ab %lld %%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "desde %lld %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "à partir de %lld %%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "da %lld %%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% から"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld %% 이상"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a partir de %lld %%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从 %lld %% 起"
+          }
+        }
+      }
+    },
     "Full in %@": {
       "localizations": {
         "de": {
@@ -14150,6 +14306,110 @@
         }
       }
     },
+    "now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "jetzt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ahora"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "actuel"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "agora"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前"
+          }
+        }
+      }
+    },
+    "Now: %lld %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuell: %lld %%"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora: %lld %%"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actuellement : %lld %%"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora: %lld %%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在：%lld %%"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재: %lld %%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agora: %lld %%"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前：%lld %%"
+          }
+        }
+      }
+    },
     "NuGet packages": {
       "localizations": {
         "de": {
@@ -14202,54 +14462,54 @@
         }
       }
     },
-    "Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. At most one request every 5 minutes, only while the Network tab is open. Nothing is stored. VPN detection is entirely local.": {
+    "Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. It asks while the Network tab is open and while the country flag is shown in the menu bar: about every 5 minutes, and again when your network or VPN changes. Nothing is stored. VPN detection is entirely local.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Standardmäßig deaktiviert: Fragt einen Drittanbieterdienst ab (ipwho.is, ersatzweise ipapi.co), der dann Ihre öffentliche IP sieht. Höchstens eine Anfrage alle 5 Minuten, nur bei geöffnetem Tab „Netzwerk“. Nichts wird gespeichert. Die VPN-Erkennung erfolgt vollständig lokal."
+            "value": "Standardmäßig deaktiviert: Fragt einen Drittanbieterdienst ab (ipwho.is, ersatzweise ipapi.co), der dann Ihre öffentliche IP sieht. Die Abfrage erfolgt, solange der Tab „Netzwerk“ geöffnet ist und solange die Länderflagge in der Menüleiste angezeigt wird: etwa alle 5 Minuten und erneut, wenn sich Ihr Netzwerk oder Ihr VPN ändert. Nichts wird gespeichert. Die VPN-Erkennung erfolgt vollständig lokal."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desactivado por defecto: consulta un servicio de terceros (ipwho.is, o ipapi.co como alternativa), que entonces ve tu IP pública. Como máximo una solicitud cada 5 minutos, solo mientras la pestaña Red está abierta. No se guarda nada. La detección de VPN es totalmente local."
+            "value": "Desactivado por defecto: consulta un servicio de terceros (ipwho.is, o ipapi.co como alternativa), que entonces ve tu IP pública. Consulta mientras la pestaña Red está abierta y mientras la bandera del país se muestra en la barra de menús: más o menos cada 5 minutos, y de nuevo cuando cambia tu red o tu VPN. No se guarda nada. La detección de VPN es totalmente local."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Désactivé par défaut : interroge un service tiers (ipwho.is, ou ipapi.co en secours) qui voit alors votre IP publique. Au plus une requête toutes les 5 minutes, uniquement quand l'onglet Réseau est ouvert. Rien n'est enregistré. La détection du VPN, elle, est entièrement locale."
+            "value": "Désactivé par défaut : interroge un service tiers (ipwho.is, ou ipapi.co en secours) qui voit alors votre IP publique. Il est interrogé quand l'onglet Réseau est ouvert et tant que le drapeau du pays est affiché dans la barre des menus : environ toutes les 5 minutes, et de nouveau quand votre réseau ou votre VPN change. Rien n'est enregistré. La détection du VPN, elle, est entièrement locale."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Disattivata per impostazione predefinita: interroga un servizio di terze parti (ipwho.is, o ipapi.co come alternativa), che vede così il tuo IP pubblico. Al massimo una richiesta ogni 5 minuti, solo quando la scheda Rete è aperta. Non viene memorizzato nulla. Il rilevamento della VPN, invece, è interamente locale."
+            "value": "Disattivata per impostazione predefinita: interroga un servizio di terze parti (ipwho.is, o ipapi.co come alternativa), che vede così il tuo IP pubblico. Lo interroga quando la scheda Rete è aperta e finché la bandiera del paese è mostrata nella barra dei menu: circa ogni 5 minuti, e di nuovo quando cambia la rete o la VPN. Non viene memorizzato nulla. Il rilevamento della VPN, invece, è interamente locale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デフォルトではオフです。サードパーティのサービス（ipwho.is、予備として ipapi.co）に問い合わせるため、相手先にパブリック IP が知られます。リクエストは、ネットワークタブを開いているときのみ、5 分に 1 回までです。何も保存されません。VPN の検出はすべてこの Mac 内で行われます。"
+            "value": "デフォルトではオフです。サードパーティのサービス（ipwho.is、予備として ipapi.co）に問い合わせるため、相手先にパブリック IP が知られます。問い合わせは、ネットワークタブを開いているとき、およびメニューバーに国旗が表示されているときに行われ、約 5 分ごと、またネットワークや VPN が変わったときにも行われます。何も保存されません。VPN の検出はすべてこの Mac 内で行われます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기본적으로 꺼져 있어요. 서드 파티 서비스(ipwho.is, 보조로 ipapi.co)에 요청하므로 해당 서비스에서 공용 IP를 확인할 수 있어요. 요청은 5분에 최대 한 번, 네트워크 탭이 열려 있을 때만 보내요. 아무것도 저장되지 않아요. VPN 감지는 전적으로 이 Mac에서 이루어져요."
+            "value": "기본적으로 꺼져 있어요. 서드 파티 서비스(ipwho.is, 보조로 ipapi.co)에 요청하므로 해당 서비스에서 공용 IP를 확인할 수 있어요. 네트워크 탭이 열려 있을 때와 메뉴 막대에 국가 깃발이 표시되는 동안 요청하며, 약 5분마다 그리고 네트워크나 VPN이 바뀔 때 다시 요청해요. 아무것도 저장되지 않아요. VPN 감지는 전적으로 이 Mac에서 이루어져요."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Desativado por padrão: consulta um serviço de terceiros (ipwho.is, ou ipapi.co como reserva), que então vê seu IP público. No máximo uma solicitação a cada 5 minutos, apenas enquanto a aba Rede estiver aberta. Nada é armazenado. A detecção de VPN é totalmente local."
+            "value": "Desativado por padrão: consulta um serviço de terceiros (ipwho.is, ou ipapi.co como reserva), que então vê seu IP público. Ele é consultado enquanto a aba Rede estiver aberta e enquanto a bandeira do país aparecer na barra de menus: aproximadamente a cada 5 minutos, e de novo quando sua rede ou sua VPN mudar. Nada é armazenado. A detecção de VPN é totalmente local."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "默认关闭：会向第三方服务（ipwho.is，备用为 ipapi.co）发出请求，该服务将看到您的公网 IP。每 5 分钟最多请求一次，且仅在“网络”标签页打开时进行。不会存储任何内容。VPN 检测完全在本地进行。"
+            "value": "默认关闭：会向第三方服务（ipwho.is，备用为 ipapi.co）发出请求，该服务将看到您的公网 IP。在“网络”标签页打开时，以及菜单栏显示国家或地区旗帜期间，都会发出请求：大约每 5 分钟一次，并在网络或 VPN 变化时再次请求。不会存储任何内容。VPN 检测完全在本地进行。"
           }
         }
       }
@@ -16226,6 +16486,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "公网 IP 和国家或地区"
+          }
+        }
+      }
+    },
+    "Public IP country: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Land der öffentlichen IP: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "País de la IP pública: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pays de l’IP publique : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paese dell’IP pubblico: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パブリック IP の国：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공용 IP 국가: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "País do IP público: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公网 IP 的国家或地区：%@"
           }
         }
       }
@@ -20858,6 +21170,58 @@
         }
       }
     },
+    "Toggle Sidebar": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seitenleiste ein-/ausblenden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar u ocultar la barra lateral"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher ou masquer la barre latérale"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra o nascondi la barra laterale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイドバーを表示/非表示"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "사이드바 보기/가리기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar ou ocultar a barra lateral"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示或隐藏边栏"
+          }
+        }
+      }
+    },
     "Tools": {
       "localizations": {
         "de": {
@@ -22258,6 +22622,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "弱"
+          }
+        }
+      }
+    },
+    "Website": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Website"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sitio web"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site web"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sito web"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウェブサイト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "웹사이트"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "网站"
           }
         }
       }
@@ -24286,6 +24702,526 @@
           "stringUnit": {
             "state": "translated",
             "value": "Docker 引擎：%@（%@）"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteprima"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビュー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미리 보기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pré-visualização"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览"
+          }
+        }
+      }
+    },
+    "Nothing selected: only the Soaro icon shows": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nichts ausgewählt: Es wird nur das Soaro-Symbol angezeigt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada seleccionado: solo se muestra el icono de Soaro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien de sélectionné : seule l’icône de Soaro s’affiche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna selezione: viene mostrata solo l’icona di Soaro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何も選択されていません：Soaro のアイコンだけが表示されます"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택된 항목 없음: Soaro 아이콘만 표시돼요"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada selecionado: só o ícone do Soaro é exibido"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未选择任何内容：仅显示 Soaro 图标"
+          }
+        }
+      }
+    },
+    "Menu bar preview: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorschau der Menüleiste: %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa de la barra de menús: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçu de la barre de menus : %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteprima della barra dei menu: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メニューバーのプレビュー：%@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메뉴 막대 미리 보기: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pré-visualização da barra de menus: %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "菜单栏预览：%@"
+          }
+        }
+      }
+    },
+    "Move up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach oben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monter"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta su"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上へ移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위로 이동"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover para cima"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上移"
+          }
+        }
+      }
+    },
+    "Move down": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach unten"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descendre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta giù"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下へ移動"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아래로 이동"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mover para baixo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下移"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %2$lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld de %2$lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sur %2$lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld di %2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld 件中 %1$lld 番目"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld개 중 %1$lld번째"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld de %2$lld"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "第 %1$lld 项，共 %2$lld 项"
+          }
+        }
+      }
+    },
+    "Drag to change the order": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziehen, um die Reihenfolge zu ändern"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastra para cambiar el orden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites glisser pour changer l’ordre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascina per cambiare l’ordine"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ドラッグして順番を変更"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "끌어서 순서 바꾸기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste para mudar a ordem"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动以更改顺序"
+          }
+        }
+      }
+    },
+    "Drag the handles to change the order. The Soaro icon always comes first.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zieh an den Griffen, um die Reihenfolge zu ändern. Das Soaro-Symbol steht immer an erster Stelle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastra las asas para cambiar el orden. El icono de Soaro siempre va primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Faites glisser les poignées pour changer l’ordre. L’icône de Soaro reste toujours la première."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascina le maniglie per cambiare l’ordine. L’icona di Soaro è sempre la prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ハンドルをドラッグして順番を変更できます。Soaro のアイコンは常に先頭です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "핸들을 끌어서 순서를 바꿀 수 있어요. Soaro 아이콘은 항상 맨 앞에 있어요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arraste as alças para mudar a ordem. O ícone do Soaro fica sempre em primeiro lugar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动手柄即可更改顺序。Soaro 图标始终排在最前面。"
+          }
+        }
+      }
+    },
+    "Memory usage": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichernutzung"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uso de memoria"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisation de la mémoire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilizzo della memoria"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メモリ使用量"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모리 사용량"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uso de memória"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "内存使用情况"
+          }
+        }
+      }
+    },
+    "of %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "von %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sur %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "su %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全体 %@"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 %@"
           }
         }
       }

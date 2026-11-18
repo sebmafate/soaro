@@ -27,7 +27,7 @@ You can use it in two ways:
 - **The menu bar panel** gives a quick look and closes when you click elsewhere.
 - **The standalone window** has a sidebar and a translucent glass look. A pin button keeps it on top.
 
-In the menu bar, each value you choose turns **orange**, **red**, then **scarlet** as it gets worse. You can change the thresholds. Hover over the icon to see why something is colored.
+In the menu bar, each value you choose turns **orange**, **red**, then **scarlet** as it gets worse. You can change the thresholds on one track with three handles. Hover over the icon to see why something is colored. In Settings, a live preview of the menu bar lets you reorder the items by dragging them, and, if you turn the public IP lookup on, the flag of your public IP's country shows next to the network speed.
 
 ### Recommendations and tips
 
@@ -48,7 +48,7 @@ The app is signed with a Developer ID and notarized by Apple. It updates itself 
 ## Privacy
 
 - Soaro runs **locally**. Your history stays in `~/Library/Application Support/Soaro` and is kept for 30 days.
-- Two options are **off by default**: the latency test (a small ping to `1.1.1.1`) and the public IP and country lookup. The lookup asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. VPN detection is fully local.
+- Two options are **off by default**: the latency test (a small ping to `1.1.1.1`) and the public IP and country lookup. The lookup asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. It asks while the Network tab is open and while the country flag is shown in the menu bar: about every 5 minutes, and again when your network or VPN changes. VPN detection is fully local.
 - The update check downloads a public file from soaro.app once a day. It sends no personal data.
 - There is no account, no analytics and no tracking in the app. The website soaro.app counts visits with [Umami](https://umami.is), without cookies.
 

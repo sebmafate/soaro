@@ -41,8 +41,24 @@ import Testing
             let text = try String(contentsOf: file, encoding: .utf8)
             #expect(!text.isEmpty, "\(file.lastPathComponent) vide")
             for forbidden in ["keyboardShortcut", "defaultAction", "onKeyPress", "onSubmit"] {
+                // SL17 : une seule exception, la piste des seuils de couleur (Réglages), dont les poignées se règlent aux flèches,
+                // à Début et à Fin. Elle ne supprime rien ; `theOnlyKeyPressExceptionHandlesNothingButArrowsHomeAndEnd` la borne.
+                if forbidden == "onKeyPress", file.lastPathComponent == Self.keyPressException { continue }
                 #expect(!text.contains(forbidden), "\(forbidden) ne doit pas apparaître dans \(file.lastPathComponent)")
             }
+        }
+    }
+
+    static let keyPressException = "ThresholdTrack.swift"
+
+    /// L'exception ne réagit qu'aux flèches, à Début et à Fin : jamais à Retour, Espace, Suppr., Échap ni Tab.
+    @Test func theOnlyKeyPressExceptionHandlesNothingButArrowsHomeAndEnd() throws {
+        let file = RepositoryRoot.url().appendingPathComponent("Sources/Soaro/Views/\(Self.keyPressException)")
+        let text = try String(contentsOf: file, encoding: .utf8)
+        #expect(text.components(separatedBy: "onKeyPress").count == 2, "un seul onKeyPress attendu")
+        #expect(text.contains("onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .home, .end]"))
+        for forbidden in [".return", ".space", ".delete", ".deleteForward", ".escape", ".tab", "keyboardShortcut", "defaultAction", "onSubmit"] {
+            #expect(!text.contains(forbidden), "\(forbidden) ne doit pas apparaître dans \(Self.keyPressException)")
         }
     }
 }

@@ -27,15 +27,6 @@ func loadColor(_ fraction: Double) -> Color {
     }
 }
 
-/// Couleur d'un niveau où « bas » est mauvais (batterie, santé).
-func levelColor(_ fraction: Double) -> Color {
-    switch fraction {
-    case ..<0.2: .red
-    case ..<0.4: .orange
-    default: .green
-    }
-}
-
 struct Sparkline: View {
     let values: [Double]
     let color: Color
@@ -87,14 +78,12 @@ struct StatCard: View {
     var fraction: Double? = nil
     var history: [Double]? = nil
     var autoScaleFloor: Double? = nil
+    /// Icône dessinée à la place du symbole système (la batterie, SL21) ; `systemImage` n'est alors pas utilisé.
+    var icon: AnyView? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.supportingText)
-                .labelStyle(.titleAndIcon)
-                .lineLimit(1)
+            header
 
             Text(value)
                 .font(.system(size: valueSize, weight: .semibold, design: .rounded))
@@ -123,6 +112,25 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardBackground()
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var header: some View {
+        if let icon {
+            // Même gabarit que `Label` : icône, espace, titre, sur une ligne.
+            HStack(spacing: 4) {
+                icon
+                Text(title)
+            }
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.supportingText)
+            .lineLimit(1)
+        } else {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.supportingText)
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
+        }
     }
 }
 

@@ -24,7 +24,6 @@ import Testing
     static let allowed: [String: Int] = [
         "Views/Components.swift": 2,
         "Views/SelectionComponents.swift": 3,
-        "Views/BatteryTab.swift": 1,
         "Views/MainWindow.swift": 1,
         "Views/CleanupToolViews.swift": 2,
         "Views/CleanupTab.swift": 1,
