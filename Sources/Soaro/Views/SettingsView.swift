@@ -33,10 +33,12 @@ struct SettingsView: View {
             Section("Value colors") {
                 Text("In the menu bar, a value turns orange, then red, then scarlet when it crosses these thresholds.")
                     .font(.caption).foregroundStyle(.supportingText)
-                ThresholdEditor(title: "Processor and GPU (load)", thresholds: $thresholds.load, ascending: true)
-                ThresholdEditor(title: "Disk (space used)", thresholds: $thresholds.disk, ascending: true)
+                // Valeurs actuelles : l'instantané d'`AppState` (en mode démo, celui de la démonstration).
+                let live = ThresholdLiveValues(snapshot: state.snapshot)
+                ThresholdEditor(title: "Processor and GPU (load)", thresholds: $thresholds.load, ascending: true, current: live.load)
+                ThresholdEditor(title: "Disk (space used)", thresholds: $thresholds.disk, ascending: true, current: live.disk)
                 if state.hasBattery {
-                    ThresholdEditor(title: "Battery (level left, on battery power)", thresholds: $thresholds.battery, ascending: false)
+                    ThresholdEditor(title: "Battery (level left, on battery power)", thresholds: $thresholds.battery, ascending: false, current: live.battery)
                 }
                 Text("Memory has no threshold: its color follows the real pressure measured by macOS (orange: high pressure; red: with swap of at least half the RAM; scarlet: critical pressure).")
                     .font(.caption).foregroundStyle(.supportingText)
@@ -103,44 +105,6 @@ struct SettingsView: View {
     private func setLaunchAtLogin(_ enabled: Bool) {
         if !launchAtLogin.set(enabled) {
             state.showToast(String(localized: "Cannot open at login: put the app in Applications."))
-        }
-    }
-}
-
-/// Trois seuils réglables, toujours gardés dans l'ordre (chaque réglage est borné par ses voisins).
-struct ThresholdEditor: View {
-    let title: LocalizedStringKey
-    @Binding var thresholds: LevelThresholds
-    /// `true` : la valeur est mauvaise quand elle monte ; `false` : quand elle descend (batterie).
-    let ascending: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.callout.weight(.medium))
-            if ascending {
-                row(String(localized: "Orange"), .orange, $thresholds.medium, 5...(thresholds.high - 5))
-                row(String(localized: "Red"), .red, $thresholds.high, (thresholds.medium + 5)...(thresholds.critical - 5))
-                row(String(localized: "Scarlet"), PressureLevel.scarlet, $thresholds.critical, (thresholds.high + 5)...100)
-            } else {
-                row(String(localized: "Orange"), .orange, $thresholds.medium, (thresholds.high + 5)...95)
-                row(String(localized: "Red"), .red, $thresholds.high, (thresholds.critical + 5)...(thresholds.medium - 5))
-                row(String(localized: "Scarlet"), PressureLevel.scarlet, $thresholds.critical, 5...(thresholds.high - 5))
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func row(_ name: String, _ color: Color, _ value: Binding<Int>, _ range: ClosedRange<Int>) -> some View {
-        Stepper(value: value, in: range, step: 5) {
-            HStack(spacing: 6) {
-                Circle().fill(color).frame(width: 8, height: 8)
-                // « Orange from 60 % » / « Red below 20 % » : deux phrases entières, pour que chaque langue place les mots comme elle veut.
-                if ascending {
-                    Text("\(name) from \(value.wrappedValue) %").font(.callout).monospacedDigit()
-                } else {
-                    Text("\(name) below \(value.wrappedValue) %").font(.callout).monospacedDigit()
-                }
-            }
         }
     }
 }
