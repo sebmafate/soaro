@@ -21,8 +21,14 @@ enum ThresholdTrackMetrics {
     /// dépassent de la piste aux valeurs extrêmes.
     static let inset: CGFloat = 22
     /// Largeur la plus étroite où l'écran apparaît : le panneau de la barre de menus (430 pt), moins les marges du formulaire
-    /// groupé, mesurée par le rendu hors écran (SL17). La fenêtre est plus large.
-    static let narrowestContentWidth: Double = 330
+    /// groupé, mesurée par le rendu hors écran (SL17) : la piste y mesure 325 pt, plus 2 x 22 pt de marges. La fenêtre est plus large.
+    static let narrowestContentWidth: Double = 369
+
+    // Hauteurs (points) de la piste : rangée haute des étiquettes relevées, rangée basse, axe des poignées, hauteur totale (légende « now » comprise).
+    static let raisedLabelTop: CGFloat = 0
+    static let labelTop: CGFloat = 24
+    static let centreY: CGFloat = 54
+    static let totalHeight: CGFloat = 80
 
     /// Points d'écran par point de pourcentage, pour une piste dessinée dans `width` pt (marges comprises). 0 si la largeur ne laisse rien.
     static func pointsPerUnit(forWidth width: Double) -> Double {
