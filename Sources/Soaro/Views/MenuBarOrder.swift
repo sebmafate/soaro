@@ -1,8 +1,10 @@
 import Foundation
+import SwiftUI
+import UniformTypeIdentifiers
 
 /// Les six mesures que l'on peut afficher dans la barre de menus (SL22). Le drapeau n'en fait pas partie : il suit le réseau.
 /// Les identifiants (`rawValue`) sont écrits dans les préférences : ne pas les renommer.
-enum MenuBarMeasure: String, CaseIterable, Identifiable {
+enum MenuBarMeasure: String, CaseIterable, Identifiable, Codable {
     case cpu, gpu, memory, disk, network, battery
 
     var id: String { rawValue }
@@ -131,5 +133,32 @@ struct MenuBarOrder: Equatable {
     /// « 2 of 6 » : la valeur d'accessibilité d'une ligne (rang à partir de 1).
     static func positionText(index: Int, of count: Int) -> String {
         String(localized: "\(index + 1) of \(count)")
+    }
+}
+
+extension MenuBarOrder {
+    /// Phrase annoncée à VoiceOver après un déplacement par action d'accessibilité : « CPU load, 2 of 6 ».
+    static func announcement(title: String, index: Int, of count: Int) -> String {
+        "\(title), \(positionText(index: index, of: count))"
+    }
+
+    /// Pas d'animation de déplacement quand « Réduire les animations » est activé.
+    static func reorderAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .snappy(duration: 0.25)
+    }
+}
+
+extension UTType {
+    /// Type de la ligne que l'on glisse dans Réglages. Déclaré dans l'Info.plist de l'app (`scripts/build-app.sh`) : il ne sort pas de l'app,
+    /// et ne ressemble ni à du texte ni à un fichier (déposée ailleurs, la ligne ne produit rien).
+    static let menuBarMeasure = UTType(exportedAs: "app.soaro.menu-bar-measure", conformingTo: .data)
+}
+
+/// Ce que porte le glissement d'une ligne : l'identifiant de la mesure, rien d'autre.
+struct MenuBarMeasureDrag: Codable, Transferable {
+    let measure: MenuBarMeasure
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .menuBarMeasure)
     }
 }

@@ -12,9 +12,13 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.latency) private var latency = false
     @AppStorage(SettingsKey.menuBarDisk) private var showDisk = false
     @AppStorage(SettingsKey.menuBarCompact) private var compact = true
+    /// L'ordre des mesures dans la barre de menus (SL22) : lu et écrit par la liste ci-dessous, lu par le libellé réel.
+    @AppStorage(SettingsKey.menuBarOrder) private var orderSetting = MenuBarOrder.defaultSerialized
     @AppStorage(SettingsKey.publicIP) private var publicIP = false
     @StateObject private var launchAtLogin = LaunchAtLoginModel.live()
     @State private var thresholds = PressureThresholds.load()
+    @State private var dropTarget: MenuBarMeasure?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Form {
@@ -23,12 +27,13 @@ struct SettingsView: View {
                     Text("Compact (label above)").tag(true)
                     Text("Single line of text").tag(false)
                 }
-                Toggle("CPU load", isOn: $showCPU)
-                Toggle("GPU load", isOn: $showGPU)
-                Toggle("Memory used", isOn: $showMemory)
-                Toggle("Disk used", isOn: $showDisk)
-                if state.hasBattery { Toggle("Battery level", isOn: $showBattery) }
-                Toggle("Network speed", isOn: $showNetwork)
+                MenuBarPreview(items: previewItems, compact: compact, severity: previewSeverity)
+                Text("Drag the handles to change the order. The Soaro icon always comes first.")
+                    .font(.caption).foregroundStyle(.supportingText)
+                let rows = order.visible(hasBattery: state.hasBattery)
+                ForEach(Array(rows.enumerated()), id: \.element) { index, measure in
+                    measureRow(measure, index: index, count: rows.count, shown: Set(rows))
+                }
             }
             Section("Value colors") {
                 Text("In the menu bar, a value turns orange, then red, then scarlet when it crosses these thresholds.")
@@ -99,6 +104,94 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    // MARK: Ordre et aperçu de la barre de menus (SL22)
+
+    private var order: MenuBarOrder { MenuBarOrder(parsing: orderSetting) }
+
+    /// Les mêmes données que le libellé réel (`MenuBarLabel`) : mesure du moment (ou, sans mesure encore, les valeurs de démonstration),
+    /// seuils de couleur, drapeau de l'IP publique, ordre enregistré. En mode démo, `state.snapshot` est déjà celui de la démonstration.
+    private var previewItems: [MenuBarItem] {
+        let flagCode = MenuBarFlag.countryCode(lookupEnabled: publicIP, demo: DemoMode.isEnabled, info: state.publicIP,
+                                               matchesNetwork: state.publicIPMatchesNetwork, now: Date())
+        return MenuBarItem.items(for: state.snapshot ?? DemoData.snapshot(), cpu: showCPU, gpu: showGPU, memory: showMemory, disk: showDisk,
+                                 network: showNetwork, battery: showBattery, thresholds: thresholds, publicIPCountryCode: flagCode,
+                                 order: MenuBarOrder(parsing: orderSetting))
+    }
+
+    /// Comme dans le vrai libellé : une simple suggestion ne mérite pas de badge.
+    private var previewSeverity: Severity? { state.worstSeverity.flatMap { $0 >= .warning ? $0 : nil } }
+
+    private func isOn(_ measure: MenuBarMeasure) -> Binding<Bool> {
+        switch measure {
+        case .cpu: $showCPU
+        case .gpu: $showGPU
+        case .memory: $showMemory
+        case .disk: $showDisk
+        case .network: $showNetwork
+        case .battery: $showBattery
+        }
+    }
+
+    /// Écrit le nouvel ordre dans la préférence ; la liste, l'aperçu et le vrai libellé la relisent. Sans animation si « Réduire les animations » est actif.
+    private func change(_ edit: @escaping (inout MenuBarOrder) -> Void) {
+        let new = MenuBarOrder.edit(stored: orderSetting, edit)
+        guard new != orderSetting else { return }
+        withAnimation(MenuBarOrder.reorderAnimation(reduceMotion: reduceMotion)) { orderSetting = new }
+    }
+
+    private func announceMove(_ measure: MenuBarMeasure) {
+        let rows = order.visible(hasBattery: state.hasBattery)
+        guard let index = rows.firstIndex(of: measure) else { return }
+        AccessibilityNotification.Announcement(MenuBarOrder.announcement(title: measure.title, index: index, of: rows.count)).post()
+    }
+
+    /// Une ligne : la poignée à glisser, puis l'interrupteur de la mesure. On glisse la poignée seule : l'interrupteur garde son clic.
+    /// Une `Form` groupée n'est pas une liste (`NSTableView`) : le déplacement de lignes des listes n'y a rien à quoi s'accrocher, d'où `.draggable` et `.dropDestination`.
+    ///
+    /// VoiceOver : la poignée est l'élément « réordonner » de la ligne (nom de la mesure, position en valeur, deux actions) ; l'interrupteur reste
+    /// un élément à part, avec sa propre valeur (activé ou non), que l'on n'écrase pas.
+    private func measureRow(_ measure: MenuBarMeasure, index: Int, count: Int, shown: Set<MenuBarMeasure>) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.supportingText)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+                .help("Drag to change the order")
+                .draggable(MenuBarMeasureDrag(measure: measure)) {
+                    Text(measure.title)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                }
+                .accessibilityLabel(Text(measure.title))
+                .accessibilityValue(MenuBarOrder.positionText(index: index, of: count))
+                .accessibilityHint(Text("Drag to change the order"))
+                .accessibilityAction(named: "Move up") {
+                    change { $0.moveUp(measure, among: shown) }
+                    announceMove(measure)
+                }
+                .accessibilityAction(named: "Move down") {
+                    change { $0.moveDown(measure, among: shown) }
+                    announceMove(measure)
+                }
+            Toggle(isOn: isOn(measure)) { Text(measure.title) }
+        }
+        .padding(.horizontal, 4)
+        .background(dropTarget == measure ? Color.accentColor.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+        .dropDestination(for: MenuBarMeasureDrag.self) { items, _ in
+            guard let dragged = items.first?.measure, dragged != measure else { return false }
+            change { $0.move(dragged, onto: measure) }
+            return true
+        } isTargeted: { targeted in
+            if targeted { dropTarget = measure } else if dropTarget == measure { dropTarget = nil }
+        }
+        .contextMenu {
+            Button("Move up") { change { $0.moveUp(measure, among: shown) } }
+                .disabled(!order.canMoveUp(measure, among: shown))
+            Button("Move down") { change { $0.moveDown(measure, among: shown) } }
+                .disabled(!order.canMoveDown(measure, among: shown))
+        }
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {

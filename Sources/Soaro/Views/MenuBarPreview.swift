@@ -29,7 +29,7 @@ struct MenuBarPreviewStrip: View {
 
     /// Fond de la bande, d'un gris de barre de menus : clair ou sombre, sans transparence (le vrai fond dépend du fond d'écran).
     static func stripColor(dark: Bool) -> Color {
-        dark ? Color(white: 0.13) : Color(red: 0.89, green: 0.90, blue: 0.92)
+        dark ? Color(white: 0.07) : Color(red: 0.89, green: 0.90, blue: 0.92)
     }
 
     let items: [MenuBarItem]
