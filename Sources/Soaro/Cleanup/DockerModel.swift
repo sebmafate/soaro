@@ -35,7 +35,8 @@ final class DockerModel: ObservableObject {
     @Published private(set) var phase: Phase = .notScanned
     @Published private(set) var overview: DockerOverview?
     @Published private(set) var selected: Set<DockerPrune> = []
-    /// Le texte du dernier résultat (le même que le toast, qui ne reste que 4 s), jusqu'au prochain lot ou jusqu'à Retour.
+    /// Le texte du dernier résultat (le même que le toast, qui ne reste que 4 s), jusqu'au prochain lot ou jusqu'à Retour. Retour l'efface
+    /// quand aucun lot ne tourne ; pendant un lot il le laisse venir (le toast et la ligne arrivent quand même).
     @Published private(set) var lastResult: String?
 
     /// La tâche du scan en cours ou du dernier scan : les tests l'attendent sans dormir.
@@ -116,7 +117,7 @@ final class DockerModel: ObservableObject {
     var selectedCleanables: [DockerCleanable] { cleanables.filter { selected.contains($0.prune) } }
     var selectedCount: Int { selectedCleanables.count }
     /// Taille des lignes cochées (tailles connues seulement).
-    var selectedSize: UInt64 { selectedCleanables.reduce(0) { $0 + ($1.size ?? 0) } }
+    var selectedSize: UInt64 { DockerSize.saturatingSum(selectedCleanables.map { $0.size ?? 0 }) }
 
     /// « Clean » est disponible : la liste est affichée, au moins une ligne est cochée, aucun lot ne tourne.
     var canClean: Bool { phase == .listed && selectedCount > 0 && !isBusy }
@@ -233,7 +234,7 @@ final class DockerModel: ObservableObject {
         // Mode démo : la même confirmation, puis les lignes cochées quittent la liste tout de suite, avec un toast inventé. Ni lanceur, ni
         // recherche de `docker`, ni relevé d'espace libre, ni attente, ni fichier, ni nouveau listage.
         if demo {
-            let announced = targets.reduce(UInt64(0)) { $0 + ($1.size ?? 0) }
+            let announced = DockerSize.saturatingSum(targets.map { $0.size ?? 0 })
             let gone = Set(targets.map(\.prune))
             if let current = overview {
                 overview = DockerOverview(cleanables: current.cleanables.filter { !gone.contains($0.prune) },
@@ -287,6 +288,7 @@ final class DockerModel: ObservableObject {
         token?.cancel()
         scanTask?.cancel()
         pendingScan = false
+        if !isBusy { lastResult = nil }
         if phase == .listing || isBusy {
             phase = .notScanned
             reset()

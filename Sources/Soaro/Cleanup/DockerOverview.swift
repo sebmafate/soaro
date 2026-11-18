@@ -30,7 +30,7 @@ struct DockerOverview: Equatable {
     private static let emptyLine = DockerUsageLine(total: nil, active: nil, size: nil, reclaimable: nil)
 
     /// Somme des tailles connues des lignes cochables.
-    var cleanableTotal: UInt64 { cleanables.reduce(0) { $0 + ($1.size ?? 0) } }
+    var cleanableTotal: UInt64 { DockerSize.saturatingSum(cleanables.map { $0.size ?? 0 }) }
 
     static func make(_ scan: DockerScan) -> DockerOverview {
         guard scan.status == .ok, let usage = scan.usage else {
@@ -47,7 +47,7 @@ struct DockerOverview: Equatable {
         // Une image qu'un conteneur utilise (ou dont l'usage est inconnu) n'est jamais dans la liste à nettoyer.
         let removable = scan.untagged.filter(\.isRemovable)
         let removableSizes = removable.map(\.size)
-        let removableSize: UInt64? = removableSizes.allSatisfy({ $0 != nil }) ? removableSizes.compactMap { $0 }.reduce(0, +) : nil
+        let removableSize: UInt64? = removableSizes.allSatisfy({ $0 != nil }) ? DockerSize.saturatingSum(removableSizes.compactMap { $0 }) : nil
         if !removable.isEmpty {
             cleanables.append(DockerCleanable(prune: .untaggedImages, size: removableSize, count: removable.count))
         }

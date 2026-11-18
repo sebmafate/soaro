@@ -78,7 +78,7 @@ enum DockerPresentation {
     /// jamais touché. Les noms des lignes sont les mêmes que sur l'écran.
     static func confirmationMessage(targets: [DockerCleanable], locale: Locale = .current) -> String {
         let allKnown = targets.allSatisfy { $0.size != nil }
-        let known = targets.reduce(UInt64(0)) { $0 + ($1.size ?? 0) }
+        let known = DockerSize.saturatingSum(targets.map { $0.size ?? 0 })
         let intro = allKnown
             ? String(localized: "About \(Format.fileBytes(known, locale: locale)) will be removed:", locale: locale)
             : String(localized: "These will be removed:", locale: locale)

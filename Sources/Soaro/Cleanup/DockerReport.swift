@@ -18,6 +18,15 @@ enum DockerSize {
         guard bytes.isFinite, bytes >= 0, bytes < 1.8e19 else { return nil }
         return UInt64(bytes)
     }
+
+    /// Somme saturante : ne déborde jamais, se plafonne à `UInt64.max` (une taille absurde de Docker ne doit pas arrêter le programme).
+    /// Plafond de l'analyseur inchangé : chaque taille reste exacte, seule la SOMME est plafonnée.
+    static func saturatingSum<S: Sequence>(_ values: S) -> UInt64 where S.Element == UInt64 {
+        values.reduce(0) { total, value in
+            let (sum, overflow) = total.addingReportingOverflow(value)
+            return overflow ? UInt64.max : sum
+        }
+    }
 }
 
 /// Une ligne de `docker system df` : chaque champ est `nil` quand Docker ne l'a pas donné ou qu'il est illisible.

@@ -397,3 +397,48 @@ import Testing
         #expect(model().gate === gate)
     }
 }
+
+/// SL13 QA : Retour efface la ligne de résultat quand aucun lot ne tourne ; pendant un lot, le résultat arrive quand même.
+@MainActor
+@Suite(.serialized) struct DockerResultLineTests {
+    let gate = DockerCleanupGate()
+    let runner = FakeCommandRunner()
+    let confirm = RecordingConfirm(answer: true)
+    let toasts = DockerModelTests.ToastBox()
+
+    func model(wait: @escaping @Sendable (TimeInterval) async -> Void = { _ in }) -> DockerModel {
+        let toasts = toasts
+        let docker = DockerModelTests.docker
+        runner.script(.finished(stdout: DockerReportTests.realUsage), executable: docker, arguments: DockerCommand.usage.arguments)
+        runner.script(.finished(stdout: ""), executable: docker, arguments: DockerCommand.untaggedImages.arguments)
+        runner.script(.finished(stdout: "Total:\t21.19GB\n"), executable: docker, arguments: DockerCommand.pruneBuildCache.arguments)
+        return DockerModel(runner: runner, locate: { docker }, home: URL(fileURLWithPath: "/home-fake/user-x"),
+                           freeSpace: { 100 * DockerModelTests.gb }, wait: wait, demo: false, confirm: confirm.handler, gate: gate,
+                           notify: { toasts.messages.append($0) })
+    }
+
+    @Test func backClearsTheResultLineWhenNoBatchRuns() async {
+        let m = model()
+        m.scan()
+        await m.scanTask?.value
+        m.cleanSelected()
+        await m.cleanTask?.value
+        #expect(m.lastResult != nil)
+        m.cancel()
+        #expect(m.lastResult == nil)
+        #expect(toasts.messages.count == 1, "le toast déjà montré n'est pas retiré ni répété")
+    }
+
+    @Test func backDuringABatchKeepsItsResultComingAfterwards() async {
+        let release = AsyncSignal(), reached = AsyncSignal()
+        let m = model(wait: { _ in reached.signal(); await release.wait() })
+        m.scan()
+        await m.scanTask?.value
+        m.cleanSelected()
+        await reached.wait()
+        m.cancel()
+        release.signal()
+        await m.cleanTask?.value
+        #expect(m.lastResult != nil && m.lastResult == toasts.messages.first, "le résultat du lot arrive malgré Retour")
+    }
+}

@@ -31,7 +31,8 @@ struct DockerCleanupResult: Equatable {
             switch (returnedBytes, dockerBytes) {
             case let (returned?, docker?):
                 let (r, d) = (Format.fileBytes(returned, locale: locale), Format.fileBytes(docker, locale: locale))
-                if docker > 0, returned * 2 < docker {
+                // `returned * 2 < docker` sans produit : `returned` est strictement sous la moitié (arrondie en haut) de `docker`.
+                if docker > 0, returned < docker / 2 + docker % 2 {
                     parts.append(String(localized: "\(r) returned to this Mac, but Docker reported \(d): Docker’s disk image did not give the space back.", locale: locale))
                 } else {
                     parts.append(String(localized: "\(r) returned to this Mac (Docker reported \(d)).", locale: locale))
@@ -103,7 +104,7 @@ enum DockerCleanupFlow {
             if let before, let after = freeSpace() { returned = after > before ? after - before : 0 }
         }
         let known = figures.compactMap { $0 }
-        let docker: UInt64? = !figures.isEmpty && known.count == figures.count ? known.reduce(0, +) : nil
+        let docker: UInt64? = !figures.isEmpty && known.count == figures.count ? DockerSize.saturatingSum(known) : nil
         return DockerCleanupResult(succeededCount: succeeded, failedCount: failed, timedOut: timedOut, dockerBytes: docker, returnedBytes: returned)
     }
 }
