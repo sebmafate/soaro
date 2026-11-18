@@ -1,9 +1,27 @@
 name: CI
 
+# Pas de build ni de tests quand seule la documentation change.
+# Aucun contrôle « test » n'est exigé par la règle de protection de main : une PR
+# qui ne touche que ces fichiers peut donc être fusionnée sans que ce job tourne.
+# Une PR qui mêle documentation et code lance le job normalement.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/CODEOWNERS'
+      - '.github/FUNDING.yml'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/CODEOWNERS'
+      - '.github/FUNDING.yml'
 
 jobs:
   test:
