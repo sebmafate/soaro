@@ -2,9 +2,9 @@ import Foundation
 
 /// La liste blanche des commandes `docker` de Soaro (SL13, SL16, R10, ADR 0010, ADR 0009) : exactement six, de quatre familles.
 /// 0. SL16, lectures seules qui disent OÙ le nettoyage tournerait : `docker context inspect` (sans nom : le contexte COURANT, son nom et
-///    son point d'accès) et `docker buildx inspect` (sans nom : le constructeur COURANT et son pilote, sans `--bootstrap` : rien n'est démarré).
-///    Seul un moteur local est accepté (voir `DockerEngineReport`) ; jamais `context use`, `buildx use`, `buildx create`, `buildx rm`.
-///    `buildx inspect` plutôt que `buildx ls` : `ls` interroge TOUS les constructeurs connus, y compris des machines distantes.
+///    son point d'accès) et `docker buildx inspect` (sans nom : le constructeur COURANT et son pilote, sans démarrage : rien n'est démarré).
+///    Seul un moteur local est accepté (voir `DockerEngineReport`) ; jamais une commande qui change le contexte ou le constructeur courant (`DockerSourceTests` la surveille).
+///    La lecture du constructeur ne vise que le COURANT : une liste de tous les constructeurs interrogerait aussi des machines distantes.
 /// 1. l'usage : `docker system df --format {{json .}}` (lecture seule) ;
 /// 2. la liste des images sans étiquette : `docker images -f dangling=true --format {{json .}}` (lecture seule) ;
 /// 3. les deux nettoyages : `docker builder prune -a -f` (décision D1, la seule commande mesurée par SPK-002) et
