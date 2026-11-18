@@ -27,7 +27,7 @@ You can use it in two ways:
 - **The menu bar panel** gives a quick look and closes when you click elsewhere.
 - **The standalone window** has a sidebar and a translucent glass look. A pin button keeps it on top.
 
-In the menu bar, each value you choose turns **orange**, **red**, then **scarlet** as it gets worse. You can change the thresholds. Hover over the icon to see why something is colored.
+In the menu bar, each value you choose turns **orange**, **red**, then **scarlet** as it gets worse. You can change the thresholds on one track with three handles. Hover over the icon to see why something is colored. In Settings, a live preview of the menu bar lets you reorder the items by dragging them, and, if you turn the public IP lookup on, the flag of your public IP's country shows next to the network speed.
 
 ### Recommendations and tips
 

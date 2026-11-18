@@ -27,7 +27,7 @@ Deux façons de l'utiliser :
 - **Le panneau de la barre de menus** : un coup d'œil, il se referme quand on clique ailleurs.
 - **La fenêtre indépendante** : barre latérale, effet de verre translucide, bouton épingle pour la garder au premier plan.
 
-Dans la barre de menus, chaque valeur choisie passe à l'**orange**, au **rouge**, puis à l'**écarlate** quand elle se dégrade. Les seuils sont réglables. Survolez l'icône pour voir pourquoi une valeur est colorée.
+Dans la barre de menus, chaque valeur choisie passe à l'**orange**, au **rouge**, puis à l'**écarlate** quand elle se dégrade. Les seuils se règlent sur une piste à trois poignées. Survolez l'icône pour voir pourquoi une valeur est colorée. Dans les Réglages, un aperçu en direct de la barre de menus permet de réordonner les éléments en les glissant et, si vous activez la recherche de l'IP publique, le drapeau du pays de votre IP publique s'affiche à côté du débit réseau.
 
 ### Recommandations et conseils
 
