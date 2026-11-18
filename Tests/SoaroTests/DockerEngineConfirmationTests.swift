@@ -9,8 +9,8 @@ import Testing
     static let desktop = DockerEngine(contextName: "desktop-linux", socketPath: "/Users/test/.docker/run/docker.sock")
     static let home = URL(fileURLWithPath: "/Users/test")
 
-    func line(_ engine: DockerEngine, home: URL = home) -> String {
-        DockerPresentation.engineLine(engine, home: home, locale: Self.en)
+    func line(_ engine: DockerEngine) -> String {
+        DockerPresentation.engineLine(engine, home: Self.home, locale: Self.en)
     }
 
     // MARK: La ligne
