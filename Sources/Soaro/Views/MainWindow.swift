@@ -131,6 +131,7 @@ struct MainWindowView: View {
     @EnvironmentObject private var state: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: WindowSection?
+    @State private var columnVisibility = SidebarToggle.initialVisibility      // SL20 : rien n'est mémorisé, ouverte à chaque ouverture
     @AppStorage(MainWindowController.pinnedKey) private var pinned = false
 
     init(initialSection: WindowSection) {
@@ -142,7 +143,7 @@ struct MainWindowView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 Section {
                     ForEach(sections) { section in
@@ -166,6 +167,17 @@ struct MainWindowView: View {
                 .overlay(alignment: .top) { TitleBarBlur() }
                 .overlay(alignment: .bottom) { toast }
                 .toolbar {
+                    ToolbarItem(placement: .navigation) {
+                        Button {
+                            withAnimation(SidebarToggle.animation(reduceMotion: reduceMotion)) {
+                                columnVisibility = SidebarToggle.toggled(columnVisibility)
+                            }
+                        } label: {
+                            Label("Toggle Sidebar", systemImage: "sidebar.left")
+                        }
+                        .help("Toggle Sidebar")
+                        .accessibilityLabel("Toggle Sidebar")
+                    }
                     ToolbarItem(placement: .primaryAction) {
                         Toggle(isOn: $pinned) {
                             Label("Always on top", systemImage: pinned ? "pin.fill" : "pin")
