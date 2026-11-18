@@ -6,8 +6,8 @@ import Testing
 /// libre et fausse attente : aucun test n'appelle un vrai `docker`, aucun n'attend 60 s.
 @MainActor
 @Suite(.serialized) struct DockerModelTests {
-    static let docker = "/usr/local/bin/docker"
-    static let gb: UInt64 = 1_000_000_000
+    nonisolated static let docker = "/usr/local/bin/docker"
+    nonisolated static let gb: UInt64 = 1_000_000_000
     static let usageArgs = DockerCommand.usage.arguments
     static let untaggedArgs = DockerCommand.untaggedImages.arguments
     static let cacheArgs = DockerCommand.pruneBuildCache.arguments
