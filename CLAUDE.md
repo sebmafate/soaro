@@ -1,6 +1,6 @@
 # Soaro: working notes for Claude
 
-> Reconstructed on 2026-11-15 from the code and history. Facts re-checked on 2026-11-17 (commands run, test count measured, plan and status brought to the merged state of `main`, slices SL1 to SL12a). The branch and commit conventions below are still inferred from history and not yet confirmed by the author.
+> Reconstructed on 2026-11-15 from the code and history. Facts re-checked on 2026-11-18 (test count measured, plan and status brought to the merged state of `main`, slices SL1 to SL13 and SL10b; the commands were last all run on 2026-11-17). The branch and commit conventions below are still inferred from history and not yet confirmed by the author.
 
 Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) that watches CPU, GPU, memory, disk, network and battery, keeps a 30-day history, and suggests safe cleanups. Open source (GPL-3.0), no data leaves the Mac by default. Repository: `github.com/sebmafate/soaro`. Site: `soaro.app`.
 
@@ -14,7 +14,8 @@ Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) th
 | `docs/architecture.md` | File-by-file reference, CLI modes, macOS permissions, previous names | Detailed reference; `ARCHITECTURE.md` is the design view |
 | `docs/adr/` | One decision per file | Never edit an accepted ADR; supersede it |
 | `TESTING.md` | Test levels, baseline, definition of done | Follow it for every change |
-| `PLAN.md` | Slices (SL1 to SL14, SP1) of the developer cleanup, in execution order; days spent against the 14-day time box | Written 2026-11-15. SL1 to SL12a are done and merged (2026-11-16 and 2026-11-17); SL12b is blocked on the author; SP1, SL13 and SL14 remain |
+| `PLAN.md` | Slices (SL1 to SL14, SP1) of the developer cleanup, in execution order; days spent against the 14-day time box | Written 2026-11-15. SL1 to SL13 (with SL10b and the spike SP1) are done and merged (2026-11-16 to 2026-11-18); SL12b is blocked on the author; SL14 remains |
+| `docs/spikes/` | One spike per file (SPK-001 Android `avdmanager`, SPK-002 Docker Test B): question, criteria written before running, result, verdict | Spikes are throwaway experiments; never edit a finished one, supersede it |
 | `STATUS.md` | Current phase, next action | Keep current after each change |
 | `CHANGELOG.md` | User-facing changes (Keep a Changelog) | One entry per release; the release notes are read from it |
 | `docs/releasing.md`, `docs/ci-release.md`, `docs/updates.md`, `docs/website.md` | Release (manual and GitHub Actions), Sparkle, website | Source of truth for release steps |
@@ -25,7 +26,7 @@ Verified on 2026-11-17 in a fresh worktree of `main` unless marked.
 
 ```sh
 swift build                          # debug build
-swift test                           # 1035 tests in 91 suites; about 40 s from a clean build, about 3 s when already built
+swift test                           # 1165 tests in 104 suites (measured on 2026-11-18 on the SL13 branch before its merge); about 40 s from a clean build, about 3 s when already built
 scripts/build-app.sh                 # builds build/Soaro.app (ad hoc signature); --install copies to /Applications
 SOARO_DEMO=1 build/Soaro.app/Contents/MacOS/Soaro    # run on made-up data (no measurement, nothing written)
 DYLD_FRAMEWORK_PATH=.build/debug .build/debug/Soaro --diagnostics   # print all measurements (read-only)
@@ -47,6 +48,7 @@ Releases are built by GitHub Actions on a `macos-26` runner when a tag `vX.Y.Z` 
 
 - Stack: Swift 6 tools, Swift 5 language mode, SwiftUI plus AppKit, one dependency (Sparkle). See ADR 0001.
 - Branches and commits (observed in git history, confidence medium): short feature branches merged by pull request (merge commit for pull request #1, squash for #2 to #5, merge commit from #6 on); commit subjects in French, in the imperative ("Ajouter...", "Renommer..."); commits are signed (SSH key). `main` is protected by a ruleset (pull request required, signed commits, no force push).
+- CI (`ci.yml`) does not run when a change touches only Markdown, `docs/`, `LICENSE` or the `.github` issue templates and owners files (`paths-ignore`, 2026-11-18); a pull request that mixes documentation and code runs it. The `main` ruleset requires no status check, so a documentation pull request can be merged without it.
 - Documentation and the user interface are in English first; French is the second language (README.fr.md, site `/fr/`). Code comments are mostly French.
 - Version: `VERSION` file; the build number is the commit count (`git rev-list --count HEAD`), so a release build needs the full git history.
 - Safety rule for anything that deletes: see ADR 0006. A path must pass `CleanupService.isSafeToDelete`, and the action is confirmed by the user first.
@@ -63,4 +65,4 @@ Releases are built by GitHub Actions on a `macos-26` runner when a tag `vX.Y.Z` 
 - Continue the project: `/trellis:resume`, then `/trellis:deliver`.
 - A requirement, decision or design changes: `/trellis:change-course`.
 - A choice worth recording: `/trellis:adr`. An unknown to settle: `/trellis:spike`.
-- This project was adopted from existing code: documents marked "reconstructed" are hypotheses until confirmed. The developer cleanup documents (`SPEC.md`, `ARCHITECTURE.md`, `DESIGN.md`, `TESTING.md`, `PLAN.md`) were written on 2026-11-15 and have been followed by delivery since (SL1 to SL12a).
+- This project was adopted from existing code: documents marked "reconstructed" are hypotheses until confirmed. The developer cleanup documents (`SPEC.md`, `ARCHITECTURE.md`, `DESIGN.md`, `TESTING.md`, `PLAN.md`) were written on 2026-11-15 and have been followed by delivery since (SL1 to SL13).
