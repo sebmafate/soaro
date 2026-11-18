@@ -102,6 +102,8 @@ enum MenuBarItem: Equatable {
     case stacked(label: String, value: String, level: PressureLevel = .normal)
     /// Deux lignes alignées à droite (envoi / réception).
     case pair(top: String, bottom: String)
+    /// Drapeau du pays de l'IP publique (SL19), à droite du bloc réseau. Ne porte que le code : l'adresse IP n'arrive jamais ici.
+    case flag(countryCode: String)
 
     var level: PressureLevel {
         if case .stacked(_, _, let level) = self { return level }
@@ -110,7 +112,7 @@ enum MenuBarItem: Equatable {
 
     /// Mesures choisies dans les réglages, dans un ordre fixe.
     static func items(for s: SystemSnapshot, cpu: Bool, gpu: Bool, memory: Bool, disk: Bool, network: Bool, battery: Bool,
-                      thresholds t: PressureThresholds = .default) -> [MenuBarItem] {
+                      thresholds t: PressureThresholds = .default, publicIPCountryCode: String? = nil) -> [MenuBarItem] {
         var items: [MenuBarItem] = []
         if cpu { items.append(.stacked(label: "CPU", value: Format.percent(s.cpu.total), level: .load(s.cpu.total, thresholds: t.load))) }
         if gpu, let g = s.gpu { items.append(.stacked(label: "GPU", value: Format.percent(g.utilization), level: .load(g.utilization, thresholds: t.load))) }
@@ -118,6 +120,10 @@ enum MenuBarItem: Equatable {
         if disk { items.append(.stacked(label: "SSD", value: Format.percent(s.disk.usedFraction), level: .disk(s.disk.usedFraction, thresholds: t.disk))) }
         if network, let n = s.network {
             items.append(.pair(top: "↑ " + Format.menuBarRate(n.upRate), bottom: "↓ " + Format.menuBarRate(n.downRate)))
+            // Seulement avec le bloc réseau, et seulement si la police d'émojis a un drapeau pour ce code.
+            if let code = publicIPCountryCode?.uppercased(), MenuBarFlag.emoji(forCountryCode: code) != nil {
+                items.append(.flag(countryCode: code))
+            }
         }
         if battery, let b = s.battery {
             items.append(.stacked(label: b.isCharging ? "BAT ⚡︎" : "BAT", value: Format.percent(b.percent / 100), level: .battery(b, thresholds: t.battery)))
@@ -125,12 +131,22 @@ enum MenuBarItem: Equatable {
         return items
     }
 
-    /// Version texte sur une ligne (style « classique »).
+    /// Une image « modèle » est monochrome : un drapeau en couleur doit donc passer par une image qui porte ses couleurs.
+    var isFlag: Bool {
+        if case .flag = self { return true }
+        return false
+    }
+
+    /// Version texte sur une ligne (style « classique »). Le drapeau suit le bloc réseau, sans séparateur.
     static func inlineText(_ items: [MenuBarItem]) -> String? {
-        let parts = items.map { item -> String in
+        var parts: [String] = []
+        for item in items {
             switch item {
-            case .stacked(let label, let value, _): "\(label) \(value)"
-            case .pair(let top, let bottom): "\(bottom) \(top)"
+            case .stacked(let label, let value, _): parts.append("\(label) \(value)")
+            case .pair(let top, let bottom): parts.append("\(bottom) \(top)")
+            case .flag(let code):
+                guard let flag = MenuBarFlag.emoji(forCountryCode: code) else { continue }
+                if parts.isEmpty { parts.append(flag) } else { parts[parts.count - 1] += " " + flag }
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -154,7 +170,8 @@ enum MenuBarRenderer {
         let darkBar = darkBar ?? isMenuBarDark
         // Tant que tout est normal, image « modèle » : macOS la teinte lui-même (rendu le plus fidèle).
         // Dès qu'une valeur doit être colorée, l'image porte ses propres couleurs, dont le blanc/noir du reste.
-        let colored = items.contains { $0.level > .normal }
+        // Un drapeau (SL19) y oblige aussi : une image modèle est monochrome (seul son alpha compte), il deviendrait une silhouette.
+        let colored = items.contains { $0.level > .normal || $0.isFlag }
         let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar)
         if let cache, cache.key == key { return cache.image }
 
@@ -297,6 +314,11 @@ struct MenuBarWidgetsView: View {
                             valueText(value, level: level, size: 13)
                         }
                     }
+                case .flag(let code):
+                    if let flag = MenuBarFlag.emoji(forCountryCode: code) {
+                        // Émoji en couleur : il ignore la couleur du texte. Aucune largeur ni hauteur imposée aux autres blocs.
+                        Text(flag).font(.system(size: MenuBarFlag.fontSize))
+                    }
                 case .pair(let top, let bottom):
                     if compact {
                         VStack(alignment: .trailing, spacing: 0) {
@@ -351,7 +373,15 @@ struct MenuBarWidgetsView: View {
 
 /// Texte de l'infobulle : pourquoi il y a un badge d'alerte, et pourquoi une valeur est en couleur.
 enum MenuBarTooltip {
-    static func text(recommendations: [Recommendation], snapshot: SystemSnapshot?, items: [MenuBarItem]) -> String {
+    /// Langue de l'app (pas celle des réglages régionaux) pour écrire le nom du pays.
+    static var appLocale: Locale { Locale(identifier: Bundle.main.preferredLocalizations.first ?? "en") }
+
+    /// « France », « フランス »… : calculé localement à partir du code, sans rien demander au service.
+    static func countryName(code: String, locale: Locale = appLocale) -> String {
+        locale.localizedString(forRegionCode: code) ?? code
+    }
+
+    static func text(recommendations: [Recommendation], snapshot: SystemSnapshot?, items: [MenuBarItem], locale: Locale = appLocale) -> String {
         var lines: [String] = []
 
         let alerts = recommendations.filter { $0.severity >= .warning }
@@ -371,6 +401,11 @@ enum MenuBarTooltip {
             lines.append("")
             lines.append(String(localized: "Colored values:"))
             lines.append(contentsOf: colored.map { "• \($0)" })
+        }
+        // Le pays de l'IP publique (jamais l'adresse elle-même) quand le drapeau est affiché.
+        if let code = items.compactMap({ item -> String? in if case .flag(let code) = item { code } else { nil } }).first {
+            lines.append("")
+            lines.append(String(localized: "Public IP country: \(countryName(code: code, locale: locale))"))
         }
         if !suggestions.isEmpty {
             lines.append("")
