@@ -264,7 +264,7 @@ Small on purpose: every screen of Part 1 is built from components that already e
 ## Platform and conventions
 
 - **Platform:** macOS 14+, SwiftUI with some AppKit (ADR 0001).
-- **Containers:** the menu bar panel (fixed 430 x 640 pt, flat cards) and the standalone window (860 x 680 pt, minimum 700 x 520, glass cards: Liquid Glass on macOS 26, translucent material on 14 and 15).
+- **Containers:** the menu bar panel (fixed 430 x 640 pt, flat cards) and the standalone window (860 x 680 pt, minimum 700 x 520). **Experiment of 1.2.0, to be confirmed by the author:** the window has a translucent sidebar, an opaque main area and flat cards (see "Window surfaces" below). Until the author confirms it, the 1.1.0 look was glass cards on a translucent window: Liquid Glass on macOS 26, translucent material on 14 and 15.
 - **Conventions that apply:** a tool opens in place with a "Cleanup" back button; selection lists use the plain list style; confirmations are native alerts (`AppState.confirm`); results are a toast; progress is a small spinner; everything follows the system appearance (light, dark), accent colour and Increase Contrast setting.
 
 ## Identity
@@ -279,8 +279,8 @@ All roles are the system's semantic colors, so both themes come from the system.
 
 | Role | Light | Dark | Contrast of text on the background | Use |
 | --- | --- | --- | --- | --- |
-| background | system window or material | system window or material | n/a | screens |
-| surface | card (flat in the panel, glass in the window) | same | n/a | cards |
+| background | system window or material; **window main area (experiment 1.2.0): `textBackgroundColor`, opaque** | system window or material; **window main area: `textBackgroundColor`, opaque** | n/a | screens |
+| surface | card (flat in the panel; **flat in the window too in the 1.2.0 experiment**, glass in 1.1.0) | same | n/a | cards |
 | text-primary | system label (85 %) | system label (85 %) | 15.1 : 1 light, 12.3 : 1 dark | names, reasons, messages, anything the user needs |
 | text-secondary | system secondary label | system secondary label | **3.95 : 1 light**, 5.9 : 1 dark | supporting detail and units only; below AA for small text in light mode |
 | text-tertiary | system tertiary label | system tertiary label | **1.84 : 1 light**, 2.27 : 1 dark | decoration only; never information |
@@ -290,6 +290,23 @@ All roles are the system's semantic colors, so both themes come from the system.
 | danger-fill, Increase Contrast | #B71C1C | #B71C1C | white label 6.57 : 1 | used when the system asks for more contrast |
 
 Rules (decided 2026-11-15): essential information is text-primary; supporting text is text-supporting, everywhere in the app; text-secondary stays only for icons and decoration, where 3 : 1 is enough; text-tertiary is never used for information (the three existing text uses move to text-supporting, as built in SL4: "macOS may ask for access…" in Large files, "Updated …" in Network, and the non-highlighted process columns; chevrons stay tertiary). Known gaps kept on purpose: the system draws the List and Form section headers and footers, the text field placeholder, the Picker labels and disabled controls, and Charts draws the axis labels in `HistoryTab`, so these keep the system colours; the coloured series legend in `HistoryTab` is coloured text, not secondary text; the real contrast on the panel material and on Liquid Glass is not measured (the token is a flat colour, `.secondary` blended with the material). The empty selection circle uses text-secondary (3.95 : 1 and 5.9 : 1, above the 3 : 1 needed for a component).
+
+### Window surfaces (experiment of 1.2.0, to be confirmed by the author)
+
+Requested by the author on 2026-11-18 for visibility: in 1.1.0 the whole standalone window is a translucent blur (`hudWindow` material behind everything, window not opaque) and the content is hard to read. The experiment, **standalone window only** (the menu bar panel does not change):
+
+| Surface | What it is | How |
+| --- | --- | --- |
+| Sidebar (Overview ... Settings, and the status footer) | translucent: the blur of what is behind the window | unchanged: `WindowGlassBackground` (`NSVisualEffectView`, `hudWindow`, behind the window) stays under the whole window, the window stays non-opaque with a clear background, and the sidebar list draws no background of its own. It is now the only part where the blur shows |
+| Main area (detail column, including the strip under the toolbar and title bar) | opaque, system colour that follows light and dark | `windowMainAreaBackground()` fills the detail column with `NSColor.textBackgroundColor` (white in light, #1E1E1E in dark), extended under the toolbar through the top safe area only (on macOS 26 the sidebar floats, so ignoring the leading edge would run the fill behind it). `TitleBarBlur` stays: it now blurs the opaque content scrolling under the title bar |
+| Cards of the main area (CPU, Memory, recommendations, This Mac, tools) | soft flat fill, the same as the panel's flat cards (`.quaternary` at 0.5 or 0.4, tint at 10 % for recommendations), radius 10 | the window sets `glassSurface` from `WindowSurface.cardsAreGlass`, which is false while the main area is opaque; `CardBackground` is unchanged. Liquid Glass has nothing to refract on an opaque fill, so it is not used there |
+| Toast (bottom of the main area) | flat card over a plain fill of the main-area colour | it overlaps scrolling content, and a 5 % flat fill alone would let the text underneath show through |
+
+Why `textBackgroundColor` and not `windowBackgroundColor`: it is exactly the reference background of this document (white and #1E1E1E), so the ratios measured above (supporting text 4.95 : 1 light, 6.1 : 1 dark) apply to the main area as they are. `windowBackgroundColor` (about #ECECEC and #323232) gives about 4.7 : 1 for supporting text in light mode and less on a card, close to the 4.5 : 1 limit. It is also the usual look of a content area next to a translucent sidebar (Mail, Notes). The cards stay visible as a soft grey on white, and as a soft light grey on dark.
+
+One switch: `WindowSurface.opaqueMainArea` in `GlassStyle.swift`. To go back to the 1.1.0 look, set it to `false`: the main area is clear again, the cards are glass again. The macOS 26 guard (`#if compiler(>=6.2)`, `#available(macOS 26.0, *)`) and the material fallback for macOS 14 and 15 are untouched in `CardBackground`.
+
+To judge by eye on the real app (offscreen screenshots do not draw the blur): the sidebar over a busy desktop, light and dark, collapsed and expanded; no seam or translucent strip at the top of the main area; Increase Contrast and Reduce Transparency; the look on macOS 26.
 
 ### Typography, spacing, shape, motion
 
@@ -302,7 +319,7 @@ Rules (decided 2026-11-15): essential information is text-primary; supporting te
 | group header | `SectionHeader` (existing), now `.caption` in text-supporting | changed in the accessibility slice |
 | footer note | `.caption2`, text-supporting | supporting only; the essential parts of it are also in the confirmation |
 | spacing | 14 pt screen padding; 10 pt card padding; 4 pt row padding; 12 pt between blocks | as in the code |
-| shape | flat card radius 10; glass card radius 16 (continuous) | existing `cardBackground` |
+| shape | flat card radius 10 (panel and, in the 1.2.0 experiment, window); glass card radius 16 (continuous), only if the experiment is reverted | existing `cardBackground` |
 | motion | none added | the spinner is the only motion; see rule on reduced motion |
 
 ## Components
@@ -376,3 +393,4 @@ Every screen of Part 1 uses only these. There is no custom component. The extens
 | 2026-11-17 | SL12a: S2b as built, read-only (section order, row text, the three usage lines, the footer, the failed state, no checkbox and no Select all, no Delete bar on an images-only screen, demo, six new keys). Removal and the download-again warning stay in SL12b. Factual notes, no decision changed |
 | 2026-11-17 | SL12a review round: in demo, who uses each demo image is recomputed after a demo deletion; the `--scan` note wording changed (no UI text change). Factual notes, no decision changed |
 | 2026-11-17 | SL10b: S2 as built, the Android pre-selection is on (inactive for more than the limit, never a running device, never an unknown date); the last-used date is the newest of four emulator files (not `userdata-qemu.img` alone: withdrawn after a real AVD showed the raw file 56 days old and the overlay 3); the banner counts Android again; the demo AVD inactive for 70 days is pre-selected. No UI string changed. No decision changed (the author settled the signal) | SL10b brief |
+| 2026-11-18 | Experiment for 1.2.0 (EXP1, branch `exp/fond-opaque-fenetre`), at the author's request, to be confirmed: standalone window with an opaque main area (`textBackgroundColor`), a translucent sidebar and flat cards; the panel is unchanged. One switch, `WindowSurface.opaqueMainArea`. Part 2 describes it; nothing else in this document is decided by it |

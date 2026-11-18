@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- Window (experiment, to be confirmed): the main area now has an opaque background so the content is easier to read, while the sidebar stays translucent; the cards in the window use a soft flat fill instead of glass. The menu bar panel is unchanged.
+
 ## [1.1.0] - 2026-11-18
 
 ### Added

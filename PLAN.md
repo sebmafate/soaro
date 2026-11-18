@@ -42,6 +42,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL14 | Release 1.1 | S | the slices done | no | | **done: 1.1.0 published on 2026-11-18** (signed tag `v1.1.0`, release run 44301605754; see the SL14 section) |
 | SL15 | Launch at login inert in demo mode | S | SL6 | no | under 0.1, **not counted in the 14 days** (measured from the first commit at 11:20 to the last (the documents) at 11:21 on 2026-11-18, about 1 min between the two commits, the tests and code having been written before the first one; the reading before the first commit is not counted; QA review and the author's manual checks not included). The running total of the 14 days does not change | done |
 | SL16 | Docker only on a local engine and builder (security finding) | S | SL13 | no | 0.25, **not counted in the 14 days** (measured from the first commit at 11:33 to the last (the documents) at 11:44 on 2026-11-18, about 12 min of commit time, rounded up to a quarter day; the reading, the real read-only `docker` runs and the first test runs before the first commit are not counted; the independent verification, the pull request and the author's manual checks not included). The running total of the 14 days does not change | done |
+| EXP1 | Experiment (1.2.0): opaque main area, translucent sidebar, flat cards in the window | S | | no | not counted in the 14 days (an experiment the author will judge by eye) | **done on its branch** `exp/fond-opaque-fenetre`, to be confirmed by the author; not merged |
 
 Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the order of discussion, not the order of execution; the execution order is the order of the table.
 
@@ -429,6 +430,12 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
   - **Existing tests changed in their setup only:** `DockerScannerTests`, `DockerPruneTests`, `DockerModelTests` (and `DockerResultLineTests`), `DockerHonestFigureTests`, `DockerSaturationTests` now script the two engine reads (a shared `scriptLocalEngine()`), their call-list expectations gain those reads, `DockerCommandTests` counts six commands, `DockerSourceTests` has wider word lists. No assertion was weakened; the tests of the other callers are untouched.
   - **Mutations** that make tests fail: the removal of the five variables, the real runner keeping the environment, no engine read before the prune, the prefix match on the driver, a relative `unix://` path accepted, the node endpoint unchecked, the same-engine rule dropped, "not local" reported as "not running".
   - **Verified by an agent:** `swift build`, `swift test`, `scripts/build-app.sh` (see the report). **Not verified:** the screen (the app was not launched), a running Docker Desktop, any real remote or non-`docker` builder, OrbStack and Colima (R15), the 2 new translations (AI-assisted).
+
+### EXP1: window surfaces (experiment for 1.2.0)
+
+- **What**: at the author's request (2026-11-18), in the standalone window only, the main area is opaque (`textBackgroundColor`), the sidebar stays translucent, and the cards are flat instead of glass. The menu bar panel, behaviour and data are unchanged. Not a slice of the developer cleanup: it is not counted in the 14 days and has no requirement ID.
+- **Where**: branch `exp/fond-opaque-fenetre` (worktree `.trellis/worktrees/EXP1`), not merged. One switch, `WindowSurface.opaqueMainArea` in `GlassStyle.swift`; set it to `false` to revert. `DESIGN.md` Part 2 ("Window surfaces") describes it as an experiment.
+- **Open**: the author judges it on the real app (the blur is not drawn offscreen) and decides to keep it, change it or drop the branch.
 
 ## Coverage
 
