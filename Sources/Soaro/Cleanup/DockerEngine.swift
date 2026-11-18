@@ -53,12 +53,12 @@ enum DockerEngineReport {
     }
 
     /// Le constructeur courant d'après `docker buildx inspect` (texte : `Name:`, `Driver:`, `Error:` en tête, puis les nœuds avec `Endpoint:`).
-    /// - `Driver: docker` : local, À CONDITION que chaque `Endpoint:` de nœud soit le nom du contexte courant ou une prise `unix://`
+    /// - `Driver: docker` : local, À CONDITION que chaque `Endpoint:` de nœud soit le nom du contexte courant ou SA prise (`unix://` + le chemin de ce contexte ; une autre prise locale est refusée)
     ///   (un constructeur au pilote `docker` créé vers une autre machine, ou le constructeur d'un autre contexte, est refusé). Un nœud sans
     ///   ligne `Endpoint:` n'est pas refusé : la règle du pilote suffit.
     /// - `Driver:` vide avec une ligne `Error:` non vide : le moteur ne répond pas (`.unreachable`).
     /// - Tout le reste (autre pilote, pas d'en-tête `Name:`, pilote absent, texte illisible) : `.notLocal`.
-    static func parseBuilder(_ data: Data, contextName: String) -> DockerBuilderState {
+    static func parseBuilder(_ data: Data, engine: DockerEngine) -> DockerBuilderState {
         guard let text = String(data: data, encoding: .utf8) else { return .notLocal }
         let lines = text.components(separatedBy: .newlines)
         // L'en-tête : jusqu'à la première ligne vide ou jusqu'à « Nodes: ».
@@ -76,7 +76,7 @@ enum DockerEngineReport {
         // Les points d'accès des nœuds (après l'en-tête).
         for line in lines[index...] {
             guard let (key, value) = keyValue(line.trimmingCharacters(in: .whitespaces)), key == "Endpoint" else { continue }
-            guard value == contextName || isLocalSocket(value) else { return .notLocal }
+            guard value == engine.contextName || value == "unix://" + engine.socketPath else { return .notLocal }
         }
         return .local
     }
@@ -86,10 +86,6 @@ enum DockerEngineReport {
         let key = line[..<colon].trimmingCharacters(in: .whitespaces)
         let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
         return key.isEmpty ? nil : (key, value)
-    }
-
-    private static func isLocalSocket(_ endpoint: String) -> Bool {
-        endpoint.hasPrefix("unix:///") && endpoint.count > "unix:///".count && !hasControlCharacter(endpoint)
     }
 
     private static func hasControlCharacter(_ text: String) -> Bool {

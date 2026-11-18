@@ -71,7 +71,7 @@ enum DockerScanner {
         switch readEngineOutput(of: .currentBuilder, runner: runner, dockerPath: dockerPath) {
         case .failure(let check): return check
         case .success(let data):
-            switch DockerEngineReport.parseBuilder(data, contextName: engine.contextName) {
+            switch DockerEngineReport.parseBuilder(data, engine: engine) {
             case .local: return .local(engine)
             case .notLocal: return .notLocal
             case .unreachable: return .notRunning

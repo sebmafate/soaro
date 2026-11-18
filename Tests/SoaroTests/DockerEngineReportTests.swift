@@ -113,6 +113,9 @@ import Testing
         """
     }
 
+    static let desktopEngine = DockerEngine(contextName: "desktop-linux", socketPath: "/Users/test/.docker/run/docker.sock")
+    static let defaultEngine = DockerEngine(contextName: "default", socketPath: "/var/run/docker.sock")
+
     static func data(_ text: String) -> Data { Data(text.utf8) }
 
     // MARK: Contexte : seul un moteur local est accepté
@@ -177,46 +180,58 @@ import Testing
     // MARK: Constructeur : seul le pilote `docker` est accepté
 
     @Test func aRunningBuilderWithTheDockerDriverOnTheContextEndpointIsLocal() {
-        #expect(DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder()), contextName: "desktop-linux") == .local)
+        #expect(DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder()), engine: Self.desktopEngine) == .local)
     }
 
     @Test func aDockerDriverBuilderOnALocalSocketEndpointIsLocal() {
         let text = Self.runningBuilder(endpoint: "unix:///Users/test/.docker/run/docker.sock")
-        #expect(DockerEngineReport.parseBuilder(Self.data(text), contextName: "desktop-linux") == .local)
+        #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .local)
     }
 
     @Test func theRealStoppedEngineAnswerIsUnreachableNotRefusedAsRemote() {
         // Moteur arrêté : pilote vide et une erreur. « Docker is not running » doit rester le message d'un moteur local arrêté.
-        #expect(DockerEngineReport.parseBuilder(Self.data(Self.stoppedEngineBuilder), contextName: "desktop-linux") == .unreachable)
+        #expect(DockerEngineReport.parseBuilder(Self.data(Self.stoppedEngineBuilder), engine: Self.desktopEngine) == .unreachable)
     }
 
     @Test func anyOtherDriverIsNotLocal() {
         for driver in ["docker-container", "kubernetes", "remote", "Docker", "docker ", "docker-container,docker", "unknown", "cloud"] {
             let state = DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder(name: "shared-builder", driver: driver,
                                                                                     endpoint: "ssh://user@build.example.invalid")),
-                                                        contextName: "desktop-linux")
+                                                        engine: Self.desktopEngine)
             // « docker  » (espace en fin) est rogné : seul le mot exact « docker » est accepté, et ici le point d'accès est distant.
             #expect(state == .notLocal, "\(driver.debugDescription)")
         }
         // Même un pilote refusé avec un point d'accès local reste refusé : la règle est sur le pilote.
         for driver in ["docker-container", "kubernetes", "remote", "cloud"] {
             let text = Self.runningBuilder(name: "mine", driver: driver, endpoint: "desktop-linux")
-            #expect(DockerEngineReport.parseBuilder(Self.data(text), contextName: "desktop-linux") == .notLocal, "\(driver)")
+            #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .notLocal, "\(driver)")
         }
     }
 
     @Test func aDockerDriverBuilderWhoseNodeEndpointIsRemoteOrAnotherContextIsNotLocal() {
         for endpoint in ["ssh://user@build.example.invalid", "tcp://10.0.0.5:2376", "npipe:////./pipe/docker_engine", "other-context", "default"] {
             let text = Self.runningBuilder(name: "x", driver: "docker", endpoint: endpoint)
-            #expect(DockerEngineReport.parseBuilder(Self.data(text), contextName: "desktop-linux") == .notLocal, "\(endpoint)")
+            #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .notLocal, "\(endpoint)")
         }
         // Le contexte « default » avec son propre constructeur reste accepté.
-        #expect(DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder(name: "default", endpoint: "default")), contextName: "default") == .local)
+        #expect(DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder(name: "default", endpoint: "default")), engine: Self.defaultEngine) == .local)
+    }
+
+    /// QA SL16 : un point d'accès `unix://` n'est accepté que s'il est la prise du contexte COURANT ; une autre prise locale est refusée.
+    @Test func aNodeEndpointIsTheContextNameOrTheContextsOwnSocketAndNoOtherSocket() {
+        let own = Self.runningBuilder(endpoint: "unix:///Users/test/.docker/run/docker.sock")
+        #expect(DockerEngineReport.parseBuilder(Self.data(own), engine: Self.desktopEngine) == .local, "la prise du contexte lui-même")
+        #expect(DockerEngineReport.parseBuilder(Self.data(Self.runningBuilder()), engine: Self.desktopEngine) == .local, "le nom du contexte")
+        for other in ["unix:///var/run/docker.sock", "unix:///Users/test/.orbstack/run/docker.sock", "unix:///Users/test/.docker/run/docker.sock.other",
+                      "unix:///Users/test/.docker/run/", "unix://", "unix:///"] {
+            let text = Self.runningBuilder(endpoint: other)
+            #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .notLocal, "\(other)")
+        }
     }
 
     @Test func aSecondNodeThatIsRemoteRefusesTheBuilder() {
         let text = Self.runningBuilder() + "\n\nName:     second\nEndpoint: ssh://user@build.example.invalid\nStatus:   running\n"
-        #expect(DockerEngineReport.parseBuilder(Self.data(text), contextName: "desktop-linux") == .notLocal)
+        #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .notLocal)
     }
 
     @Test func emptyGarbageAndHeaderlessBuilderOutputsAreNotLocal() {
@@ -229,14 +244,14 @@ import Testing
             "Name: x\n\nDriver: docker",                                                              // le pilote n'est pas dans l'en-tête
         ]
         for output in outputs {
-            #expect(DockerEngineReport.parseBuilder(Self.data(output), contextName: "desktop-linux") == .notLocal, "\(output.debugDescription)")
+            #expect(DockerEngineReport.parseBuilder(Self.data(output), engine: Self.desktopEngine) == .notLocal, "\(output.debugDescription)")
         }
-        #expect(DockerEngineReport.parseBuilder(Data([0xff, 0xfe, 0x00]), contextName: "desktop-linux") == .notLocal)
+        #expect(DockerEngineReport.parseBuilder(Data([0xff, 0xfe, 0x00]), engine: Self.desktopEngine) == .notLocal)
     }
 
     @Test func anErrorLineWithADockerDriverStillDependsOnlyOnTheDriver() {
         // Pilote `docker` : constructeur local, même avec une ligne d'erreur ; le listage dira si le moteur répond.
         let text = "Name: desktop-linux\nDriver: docker\nError: something\n"
-        #expect(DockerEngineReport.parseBuilder(Self.data(text), contextName: "desktop-linux") == .local)
+        #expect(DockerEngineReport.parseBuilder(Self.data(text), engine: Self.desktopEngine) == .local)
     }
 }

@@ -30,6 +30,7 @@ import Testing
         #expect(outcome == .pruned(reportedBytes: 397_000_000))
         #expect(runner.calls.last == .init(executable: Self.docker, arguments: Self.imageArgs, timeLimit: 300, outputLimit: 4 * 1024 * 1024,
                                            removedEnvironment: DockerCommand.removedEnvironment))
+        #expect(runner.calls.dropLast().map(\.arguments) == [DockerCommand.currentContext.arguments, DockerCommand.currentBuilder.arguments])
     }
 
     @Test func eachPruneMapsToItsAllowlistedCommand() {
