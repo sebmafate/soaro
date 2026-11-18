@@ -40,6 +40,12 @@ import Testing
         for (name, x) in [("barre latérale", CGFloat(120)), ("détail", CGFloat(500))] {
             for dy in [CGFloat(4), 14, 26, 40] { describeHit(root, name: name, x: x, fromTop: dy) }
         }
+        // Marge gauche et bord de la barre latérale flottante (macOS 26 : verre décalé de 8 pt) : x = 3, 6, 10, 195, 200.
+        for x in [CGFloat(3), 6, 10, 195, 200] {
+            for dy in [CGFloat(4), 14, 26, 40, 50] { describeHit(root, name: "marge/bord", x: x, fromTop: dy) }
+        }
+        let wide = WindowProbe.allViews(root).filter { $0 is WindowDragView && WindowProbe.rect($0, in: root).width > root.bounds.width / 2 }
+        line("vue de glissement du détail : \(wide.map { WindowProbe.describe($0, in: root) }) (attendu après le correctif : x=0, w=\(Int(root.bounds.width)), h=\(Int(window.frame.height - window.contentLayoutRect.height)))")
         describeTopStripTree(root)
         line("===== fin =====")
     }
