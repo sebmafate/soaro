@@ -11,6 +11,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Android emulators not used for more than 60 days, judged by the files the emulator writes while a device runs, are now pre-selected like simulators.
 - The same tool also lists the Android system images installed in your Android SDK, with their size and the virtual devices that use them, or says when it cannot tell. They are shown for information only: nothing is removed.
 - A “Select all” checkbox in the header of every list where you tick items (simulators, Android emulators, large files, inactive projects, an app's related files): it checks or unchecks every item of that section, shows a dash when only some are ticked, and never ticks a running simulator or emulator.
+- New tool “Docker” (Cleanup > Tools, shown when Docker is installed): shows what Docker uses (build cache, untagged images, containers, volumes), pre-selects the build cache and the untagged images, and cleans them after a confirmation that warns the next build will be slower. A minute later it tells you how much space really came back on your Mac, and says so when Docker's disk image did not give it back. Containers, volumes and images with a tag are never touched, and Docker is never started by Soaro.
 - New cleaner “NuGet packages” (Cleanup > Developer): frees the NuGet package cache, after a confirmation. It is not part of the quick clean.
 
 ### Changed

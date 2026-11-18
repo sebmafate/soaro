@@ -247,6 +247,26 @@ enum DemoData {
         ]
     }
 
+    // MARK: Docker
+
+    /// Made-up Docker usage for the "Docker" tool: round figures, identifiers that are obviously fake (`0000…`), no container or image
+    /// name. Nothing is run or measured in demo mode.
+    static func docker() -> DockerScan {
+        func line(_ total: Int, _ active: Int, _ size: UInt64, _ reclaimable: UInt64) -> DockerUsageLine {
+            DockerUsageLine(total: total, active: active, size: size, reclaimable: reclaimable)
+        }
+        let usage = DockerUsage(images: line(12, 5, 3_100 * mb, 1_200 * mb),
+                                containers: line(6, 2, 52_000, 31_000),
+                                volumes: line(14, 5, 1_400 * mb, 900 * mb),
+                                buildCache: line(180, 0, 14_800 * mb, 14_800 * mb))
+        let untagged = [
+            DockerUntaggedImage(id: "000000000001", size: 410 * mb, containerCount: 0),
+            DockerUntaggedImage(id: "000000000002", size: 220 * mb, containerCount: 0),
+            DockerUntaggedImage(id: "000000000003", size: 95 * mb, containerCount: 0),
+        ]
+        return DockerScan(status: .ok, usage: usage, untagged: untagged)
+    }
+
     // MARK: Android emulators
 
     /// Made-up Android virtual devices for the "Simulators and emulators" tool: generic names, no real path (the folder is

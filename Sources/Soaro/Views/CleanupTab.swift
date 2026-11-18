@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum CleanupRoute: String, Identifiable {
-    case largeFiles, devProjects, simulators, uninstaller, startup
+    case largeFiles, devProjects, simulators, docker, uninstaller, startup
     var id: String { rawValue }
 
     var title: String {
@@ -9,6 +9,7 @@ enum CleanupRoute: String, Identifiable {
         case .largeFiles: String(localized: "Large files")
         case .devProjects: String(localized: "Inactive projects")
         case .simulators: String(localized: "Simulators and emulators")
+        case .docker: String(localized: "Docker")
         case .uninstaller: String(localized: "Uninstall apps")
         case .startup: String(localized: "Startup items")
         }
@@ -19,6 +20,7 @@ enum CleanupRoute: String, Identifiable {
         case .largeFiles: String(localized: "Find what takes up the most space")
         case .devProjects: String(localized: "node_modules, .build, target… from old projects")
         case .simulators: String(localized: "iOS Simulators and Android emulators")
+        case .docker: String(localized: "Build cache and untagged images")
         case .uninstaller: String(localized: "Remove an app and its leftovers")
         case .startup: String(localized: "What starts when you log in")
         }
@@ -29,6 +31,7 @@ enum CleanupRoute: String, Identifiable {
         case .largeFiles: "doc.zipper"
         case .devProjects: "shippingbox"
         case .simulators: "ipad.and.iphone"
+        case .docker: "square.stack.3d.up"
         case .uninstaller: "trash.square"
         case .startup: "power.circle"
         }
@@ -36,10 +39,10 @@ enum CleanupRoute: String, Identifiable {
 }
 
 extension CleanupRoute {
-    /// Les outils de la liste, dans l'ordre : « Simulators and emulators » entre « Inactive projects » et « Uninstall apps »,
+    /// Les outils de la liste, dans l'ordre : « Simulators and emulators » puis « Docker » entre « Inactive projects » et « Uninstall apps »,
     /// seulement si l'outil est présent (ou en mode démo).
-    static func toolRoutes(showSimulators: Bool) -> [CleanupRoute] {
-        [.largeFiles, .devProjects] + (showSimulators ? [.simulators] : []) + [.uninstaller, .startup]
+    static func toolRoutes(showSimulators: Bool, showDocker: Bool = false) -> [CleanupRoute] {
+        [.largeFiles, .devProjects] + (showSimulators ? [.simulators] : []) + (showDocker ? [.docker] : []) + [.uninstaller, .startup]
     }
 }
 
@@ -53,10 +56,13 @@ struct CleanupTab: View {
     @StateObject private var uninstaller: UninstallerModel
     @StateObject private var startup: StartupModel
     @StateObject private var simulators: SimulatorsModel
+    @StateObject private var docker: DockerModel
     /// Résultat de la détection de l'outil des simulateurs (sur le disque, rien n'est lancé) ; `nil` tant qu'elle n'a pas eu lieu.
     @State private var simulatorDetection: SimulatorToolDetection?
     /// Le SDK Android trouvé (variables d'environnement du processus, sinon le dossier par défaut), `nil` s'il n'y en a pas.
     @State private var androidSDK: AndroidSDKLocation?
+    /// Le `docker` trouvé sur le disque (chemin absolu, rien n'est lancé) ; `nil` tant que la détection n'a pas eu lieu, ou s'il n'y en a pas.
+    @State private var dockerPath: String?
 
     init() {
         // `notify` est rebranché sur l'état au premier affichage (voir `body`).
@@ -66,6 +72,11 @@ struct CleanupTab: View {
         _startup = StateObject(wrappedValue: StartupModel(notify: { _ in }))
         // Seul endroit de l'application où le vrai lanceur de commandes est construit (avec `Diagnostics.scan`).
         _simulators = StateObject(wrappedValue: SimulatorsModel(runner: RealCommandRunner(), environment: ProcessInfo.processInfo.environment, confirm: SystemConfirmation.ask, notify: { _ in }))
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        _docker = StateObject(wrappedValue: DockerModel(runner: RealCommandRunner(),
+                                                        locate: { ToolLocator.dockerPath(home: URL(fileURLWithPath: NSHomeDirectory())) },
+                                                        home: home, freeSpace: DockerModel.realFreeSpace(home: home), wait: DockerModel.realWait,
+                                                        confirm: SystemConfirmation.ask, notify: { _ in }))
     }
 
     var body: some View {
@@ -101,7 +112,8 @@ struct CleanupTab: View {
                 developerSection
                 SectionHeader(title: "Tools")
                 VStack(spacing: 6) {
-                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, androidSDK: androidSDK, demo: DemoMode.isEnabled))) { item in
+                    ForEach(CleanupRoute.toolRoutes(showSimulators: SimulatorToolDetection.showsToolsRow(detection: simulatorDetection, androidSDK: androidSDK, demo: DemoMode.isEnabled),
+                                                    showDocker: DockerScreen.showsToolsRow(dockerPath: dockerPath, demo: DemoMode.isEnabled))) { item in
                         Button { open(item) } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: item.systemImage).font(.title3).frame(width: 26).foregroundStyle(Color.accentColor)
@@ -130,13 +142,15 @@ struct CleanupTab: View {
         .task {
             // Mode démo : la rangée est toujours visible, rien n'est lu sur le disque.
             guard !DemoMode.isEnabled else { return }
-            let (found, sdk) = await Task.detached(priority: .utility) { () -> (SimulatorToolDetection, AndroidSDKLocation?) in
+            let (found, sdk, foundDocker) = await Task.detached(priority: .utility) { () -> (SimulatorToolDetection, AndroidSDKLocation?, String?) in
                 let home = URL(fileURLWithPath: NSHomeDirectory())
                 return (SimulatorToolDetector.detect(home: home),
-                        ToolLocator.androidSDK(environment: ProcessInfo.processInfo.environment, home: home))
+                        ToolLocator.androidSDK(environment: ProcessInfo.processInfo.environment, home: home),
+                        ToolLocator.dockerPath(home: home))
             }.value
             simulatorDetection = found
             androidSDK = sdk
+            dockerPath = foundDocker
         }
     }
 
@@ -183,6 +197,7 @@ struct CleanupTab: View {
         uninstaller.setNotify(notify)
         startup.setNotify(notify)
         simulators.setNotify(notify)
+        docker.setNotify(notify)
         self.route = route
     }
 
@@ -190,7 +205,7 @@ struct CleanupTab: View {
         VStack(spacing: 0) {
             HStack {
                 Button {
-                    largeFiles.cancel(); devProjects.cancel(); uninstaller.cancel(); simulators.cancel()
+                    largeFiles.cancel(); devProjects.cancel(); uninstaller.cancel(); simulators.cancel(); docker.cancel()
                     self.route = nil
                 } label: {
                     Label("Cleanup", systemImage: "chevron.left")
@@ -207,6 +222,7 @@ struct CleanupTab: View {
             case .largeFiles: LargeFilesView(model: largeFiles)
             case .devProjects: DevProjectsView(model: devProjects)
             case .simulators: SimulatorsView(model: simulators)
+            case .docker: DockerView(model: docker)
             case .uninstaller: UninstallerView(model: uninstaller)
             case .startup: StartupItemsView(model: startup)
             }
