@@ -60,15 +60,7 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             let host = NSHostingController(rootView: MainWindowView(initialSection: section).environmentObject(state))
             host.sceneBridgingOptions = [.toolbars, .title]      // la barre d'outils SwiftUI devient celle de la fenêtre
             let window = NSWindow(contentViewController: host)
-            window.title = "Soaro"
-            window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            window.toolbarStyle = .unified
-            // Fenêtre translucide : c'est le fond flouté (WindowGlassBackground) qui se voit, pas un aplat opaque.
-            window.titlebarAppearsTransparent = true
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.setContentSize(NSSize(width: 860, height: 680))
-            window.minSize = NSSize(width: 700, height: 520)
+            Self.configure(window)
             window.isReleasedWhenClosed = false
             window.delegate = self
             window.setFrameAutosaveName("SoaroMainWindow")
@@ -79,6 +71,19 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Réglage de la fenêtre (extrait de `show` pour que les tests construisent la même).
+    static func configure(_ window: NSWindow) {
+        window.title = "Soaro"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.toolbarStyle = .unified
+        // Fenêtre translucide : c'est le fond flouté (WindowGlassBackground) qui se voit, pas un aplat opaque.
+        window.titlebarAppearsTransparent = true
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.setContentSize(NSSize(width: 860, height: 680))
+        window.minSize = NSSize(width: 700, height: 520)
     }
 
     /// Mode trace (`SOARO_CAPTURE=<fichier.png>`) : photographie la vraie fenêtre, verre compris.
@@ -151,11 +156,13 @@ struct MainWindowView: View {
             .navigationSplitViewColumnWidth(min: 170, ideal: 190, max: 240)
             .safeAreaInset(edge: .bottom) { statusFooter }
             .scrollContentBackground(.hidden)
+            .windowDragStrip()                   // le clic dans le haut de la barre latérale ne déplaçait pas la fenêtre
         } detail: {
             clearContainer(detail)
                 .scrollContentBackground(.hidden)
                 .windowMainAreaBackground()       // expérience 1.2.0 : zone principale opaque (interrupteur : `WindowSurface`)
                 .navigationTitle(selection?.title ?? "Soaro")
+                .windowDragStrip()
                 .overlay(alignment: .top) { TitleBarBlur() }
                 .overlay(alignment: .bottom) { toast }
                 .toolbar {
