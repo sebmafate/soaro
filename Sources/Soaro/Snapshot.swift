@@ -74,7 +74,7 @@ enum Snapshot {
     private static func captureMenuBar(state: AppState, directory: String) {
         guard let snap = state.snapshot else { return }
         let compact = !CommandLine.arguments.contains("--inline")
-        let flagCode = MenuBarFlag.countryCode(lookupEnabled: state.publicIPEnabled, demo: DemoMode.isEnabled, info: state.publicIP)
+        let flagCode = MenuBarFlag.countryCode(lookupEnabled: state.publicIPEnabled, demo: DemoMode.isEnabled, info: state.publicIP, matchesNetwork: state.publicIPMatchesNetwork, now: Date())
         let real = MenuBarItem.items(for: snap, cpu: true, gpu: true, memory: true, disk: true, network: true, battery: true, publicIPCountryCode: flagCode)
         let demo: [MenuBarItem] = [
             .stacked(label: "CPU", value: "34%", level: .normal), .stacked(label: "GPU", value: "72%", level: .medium),

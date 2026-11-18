@@ -17,8 +17,13 @@ enum MenuBarFlag {
 
     /// Le code à montrer, en majuscules, ou `nil`. Le réglage doit être activé (une valeur restée en mémoire ne suffit pas),
     /// sauf en mode démo où l'IP publique de démonstration (la France) s'affiche, sans rien demander à personne.
-    static func countryCode(lookupEnabled: Bool, demo: Bool, info: PublicIPInfo?) -> String? {
-        guard lookupEnabled || demo, let code = info?.countryCode?.uppercased(), emoji(forCountryCode: code) != nil else { return nil }
+    /// Hors démo, la réponse doit venir de la connexion actuelle (`matchesNetwork`) et avoir au plus `flagMaxAge` : au-delà, aucun
+    /// drapeau plutôt qu'un drapeau faux (la recherche a échoué, ou le VPN a changé et la nouvelle réponse n'est pas encore là).
+    static func countryCode(lookupEnabled: Bool, demo: Bool, info: PublicIPInfo?, matchesNetwork: Bool, now: Date) -> String? {
+        guard lookupEnabled || demo, let info, let code = info.countryCode?.uppercased(), emoji(forCountryCode: code) != nil else { return nil }
+        if demo { return code }
+        let age = now.timeIntervalSince(info.fetchedAt)
+        guard matchesNetwork, age >= 0, age <= PublicIPLookupPolicy.flagMaxAge else { return nil }
         return code
     }
 

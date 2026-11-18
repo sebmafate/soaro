@@ -139,6 +139,11 @@ final class AppState: ObservableObject {
     private let terminateApp: @MainActor (String) -> Bool
     /// Annonce vocale des toasts (VoiceOver) : remplaçable pour que les tests n'envoient aucune vraie notification.
     private let announce: @MainActor (String) -> Void
+    /// Recherche d'IP publique, réglages qu'elle lit et condition d'affichage du drapeau : remplaçables pour que les tests n'ouvrent aucune
+    /// connexion et ne touchent pas aux vraies préférences. Par défaut, le comportement réel.
+    private let publicIPFetch: @Sendable () async throws -> PublicIPInfo
+    private let publicIPSetting: () -> Bool
+    private let networkItemShown: (SystemSnapshot?) -> Bool
 
     init(history: HistoryStore? = HistoryStore(),
          demo: Bool = DemoMode.isEnabled,
@@ -147,6 +152,10 @@ final class AppState: ObservableObject {
          terminateApp: @escaping @MainActor (String) -> Bool = { path in
              NSWorkspace.shared.runningApplications.first { $0.bundleURL?.path == path }?.terminate() == true
          },
+         publicIPFetch: @escaping @Sendable () async throws -> PublicIPInfo = { try await PublicIPService.fetch() },
+         publicIPSetting: @escaping () -> Bool = { UserDefaults.standard.bool(forKey: SettingsKey.publicIP) },
+         // Le bloc réseau est dans la barre de menus : réglage coché ET débit mesuré (la condition d'affichage du drapeau).
+         networkItemShown: @escaping (SystemSnapshot?) -> Bool = { UserDefaults.standard.bool(forKey: SettingsKey.menuBarNetwork) && $0?.network != nil },
          announce: @escaping @MainActor (String) -> Void = ToastAnnouncer.announce) {
         self.history = history
         self.demo = demo
@@ -154,6 +163,9 @@ final class AppState: ObservableObject {
         self.cleanAction = clean
         self.terminateApp = terminateApp
         self.announce = announce
+        self.publicIPFetch = publicIPFetch
+        self.publicIPSetting = publicIPSetting
+        self.networkItemShown = networkItemShown
     }
 
     // Mesures
@@ -185,6 +197,13 @@ final class AppState: ObservableObject {
     }()
     private var lastPublicIPAttempt = Date.distantPast
     private var publicIPFingerprint = ""
+    /// Empreinte de la connexion au moment de la recherche dont vient `publicIP` : si elle a changé depuis, la réponse n'est plus celle d'ici.
+    private var publicIPInfoFingerprint = ""
+    private var lastPublicIPFailure: Date?
+    /// Incrémenté à chaque départ et à chaque oubli : une réponse d'une recherche périmée est jetée.
+    private var publicIPGeneration = 0
+    /// La recherche en cours (lue par les tests pour l'attendre).
+    private(set) var publicIPLookupTask: Task<Void, Never>?
     private var lastSensorRead = Date.distantPast
     private var lastTrafficSave = Date()
     private var processRefreshInFlight = false
@@ -245,6 +264,7 @@ final class AppState: ObservableObject {
         }
         snap.sensors = lastSensors
         snapshot = snap
+        refreshPublicIPWhileFlagShown(now: now)
 
         append(\.cpuHistory, snap.cpu.total)
         append(\.memoryHistory, snap.memory.usedFraction)
@@ -377,41 +397,69 @@ final class AppState: ObservableObject {
         }
     }
 
-    var publicIPEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.publicIP) }
+    var publicIPEnabled: Bool { publicIPSetting() }
 
-    /// Interroge le service tiers seulement si l'utilisateur l'a activé : au plus toutes les 5 min,
-    /// ou quand la connexion change (autre réseau, VPN allumé/éteint). `force` = bouton « Actualiser ».
-    func refreshPublicIP(force: Bool = false) {
-        guard !DemoMode.isEnabled, publicIPEnabled, publicIPState != .loading else { return }
-        let now = Date()
-        let fingerprint = "\(snapshot?.network?.localIP ?? "-")|\(vpn?.isActive == true ? "vpn" : "none")|\(vpn?.interface ?? "-")|\(vpn?.name ?? "-")"
-        let changed = fingerprint != publicIPFingerprint
-        let age = publicIP.map { now.timeIntervalSince($0.fetchedAt) } ?? .infinity
-        let needsRefresh = force || publicIP == nil || changed || age > 300
-        // Garde-fou : un échec ne doit pas provoquer de requêtes en boucle.
-        let minimumGap: TimeInterval = force ? 0 : (changed ? 5 : 60)
-        guard needsRefresh, now.timeIntervalSince(lastPublicIPAttempt) >= minimumGap else { return }
+    /// Interroge le service tiers seulement si l'utilisateur l'a activé, et seulement quand c'est utile : onglet Réseau ouvert,
+    /// ou drapeau affiché dans la barre de menus (ADR 0011). Au plus toutes les 5 min, ou quand la connexion change
+    /// (autre réseau, VPN allumé/éteint). `force` = bouton « Actualiser » ou interrupteur des réglages.
+    /// La décision tient entière dans `PublicIPLookupPolicy.shouldLookUp` (pure, temps injecté).
+    func refreshPublicIP(force: Bool = false, now: Date = Date()) {
+        let fingerprint = currentPublicIPFingerprint
+        let inputs = PublicIPLookupPolicy.Inputs(
+            settingOn: publicIPSetting(), networkItemShown: networkItemShown(snapshot), networkTabOpen: activeTabs.contains(.network),
+            demo: DemoMode.isEnabled || demo, state: publicIPState, force: force, fingerprintChanged: fingerprint != publicIPFingerprint,
+            lastSuccess: publicIP?.fetchedAt, lastAttempt: lastPublicIPAttempt, lastFailure: lastPublicIPFailure, now: now)
+        guard PublicIPLookupPolicy.shouldLookUp(inputs) else { return }
 
         lastPublicIPAttempt = now
         publicIPFingerprint = fingerprint
         publicIPState = .loading
-        Task { [weak self] in
+        publicIPGeneration += 1
+        let generation = publicIPGeneration
+        let fetch = publicIPFetch
+        publicIPLookupTask = Task { [weak self] in
             do {
-                let info = try await PublicIPService.fetch()
-                self?.publicIP = info
-                self?.publicIPState = .idle
+                let info = try await fetch()
+                guard let self else { return }
+                // Réglage coupé (ou oubli) pendant la recherche : la réponse est jetée, rien n'est gardé, même en mémoire.
+                guard generation == self.publicIPGeneration, self.publicIPSetting() else { return }
+                self.publicIP = info
+                self.publicIPInfoFingerprint = fingerprint
+                self.lastPublicIPFailure = nil
+                self.publicIPState = .idle
             } catch {
-                self?.publicIPState = .failed(error.localizedDescription)
+                guard let self, generation == self.publicIPGeneration, self.publicIPSetting() else { return }
+                self.lastPublicIPFailure = now
+                self.publicIPState = .failed(error.localizedDescription)
             }
         }
     }
 
+    /// Chaque mesure (3 s) : tant que le drapeau est affiché, la recherche reste à jour même onglet Réseau fermé.
+    /// Le minuteur de la mesure est le seul : aucun autre fil, aucune autre horloge.
+    func refreshPublicIPWhileFlagShown(now: Date) {
+        guard !(DemoMode.isEnabled || demo), publicIPSetting(), networkItemShown(snapshot) else { return }
+        // La détection du VPN est locale (aucune requête) ; sans elle, un VPN qui change ne serait vu qu'onglet Réseau ouvert.
+        if now.timeIntervalSince(lastVPNRefresh) >= 10 { refreshVPN() }
+        refreshPublicIP(now: now)
+    }
+
+    private var currentPublicIPFingerprint: String {
+        PublicIPLookupPolicy.fingerprint(localIP: snapshot?.network?.localIP, vpn: vpn)
+    }
+
+    /// La réponse connue vient-elle de la connexion actuelle ? (Sinon le drapeau ne s'affiche pas, en attendant la nouvelle.)
+    var publicIPMatchesNetwork: Bool { publicIP != nil && publicIPInfoFingerprint == currentPublicIPFingerprint }
+
     /// Appelé quand l'utilisateur coupe l'option : on n'en garde aucune trace, même en mémoire.
     func forgetPublicIP() {
         guard !DemoMode.isEnabled else { return }
+        publicIPGeneration += 1                  // une recherche en cours est abandonnée : sa réponse sera jetée
         publicIP = nil
         publicIPState = .idle
         publicIPFingerprint = ""
+        publicIPInfoFingerprint = ""
+        lastPublicIPFailure = nil
     }
 
     private func refreshNetworkProcesses() {

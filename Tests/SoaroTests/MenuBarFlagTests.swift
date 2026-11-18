@@ -73,17 +73,17 @@ import Testing
     // MARK: Quand la recherche est faite
 
     @Test func theCodeComesFromTheLookupOnlyWhenTheOptInIsOnOrInDemo() {
-        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "FR")) == "FR")
-        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: false, info: info(code: "FR")) == nil, "réglage coupé : rien, même si une valeur traîne en mémoire")
-        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: true, info: info(code: "FR")) == "FR", "démo : la France de DemoData")
-        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: nil) == nil, "pas encore de réponse, ou échec")
-        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: nil)) == nil)
-        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "XX")) == nil)
-        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "fr")) == "FR")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "FR"), matchesNetwork: true, now: Date()) == "FR")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: false, info: info(code: "FR"), matchesNetwork: true, now: Date()) == nil, "réglage coupé : rien, même si une valeur traîne en mémoire")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: true, info: info(code: "FR"), matchesNetwork: true, now: Date()) == "FR", "démo : la France de DemoData")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: nil, matchesNetwork: true, now: Date()) == nil, "pas encore de réponse, ou échec")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: nil), matchesNetwork: true, now: Date()) == nil)
+        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "XX"), matchesNetwork: true, now: Date()) == nil)
+        #expect(MenuBarFlag.countryCode(lookupEnabled: true, demo: false, info: info(code: "fr"), matchesNetwork: true, now: Date()) == "FR")
     }
 
     @Test func theDemoPublicIPIsFrance() {
-        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: true, info: DemoData.publicIP()) == "FR")
+        #expect(MenuBarFlag.countryCode(lookupEnabled: false, demo: true, info: DemoData.publicIP(), matchesNetwork: true, now: Date()) == "FR")
     }
 
     // MARK: Éléments de la barre

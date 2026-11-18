@@ -48,7 +48,7 @@ L'app est signée avec un Developer ID et notarisée par Apple. Elle se met à j
 ## Vie privée
 
 - Soaro travaille **en local**. L'historique reste dans `~/Library/Application Support/Soaro`, pendant 30 jours.
-- Deux options sont **désactivées par défaut** : le test de latence (un petit ping vers `1.1.1.1`) et la recherche d'IP publique et de pays. Cette recherche interroge un service tiers (ipwho.is, ou ipapi.co en secours), qui voit alors votre IP publique. La détection du VPN est entièrement locale.
+- Deux options sont **désactivées par défaut** : le test de latence (un petit ping vers `1.1.1.1`) et la recherche d'IP publique et de pays. Cette recherche interroge un service tiers (ipwho.is, ou ipapi.co en secours), qui voit alors votre IP publique. Elle l'interroge quand l'onglet Réseau est ouvert et tant que le drapeau du pays est affiché dans la barre des menus : environ toutes les 5 minutes, et de nouveau quand votre réseau ou votre VPN change. La détection du VPN est entièrement locale.
 - La vérification des mises à jour télécharge un fichier public sur soaro.app, une fois par jour, sans aucune donnée personnelle.
 - Pas de compte, pas de statistiques, pas de pistage dans l'app. Le site soaro.app compte les visites avec [Umami](https://umami.is), sans cookie.
 

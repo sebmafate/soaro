@@ -16,7 +16,7 @@ The file-by-file reference, the command-line modes, the macOS permissions and th
 
 Soaro runs on one Mac, for one user, in the menu bar. It reads the machine (kernel counters, IOKit, a few system tools), shows it live and as history, and cleans caches and rebuildable folders after the user confirms. **[H]** `SoaroApp.swift`, README.
 
-Outside the app: the website `soaro.app` (it serves the update feed through a redirect), GitHub Releases (the update archives), and two optional third-party lookups (public IP, ping to 1.1.1.1), both off by default. **[H]** README "Privacy".
+Outside the app: the website `soaro.app` (it serves the update feed through a redirect), GitHub Releases (the update archives), and two optional third-party lookups (public IP, ping to 1.1.1.1), both off by default (the public IP lookup also runs while its flag is shown in the menu bar, ADR 0011). **[H]** README "Privacy".
 
 ## Decision drivers
 
@@ -142,6 +142,7 @@ All **[H]**, from `docs/architecture.md` and the sources.
 | [0008](docs/adr/0008-release-built-on-github-actions-xcode-26.md) | Release built by GitHub Actions on Xcode 26 | accepted (reconstructed) |
 | [0009](docs/adr/0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract (completes 0006) | accepted |
 | [0010](docs/adr/0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | accepted 2026-11-18 (Test B passed, SPK-002) |
+| [0011](docs/adr/0011-public-ip-lookup-also-runs-while-its-flag-is-shown.md) | The public IP lookup also runs while its flag is shown in the menu bar (extends 0007, does not supersede it) | accepted 2026-11-18 |
 
 Smaller choices (notes, no ADR), developer cleanup, decided 2026-11-15:
 

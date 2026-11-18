@@ -64,7 +64,7 @@ struct SettingsView: View {
                     .onChange(of: publicIP) { _, enabled in
                         if enabled { state.refreshPublicIP(force: true) } else { state.forgetPublicIP() }
                     }
-                Text("Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. At most one request every 5 minutes, only while the Network tab is open. Nothing is stored. VPN detection is entirely local.")
+                Text("Off by default: asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. It asks while the Network tab is open and while the country flag is shown in the menu bar: about every 5 minutes, and again when your network or VPN changes. Nothing is stored. VPN detection is entirely local.")
                     .font(.caption).foregroundStyle(.supportingText)
                 Toggle("Measure latency (ping to 1.1.1.1)", isOn: $latency)
                 Text("Off by default: this option sends a small packet to a Cloudflare server every 10 seconds, only while the Network tab is open.")
