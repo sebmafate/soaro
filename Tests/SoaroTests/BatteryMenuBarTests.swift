@@ -265,8 +265,14 @@ import Testing
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
         let (off, offOrigin) = try label(.battery(percent: 0, power: .onBattery))
         let (on, onOrigin) = try label(.battery(percent: 0, power: .charging))
-        let box = g.boltRect
-        #expect(on.opaqueCount(in: box, origin: onOrigin) > off.opaqueCount(in: box, origin: offOrigin) + 6)
+        let box = g.boltRect.insetBy(dx: -BatteryGlyphGeometry.haloWidth, dy: -BatteryGlyphGeometry.haloWidth)
+        // Dans la boîte du repère et de son halo, l'image charge et l'image sur batterie diffèrent nettement (encre du repère, jeu du halo).
+        var differing = 0
+        let x0 = Int(((box.minX + onOrigin.x) * on.scale).rounded()), x1 = Int(((box.maxX + onOrigin.x) * on.scale).rounded())
+        let y0 = Int(((box.minY + onOrigin.y) * on.scale).rounded()), y1 = Int(((box.maxY + onOrigin.y) * on.scale).rounded())
+        for x in x0..<x1 { for y in y0..<y1 where abs(on.alpha(x, y) - off.alpha(x - Int(((onOrigin.x - offOrigin.x) * on.scale).rounded()), y)) > 0.5 { differing += 1 } }
+        #expect(differing > 12, "\(differing) pixels (à 2x) diffèrent dans la boîte du repère")
+        #expect(on.opaqueCount(in: g.boltRect, origin: onOrigin) > 6, "de l'encre pleine pour l'éclair dans le libellé")
         #expect(try render([Self.cpu, .battery(percent: 0, power: .charging)]).isTemplate)
     }
 

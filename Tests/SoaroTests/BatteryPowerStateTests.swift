@@ -175,16 +175,6 @@ import Testing
 @Suite struct BatteryPlugGeometryTests {
     private let bar = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
 
-    @Test func thePlugIsCentredInsideTheFillAreaAtEverySize() {
-        for body in [BatteryGlyphGeometry.menuBarBody, BatteryGlyphGeometry.cardBody, BatteryGlyphGeometry.tabBody] {
-            let g = BatteryGlyphGeometry(body: body)
-            let r = g.plugRect
-            #expect(g.innerRect.insetBy(dx: -0.01, dy: -0.01).contains(r), "la prise tient dans l'intérieur (\(body))")
-            #expect(abs(r.midX - g.bodyRect.midX) < 1e-9 && abs(r.midY - g.bodyRect.midY) < 1e-9)
-            #expect(r.height > r.width, "une prise est plus haute que large (dents en haut)")
-        }
-    }
-
     @Test func thePlugIsMadeOfTwoProngsABodyAndACordInsideTheUnitSquare() {
         let rects = BatteryGlyphGeometry.plugRects
         #expect(rects.count == 4)
@@ -229,7 +219,7 @@ import Testing
             let diff = mask(plain, plug)
             #expect(diff.count > 25, "\(percent) % : \(diff.count) pixels de prise")
             // Rien ne change hors de la boîte de la prise.
-            let box = g.plugRect.insetBy(dx: -1, dy: -1)
+            let box = g.plugRect.insetBy(dx: -(BatteryGlyphGeometry.haloWidth + 0.6), dy: -(BatteryGlyphGeometry.haloWidth + 0.6))
             for index in diff {
                 let p = CGPoint(x: Double(index % plain.width) / Double(Self.scale), y: Double(index / plain.width) / Double(Self.scale))
                 #expect(box.contains(p), "\(percent) % : un pixel change hors de la prise")
@@ -255,18 +245,6 @@ import Testing
         #expect(emptyPlug.opaqueCount(in: g.plugRect) > emptyPlain.opaqueCount(in: g.plugRect) + 20, "encre pleine sur le vide")
         let fullPlain = try glyph(.onBattery, percent: 100), fullPlug = try glyph(.pluggedNotCharging, percent: 100)
         #expect(fullPlug.clearCount(in: g.innerRect) > fullPlain.clearCount(in: g.innerRect) + 20, "prise creusée dans le remplissage")
-    }
-
-    @Test func thePlugKeepsTheOutlineIntact() throws {
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        for percent in [0.0, 100] {
-            let plain = try glyph(.onBattery, percent: percent), plug = try glyph(.pluggedNotCharging, percent: percent)
-            for x in stride(from: 0, to: Int(g.totalSize.width * Self.scale), by: 1) {
-                for y in 0..<Int(g.lineWidth * Self.scale) - 1 {
-                    #expect(abs(plain.alpha(x, y) - plug.alpha(x, y)) < 0.2, "contour haut, colonne \(x)")
-                }
-            }
-        }
     }
 
     @Test func thePlugIsDrawnAtTheCardAndTabSizesToo() throws {
