@@ -26,6 +26,16 @@ struct BatteryGlyphGeometry: Equatable {
     static let minSliver: CGFloat = 1
     /// Pas d'arrondi de la largeur du remplissage : un demi-point, soit un pixel en @2x.
     static let step: CGFloat = 0.5
+    /// **Taille du repère** (éclair ou prise) : sa hauteur, en fraction de la hauteur du corps. Le réglage à retoucher pour le grossir ou le réduire.
+    /// 1 = aussi haut que le corps ; au-delà, il dépasse du contour en haut et en bas, de moitié de l'excédent de chaque côté.
+    /// 1,2 : 11,4 pt sur le corps de 9,5 pt de la barre de menus, soit environ 1 pt de chaque côté (les dents de la prise et son cordon
+    /// sortent du contour, comme sur macOS). À 1 le repère est aussi haut que le corps : lisible, mais les dents se confondent avec le contour.
+    static let markScale: CGFloat = 1.2
+    /// **Largeur du halo** : le jeu transparent, en points, creusé dans le contour et le remplissage tout autour du repère.
+    static let haloWidth: CGFloat = 0.9
+    /// Largeur du repère en fraction de sa hauteur.
+    static let boltAspect: CGFloat = 0.55
+    static let plugAspect: CGFloat = 0.72
     /// L'éclair : contour en 6 points dans le carré unité (x vers la droite, y vers le bas).
     static let boltPoints: [CGPoint] = [
         CGPoint(x: 0.72, y: 0), CGPoint(x: 0.06, y: 0.58), CGPoint(x: 0.42, y: 0.58),
@@ -79,15 +89,22 @@ struct BatteryGlyphGeometry: Equatable {
         CGRect(x: innerRect.minX, y: innerRect.minY, width: fillWidth(percent: percent), height: innerRect.height)
     }
 
-    /// L'éclair : 74 % de la hauteur du corps (un peu plus que l'intérieur, comme sur macOS), centré dans le corps.
+    /// Hauteur du repère : celle du corps fois `markScale` (le repère n'est plus limité à la zone de remplissage).
+    var markHeight: CGFloat { body.height * Self.markScale }
+
+    /// De combien le repère dépasse du corps, en haut et en bas (0 si `markScale` ≤ 1). Le glyphe réserve cette marge pour dessiner sans
+    /// rien couper, sans changer sa taille de mise en page.
+    var verticalOverflow: CGFloat { max(0, (markHeight - body.height) / 2) }
+
+    /// L'éclair : `markHeight` de haut, centré sur le corps.
     var boltRect: CGRect {
-        let h = body.height * 0.74, w = h * 0.62
+        let h = markHeight, w = h * Self.boltAspect
         return CGRect(x: (body.width - w) / 2, y: (body.height - h) / 2, width: w, height: h)
     }
 
-    /// La prise : aussi haute que l'intérieur (au plus 74 % du corps), 90 % de sa hauteur de large, centrée dans le corps.
+    /// La prise : `markHeight` de haut, centrée sur le corps.
     var plugRect: CGRect {
-        let h = min(body.height * 0.74, innerRect.height), w = h * 0.90
+        let h = markHeight, w = h * Self.plugAspect
         return CGRect(x: (body.width - w) / 2, y: (body.height - h) / 2, width: w, height: h)
     }
 
@@ -102,6 +119,19 @@ struct BatteryGlyphGeometry: Equatable {
 
     func markPath(_ mark: BatteryGlyphMark) -> Path { mark == .bolt ? boltPath() : plugPath() }
     func markRect(_ mark: BatteryGlyphMark) -> CGRect { mark == .bolt ? boltRect : plugRect }
+
+    /// Le halo : le repère élargi de `haloWidth` de chaque côté (un trait de `2 x haloWidth`, angles arrondis, sur le contour du repère).
+    func haloPath(_ mark: BatteryGlyphMark) -> Path {
+        markPath(mark).strokedPath(StrokeStyle(lineWidth: 2 * Self.haloWidth, lineJoin: .round))
+    }
+
+    /// Plage de niveaux (en %) où le bord du remplissage est caché derrière le repère et son halo : on lit alors le niveau d'un côté seulement
+    /// (le texte à côté dit le chiffre). Hors de cette plage, le bord se voit.
+    func hiddenEdgeRange(_ mark: BatteryGlyphMark) -> ClosedRange<Double> {
+        let r = markRect(mark)
+        func percent(at x: CGFloat) -> Double { Double(min(100, max(0, (x - innerRect.minX) / innerRect.width * 100))) }
+        return percent(at: r.minX - Self.haloWidth + 0.5)...percent(at: r.maxX + Self.haloWidth - 0.5)
+    }
 
     func boltPath() -> Path {
         let r = boltRect
@@ -178,6 +208,7 @@ struct BatteryGlyph: View {
         let outline = BatteryGlyphColors.outline(level: level, base: ink)
         let fill = BatteryGlyphColors.fill(level: level, base: ink)
         Canvas { context, _ in
+            context.translateBy(x: 0, y: g.verticalOverflow)      // le dessin commence sous la marge réservée au repère
             // 1. le remplissage (angles intérieurs arrondis ; côté droit droit tant que la batterie n'est pas pleine)
             let innerRadius = max(0.5, g.cornerRadius - g.lineWidth - BatteryGlyphGeometry.gap / 2)
             let width = g.fillWidth(percent: percent)
@@ -185,26 +216,23 @@ struct BatteryGlyph: View {
                 let isFull = width >= g.innerRect.width
                 context.fill(g.roundedRect(g.fillRect(percent: percent), left: innerRadius, right: isFull ? innerRadius : 0.5), with: .color(fill))
             }
-            // 2. le repère (éclair en charge, prise branché sans charge) creusé dans le remplissage
-            //    (mode de fusion `destinationOut` : de l'alpha en moins, aucune couleur)
-            if let mark = power.mark {
-                var cut = context
-                cut.blendMode = .destinationOut
-                cut.fill(g.markPath(mark), with: .color(.black))
-            }
-            // 3. le contour et le bout, après le jeu : l'éclair ne les mange jamais
+            // 2. le contour et le bout
             let strokeRect = g.bodyRect.insetBy(dx: g.lineWidth / 2, dy: g.lineWidth / 2)
             context.stroke(RoundedRectangle(cornerRadius: g.cornerRadius - g.lineWidth / 2).path(in: strokeRect), with: .color(outline), lineWidth: g.lineWidth)
             context.fill(g.roundedRect(g.nubRect, left: 0, right: g.nubRect.width * 0.8), with: .color(outline))
-            // 4. là où il n'y a pas de remplissage (à droite de son bord), le repère est de l'encre pleine, dans la couleur du contour
+            // 3. le repère (éclair en charge, prise branché sans charge) : d'abord son halo, un jeu transparent creusé dans tout ce qui est déjà
+            //    dessiné, contour et remplissage (mode de fusion `destinationOut` : de l'alpha en moins, aucune couleur) ; puis le repère, en encre
+            //    pleine dans la couleur du contour, par-dessus le jeu. Que du canal alpha : l'image modèle reste monochrome.
             if let mark = power.mark {
-                var ink = context
-                let edge = g.innerRect.minX + width
-                ink.clip(to: Path(CGRect(x: edge, y: -1, width: g.totalSize.width - edge + 1, height: g.totalSize.height + 2)))
-                ink.fill(g.markPath(mark), with: .color(outline))
+                var cut = context
+                cut.blendMode = .destinationOut
+                cut.fill(g.haloPath(mark), with: .color(.black))
+                cut.fill(g.markPath(mark), with: .color(.black))
+                context.fill(g.markPath(mark), with: .color(outline))
             }
         }
-        .frame(width: g.totalSize.width, height: g.totalSize.height)
+        .frame(width: g.totalSize.width, height: g.totalSize.height + 2 * g.verticalOverflow)
+        .padding(.vertical, -g.verticalOverflow)       // la marge où le repère déborde ne change pas la taille de mise en page
         .accessibilityHidden(true)      // le texte à côté dit le niveau (et la carte l'état de charge)
     }
 }

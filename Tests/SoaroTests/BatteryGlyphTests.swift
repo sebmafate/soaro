@@ -102,16 +102,6 @@ import Testing
         }
     }
 
-    @Test func theBoltFitsInsideTheBodyAndIsCentred() {
-        let box = bar.boltRect
-        #expect(bar.bodyRect.contains(box))
-        #expect(abs(box.midX - bar.bodyRect.midX) < 1e-9 && abs(box.midY - bar.bodyRect.midY) < 1e-9)
-        let points = BatteryGlyphGeometry.boltPoints
-        #expect(points.count == 6)
-        #expect(points.allSatisfy { (0...1).contains($0.x) && (0...1).contains($0.y) }, "le contour de l'éclair est dans le carré unité")
-        #expect(points.map(\.y).min() == 0 && points.map(\.y).max() == 1)
-    }
-
     @Test func theSameGlyphScalesToTheCardAndTheTab() {
         let card = BatteryGlyphGeometry(body: BatteryGlyphGeometry.cardBody)
         #expect(abs(card.innerRect.width - 24) < 1e-9)
@@ -287,7 +277,7 @@ struct GlyphInk {
             #expect(different > 25, "\(percent) % : \(different) pixels de différence")
             // Rien ne change hors du corps : le contour et le bout restent identiques.
             let outside = (0..<plain.width).flatMap { x in (0..<plain.height).map { (x, $0) } }.filter { x, y in
-                !g.boltRect.insetBy(dx: -1.5, dy: -1.5).contains(CGPoint(x: Double(x) / Double(Self.scale), y: Double(y) / Double(Self.scale)))
+                !g.boltRect.insetBy(dx: -(BatteryGlyphGeometry.haloWidth + 0.6), dy: -(BatteryGlyphGeometry.haloWidth + 0.6)).contains(CGPoint(x: Double(x) / Double(Self.scale), y: Double(y) / Double(Self.scale)))
             }
             #expect(outside.allSatisfy { abs(plain.alpha($0.0, $0.1) - charging.alpha($0.0, $0.1)) < 0.5 }, "\(percent) % : l'éclair déborde de sa zone")
         }
@@ -302,15 +292,6 @@ struct GlyphInk {
         let fullPlain = try glyph(percent: 100), fullBolt = try glyph(percent: 100, charging: true)
         #expect(fullBolt.clearCount(in: g.innerRect) > fullPlain.clearCount(in: g.innerRect) + 25, "le trou en forme d'éclair se voit dans le remplissage")
         #expect(fullBolt.opaqueCount(in: g.boltRect) < fullPlain.opaqueCount(in: g.boltRect), "il y a moins d'encre là où est l'éclair")
-    }
-
-    @Test func theBoltNeverEatsTheOutline() throws {
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let plain = try glyph(percent: 100), charging = try glyph(percent: 100, charging: true)
-        let top = Int(g.bodyRect.midX * Self.scale)
-        for y in 0..<Int(g.lineWidth * Self.scale) - 1 {
-            #expect(abs(plain.alpha(top, y) - charging.alpha(top, y)) < 0.2, "ligne \(y) du contour haut")
-        }
     }
 
     // MARK: couleurs, barre claire et sombre
