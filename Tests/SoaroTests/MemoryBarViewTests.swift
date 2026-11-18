@@ -233,11 +233,11 @@ import Testing
     }
 
     @Test func theLegendDotIsDrawnWithTheSameColourFunctionAsTheBar() throws {
-        let source = try Source.read("Sources/Soaro/Views/MemoryBar.swift")
+        let source = try SourceText.read("Sources/Soaro/Views/MemoryBar.swift")
         #expect(source.contains("MemorySegmentStyle.color("))
         // Une seule fonction de couleur : ni la barre ni les lignes n'ont de couleur codée en dur pour les segments.
-        let bar = try Source.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
-        let row = try Source.typeBody("struct MemoryRow:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let bar = try SourceText.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let row = try SourceText.typeBody("struct MemoryRow:", in: "Sources/Soaro/Views/MemoryBar.swift")
         for body in [bar, row] {
             #expect(!body.contains(".blue") && !body.contains(".purple") && !body.contains(".teal") && !body.contains("Color(.sRGB"))
         }
@@ -265,7 +265,7 @@ import Testing
     }
 
     @Test func everyRowOfTheSectionReservesTheSameLeadingSlot() throws {
-        let section = try Source.typeBody("struct MemorySection:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let section = try SourceText.typeBody("struct MemorySection:", in: "Sources/Soaro/Views/MemoryBar.swift")
         #expect(section.components(separatedBy: "MemoryRow(").count - 1 == 6, "six lignes : pression, 4 catégories, swap")
         #expect(!section.contains("KeyValueRow("), "les lignes de la mémoire passent toutes par MemoryRow pour garder le même gabarit")
     }
@@ -314,14 +314,14 @@ import Testing
     }
 
     @Test func theBarIsOneAccessibilityElementWithLabelAndValue() throws {
-        let body = try Source.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let body = try SourceText.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
         #expect(body.contains(".accessibilityElement(children: .ignore)"))
         #expect(body.contains(".accessibilityLabel(MemoryBarAccessibility.label)"))
         #expect(body.contains(".accessibilityValue(MemoryBarAccessibility.value(for: memory))"))
     }
 
     @Test func theBarHasNoAnimationSoReduceMotionIsRespected() throws {
-        let source = try Source.read("Sources/Soaro/Views/MemoryBar.swift")
+        let source = try SourceText.read("Sources/Soaro/Views/MemoryBar.swift")
         for forbidden in [".animation(", "withAnimation", ".transition(", "TimelineView"] {
             #expect(!source.contains(forbidden), "\(forbidden) interdit : la barre se met à jour toutes les 3 s sans animation")
         }
@@ -346,8 +346,8 @@ import Testing
     // MARK: Sources
 
     @Test func theMemorySectionNoLongerUsesASingleTintedProgressView() throws {
-        let tab = try Source.read("Sources/Soaro/Views/PerformanceTab.swift")
-        let section = try Source.typeBody("struct MemorySection:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let tab = try SourceText.read("Sources/Soaro/Views/PerformanceTab.swift")
+        let section = try SourceText.typeBody("struct MemorySection:", in: "Sources/Soaro/Views/MemoryBar.swift")
         #expect(tab.contains("MemorySection("))
         #expect(!section.contains("ProgressView"))
         #expect(!section.contains("loadColor"))
@@ -359,18 +359,18 @@ import Testing
     }
 
     @Test func theOverviewMemoryCardIsUntouched() throws {
-        let overview = try Source.read("Sources/Soaro/Views/OverviewTab.swift")
+        let overview = try SourceText.read("Sources/Soaro/Views/OverviewTab.swift")
         #expect(overview.contains("title: \"Memory\", systemImage: \"memorychip\", value: Format.percent(s.memory.usedFraction)"))
         #expect(overview.contains("tint: loadColor(s.memory.usedFraction), history: state.memoryHistory"))
         #expect(!overview.contains("MemoryBar"))
         #expect(!overview.contains("MemorySection"))
         // La carte Aperçu utilise `StatCard`, que cette tranche ne modifie pas.
-        let components = try Source.read("Sources/Soaro/Views/Components.swift")
+        let components = try SourceText.read("Sources/Soaro/Views/Components.swift")
         #expect(!components.contains("MemoryBar") && !components.contains("MemorySegment"))
     }
 
     @Test func theBarReadsTheDisplayScaleFromTheEnvironment() throws {
-        let body = try Source.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
+        let body = try SourceText.typeBody("struct MemoryBar:", in: "Sources/Soaro/Views/MemoryBar.swift")
         #expect(body.contains("@Environment(\\.displayScale)"))
         #expect(body.contains("MemoryBarLayout.make("))
     }
