@@ -53,7 +53,7 @@ import Testing
     @Test func theConfirmationOfHugeSizesIsValidText() {
         let targets = [DockerCleanable(prune: .buildCache, size: Self.hugeBytes, count: nil),
                        DockerCleanable(prune: .untaggedImages, size: UInt64.max, count: 2)]
-        let message = DockerPresentation.confirmationMessage(targets: targets, locale: Locale(identifier: "en"))
+        let message = DockerPresentation.confirmationMessage(targets: targets, engine: DockerEngineScanTests.engine, home: URL(fileURLWithPath: "/Users/test"), locale: Locale(identifier: "en"))
         #expect(message.hasPrefix("About "))
         #expect(message.contains("• Build cache · ") && message.contains("• Untagged images · "))
         #expect(message.contains("The next build will be slower"))

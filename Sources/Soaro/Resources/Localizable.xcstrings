@@ -24227,13 +24227,65 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Soaro só limpa o Docker neste Mac. O mecanismo ou o builder do Docker selecionado não é local."
+            "value": "O Soaro só limpa o Docker neste Mac. O motor ou o builder do Docker selecionado não é local."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "Soaro 只会清理这台 Mac 上的 Docker。所选的 Docker 引擎或构建器不是本地的。"
+          }
+        }
+      }
+    },
+    "Docker engine: %@ (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker-Engine: %@ (%@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de Docker: %@ (%@)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moteur Docker : %@ (%@)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motore Docker: %@ (%@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker エンジン：%@（%@）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker 엔진: %@ (%@)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor do Docker: %@ (%@)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker 引擎：%@（%@）"
           }
         }
       }

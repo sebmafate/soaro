@@ -43,6 +43,7 @@ import Testing
         "Cleanups that failed: %lld",
         // SL16
         "Soaro only cleans Docker on this Mac. The selected Docker engine or builder is not local.",
+        "Docker engine: %@ (%@)",
     ]
 
     static func catalogStrings() throws -> [String: Any] {

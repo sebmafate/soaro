@@ -236,7 +236,7 @@ final class DockerModel: ObservableObject {
         guard canClean, let engine else { return }
         let targets = selectedCleanables
         guard confirm(DockerPresentation.confirmationTitle(count: targets.count),
-                      DockerPresentation.confirmationMessage(targets: targets),
+                      DockerPresentation.confirmationMessage(targets: targets, engine: engine, home: home),
                       String(localized: "Clean"), true) else { return }
 
         // Mode démo : la même confirmation, puis les lignes cochées quittent la liste tout de suite, avec un toast inventé. Ni lanceur, ni

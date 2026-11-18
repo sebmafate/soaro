@@ -187,6 +187,7 @@ import Testing
         let total = Format.fileBytes(21_587_000_000)
         #expect(ask.message == "About \(total) will be removed:\n\n• Build cache · \(Format.fileBytes(21_190_000_000))\n"
                 + "• Untagged images · \(Format.fileBytes(397_000_000))\n\n"
+                + "Docker engine: desktop-linux (/Users/test/.docker/run/docker.sock)\n\n"
                 + "The next build will be slower, because the cache is rebuilt. Containers, volumes and images with a tag are not touched.")
         #expect(ask.button == "Clean")
         #expect(ask.critical, "bouton destructif ; Annuler est le bouton par défaut de l'alerte (R8)")
