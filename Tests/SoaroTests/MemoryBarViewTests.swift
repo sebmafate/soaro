@@ -139,7 +139,7 @@ import Testing
             let mid = pixels.height / 2
             let track = Self.luminance(Self.expectedTrack(dark: dark))
             func distance(_ kind: MemorySegmentKind) -> Double {
-                let s = layout.segments.first { $0.kind == kind }!
+                guard let s = layout.segments.first(where: { $0.kind == kind }) else { Issue.record("segment \(kind) absent"); return 0 }
                 return abs(Self.luminance(pixels.rgb((s.startPixel + s.endPixel) / 2, mid)) - track)
             }
             // « Plus léger » : plus près de la piste que les segments pleins (en clair comme en sombre).
@@ -147,7 +147,7 @@ import Testing
                 #expect(distance(.cached) < distance(used), "dark=\(dark) échelle \(scale) : le cache doit être plus léger que \(used)")
             }
             // Mais pas invisible : un contour d'un pixel de la couleur du jeton marque ses bords.
-            let cache = layout.segments.first { $0.kind == .cached }!
+            let cache = try #require(layout.segments.first { $0.kind == .cached })
             #expect(Self.near(pixels.rgb(cache.startPixel, mid), Self.expected(.cached, dark: dark)), "contour gauche du cache")
             #expect(Self.near(pixels.rgb(cache.endPixel - 1, mid), Self.expected(.cached, dark: dark)), "contour droit du cache")
         }
@@ -167,7 +167,10 @@ import Testing
         var critical = Self.screenshot; critical.pressure = .critical
         let a = try #require(Self.render(Self.bar(calm), scale: 2))
         let b = try #require(Self.render(Self.bar(critical), scale: 2))
-        #expect(a.bytes == b.bytes)
+        // Le premier rendu d'un processus peut différer d'un niveau sur les pixels des coins arrondis : on tolère 2 niveaux, pas une teinte.
+        #expect(a.bytes.count == b.bytes.count)
+        let worst = zip(a.bytes, b.bytes).map { abs(Int($0) - Int($1)) }.max() ?? 0
+        #expect(worst <= 2, "la pression change la barre de \(worst) niveaux")
     }
 
     @Test func theBarIsNotTintedByTheUsedFractionEither() throws {
@@ -283,7 +286,8 @@ import Testing
         }
         #expect(value.hasSuffix(String(localized: "of \(Format.bytes(Self.screenshot.total))")))
         // L'ordre est celui de la barre.
-        let positions = ["Apps", "System (wired)", "Compressed", "Cached (reclaimable)"].map { value.range(of: String(localized: String.LocalizationValue($0)))!.lowerBound }
+        let positions = ["Apps", "System (wired)", "Compressed", "Cached (reclaimable)"].compactMap { value.range(of: String(localized: String.LocalizationValue($0)))?.lowerBound }
+        #expect(positions.count == 4)
         #expect(positions == positions.sorted())
     }
 

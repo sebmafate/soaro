@@ -142,6 +142,8 @@ import Testing
                                           used: 16 * GB, total: 16 * GB, trackWidth: 100, scale: 1, gapPixels: 1)
         #expect(layout.segments.reduce(0) { $0 + $1.width } <= layout.trackPixels)
         #expect(layout.segments.allSatisfy { $0.width >= 1 })
+        #expect(kinds(layout) == [.app, .wired, .compressed], "les trois segments restent visibles, le pixel est repris sur le plus large")
+        #expect(layout.segments[0].width >= 96)
         #expect(layout.segments.last!.endPixel <= layout.trackPixels)
     }
 
@@ -193,6 +195,10 @@ import Testing
         #expect(layout.segments.reduce(0) { $0 + $1.width } <= 500)
         #expect(layout.segments.last!.endPixel <= 500)
         #expect(!kinds(layout).contains(.cached))     // plus de place : le cache n'est pas dessiné
+        // Mises à l'échelle ensemble : la somme des octets représentés ne dépasse pas le total, les parts restent 10 : 8 : 6.
+        #expect(layout.segments.map(\.bytes).reduce(0, +) <= Double(16 * GB) * (1 + 1e-9))
+        #expect(abs(layout.segments[0].bytes / layout.segments[2].bytes - 10.0 / 6.0) < 1e-6)
+        #expect(abs(Double(layout.segments[0].width) - 10.0 / 24.0 * 500) <= 1.01)
     }
 
     @Test func theCacheIsCutToTheFreeSpace() {
@@ -261,6 +267,7 @@ import Testing
         let layout = MemoryBarLayout.make(app: .max, wired: .max, compressed: .max, cached: .max, used: .max,
                                           total: .max, trackWidth: 300, scale: 2)
         #expect(layout.segments.reduce(0) { $0 + $1.width } <= layout.trackPixels)
+        #expect(layout.segments.map(\.bytes).reduce(0, +) <= Double(UInt64.max) * (1 + 1e-9))
     }
 
     // MARK: Depuis le modèle
