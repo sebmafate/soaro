@@ -9,6 +9,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Settings > About now links to the website, soaro.app, next to the app logo (the French page when Soaro runs in French).
 - With “Show public IP and country” on and the network rates in the menu bar, the flag of your public IP's country now shows to the right of the rates (and its name in the tooltip); the flag stays up to date (it follows a VPN or network change within seconds, which means Soaro asks the lookup service about every 5 minutes while the flag shows, not only when the Network tab is open), and it shows nothing when the country is unknown.
 
+### Changed
+
+- The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon.
+
 ## [1.1.0] - 2026-11-18
 
 ### Added
