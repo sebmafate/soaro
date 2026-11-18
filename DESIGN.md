@@ -314,6 +314,31 @@ One switch: `WindowSurface.opaqueMainArea` in `GlassStyle.swift`. To go back to 
 
 To judge by eye on the real app (offscreen screenshots do not draw the blur): the sidebar over a busy desktop, light and dark, collapsed and expanded; no seam or translucent strip at the top of the main area; Increase Contrast and Reduce Transparency; the look on macOS 26.
 
+### Memory bar (SL26, added 2026-11-18)
+
+The Memory section of the Performance tab (not the Overview card, which keeps its sparkline) draws its usage bar split by kind of use. Requested by the author on 2026-11-18 ("découper la ligne en plusieurs couleurs en fonction de l'usage"). It is a new small component (`MemoryBar`), its rows (`MemoryRow`) and four colour tokens plus a neutral one; they are drawn from the same token function, so the legend dot and the segment can never differ.
+
+- **Segments, left to right:** Apps, System (wired), Compressed, then Cached (reclaimable); the rest of the track is free. Width is proportional to bytes over the **total RAM**, so the used part ends at the used percentage. The labels "12.65 GB / 16 GB" and "79 %" keep the used figure (apps + wired + compressed); the cache is not part of it. Swap is on disk and is never drawn.
+- **Cache look:** an outline of one device pixel and a light fill of the same grey, because a pale solid fill cannot reach 3 : 1 against the light track. The outline carries the contrast and says "not used, can be given back". The legend dot of the cache is the same ring.
+- **Unattributed:** a fifth, neutral solid grey, used only when the three used categories fall short of the used figure by more than 2 % of the RAM (see the rules below). It has no row.
+- **Crispness:** every segment boundary and both ends of the track are whole device pixels (`displayScale`), so a 1x external display shows no blurred edge. A 1 device pixel gap (the track shows through, not an extra line) separates neighbouring segments: chosen over a drawn hairline after looking at renders at 1x and 2x, where the gap stays a clean line at both scales. A non-empty segment is at least 1 px wide. Height 8 pt, corner radius 2 pt on the track only.
+- **Rules of the layout** (`MemoryBarLayout`, pure and tested): if the three used categories differ from the used figure by at most 2 % of the RAM they are scaled so that their sum is exactly the used figure (no hole, no overshoot); beyond that nothing is distorted: a shortfall becomes a neutral "unattributed" segment, an excess is drawn as is, and in every case the sum is cut to the total. The cache is cut to the free space. A total of 0 or none draws an empty track.
+- **Pressure level:** the bar was tinted by the used share (green under 60 %, orange under 85 %, red above), not by the memory pressure, and macOS gives that share little meaning. The tint is gone. The level shows (1) in the "Pressure" row, unchanged (green, orange or red dot), and (2) as a dot of the same colour before the "79 %" when the pressure is above normal, with a tooltip "Pressure: High". The percentage text stays text-primary: the system orange on a light card is about 2.2 : 1, below the 4.5 : 1 of text. The menu bar colouring is unchanged.
+- **Legend:** the rows Apps, System (wired), Compressed and Cached (reclaimable) start with a dot in the colour of their segment. All six rows of the section reserve the same 7 pt slot plus 6 pt before the label, so the labels line up; the Pressure and Swap rows keep their level dots before the value.
+- **Accessibility:** the bar is one element, label "Memory usage", value "Apps 4.03 GB, System (wired) 2.83 GB, Compressed 5.8 GB, Cached (reclaimable) 2.45 GB, of 16 GB" (empty categories left out; "Unavailable" without a total). The rows stay separate elements and carry the numbers, so colour is never the only cue. Increase Contrast uses the stronger set of colours. Reduce Motion: the bar has no animation at all, so a 3 s refresh never moves or flickers.
+
+Colours: hue, then why. Blue, violet and teal were chosen because the section already uses green, orange and red for the pressure and swap dots and the menu bar; the three used categories stay out of that range (a test checks the hue of each stays between 165 and 295 degrees). Neutral grey for the cache because it is the "not used" part. Each is at least 3 : 1 against the track (a track of the foreground colour at 10 % in light, 14 % in dark, composited on white or #1E1E1E gives #E6E6E6 and #3E3E3E; the track does not change with Increase Contrast). Ratios against the track:
+
+| Segment | Light | Light, Increase Contrast | Dark | Dark, Increase Contrast |
+| --- | --- | --- | --- | --- |
+| apps | #1F6FEB (3.71) | #0B4FB8 (5.96) | #5AA2FF (4.10) | #7DB6FF (5.10) |
+| system (wired) | #7B4FC9 (4.42) | #5B34A8 (6.73) | #A98BFF (3.98) | #C0A8FF (5.24) |
+| compressed | #0E7C8C (3.93) | #0A6573 (5.39) | #3CC4D8 (5.13) | #66D6E6 (6.28) |
+| cache (outline, fill at 28 %) | #6B6B70 (4.25) | #4A4A50 (7.05) | #9A9AA2 (3.83) | #BDBDC4 (5.72) |
+| unattributed | #7C7C82 (3.32) | #5E5E64 (5.16) | #8A8A92 (3.12) | #A8A8AF (4.53) |
+
+The values live in `DesignTokens.memorySegment` and are checked by `MemoryBarContrastTests` (3 : 1 against the track in light and dark, in both contrast modes; stronger set never weaker; every hex above is in this file).
+
 ### Typography, spacing, shape, motion
 
 | Token | Value | Notes |
@@ -432,3 +457,4 @@ The standalone window has two toolbar items, both in the detail column: the **si
 | 2026-11-18 | SL21 follow-ups: a plug in the battery icon when plugged in and not charging; the battery progress bar follows the user's thresholds. Factual note, no decision changed |
 | 2026-11-18 | SL22: the menu bar preview and the reorderable list in Settings as built (new `MenuBarPreview`, `MenuBarPreviewStrip` and the order setting `menuBarOrder`; the flag stays glued to the right of the network item wherever it is; the Soaro glyph always first). Added to Part 2 (screens and components). Factual note, no decision changed |
 | 2026-11-18 | SL23: the menu bar label as built (drawn per screen scale, pixel-snapped shapes, Core Text text, the preview shows the same image; the battery body is 10 pt high instead of 9.5, the glyph stroke 1 px at 1x). Factual note, no decision changed |
+| 2026-11-18 | SL26: the memory bar of the Performance tab is split by kind of use (apps, system, compressed, cache). New tokens and a short section "Memory bar" in Part 2; the pressure level moves to a dot before the percentage and stays in its row. Decision of the author's request, no accepted decision changed |

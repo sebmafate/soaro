@@ -47,26 +47,7 @@ struct PerformanceTab: View {
     // MARK: Mémoire
 
     private func memory(_ s: SystemSnapshot) -> some View {
-        let m = s.memory
-        return VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: "Memory")
-            Card {
-                ProgressView(value: m.usedFraction) {
-                    HStack {
-                        Text("\(Format.bytes(m.used)) / \(Format.bytes(m.total))").font(.caption.monospacedDigit())
-                        Spacer()
-                        Text(Format.percent(m.usedFraction)).font(.caption.monospacedDigit())
-                    }
-                }
-                .tint(loadColor(m.usedFraction))
-                KeyValueRow("Pressure", m.pressure.label, color: m.pressure == .normal ? .green : (m.pressure == .warning ? .orange : .red))
-                KeyValueRow("Apps", Format.bytes(m.app))
-                KeyValueRow("System (wired)", Format.bytes(m.wired))
-                KeyValueRow("Compressed", Format.bytes(m.compressed))
-                KeyValueRow("Cached (reclaimable)", Format.bytes(m.cached))
-                KeyValueRow("Swap used", Format.bytes(m.swapUsed), color: m.swapUsed >= 3_000_000_000 ? .orange : nil)
-            }
-        }
+        MemorySection(memory: s.memory)
     }
 
     // MARK: GPU
