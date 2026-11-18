@@ -80,7 +80,7 @@ enum Snapshot {
             .stacked(label: "CPU", value: "34%", level: .normal), .stacked(label: "GPU", value: "72%", level: .medium),
             .stacked(label: "RAM", value: "83%", level: .high), .stacked(label: "SSD", value: "97%", level: .critical),
             .pair(top: "↑ 6 KB/s", bottom: "↓ 8 KB/s"), .flag(countryCode: "FR"),
-            .battery(percent: 18, charging: false, level: .medium),
+            .battery(percent: 18, power: .onBattery, level: .medium),
         ]
         for (name, items, severity) in [("menubar", real, Severity?.none), ("menubar-demo", demo, Severity.warning)] {
             for dark in [true, false] {

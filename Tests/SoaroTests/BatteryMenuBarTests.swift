@@ -28,8 +28,8 @@ import Testing
     }
 
     @Test func theBatteryItemCarriesPercentChargingAndLevelWithoutALabel() {
-        #expect(items(battery(67, charging: true, plugged: true)) == [.battery(percent: 67, charging: true, level: .normal)])
-        #expect(items(battery(67)) == [.battery(percent: 67, charging: false, level: .normal)])
+        #expect(items(battery(67, charging: true, plugged: true)) == [.battery(percent: 67, power: .charging, level: .normal)])
+        #expect(items(battery(67)) == [.battery(percent: 67, power: .onBattery, level: .normal)])
     }
 
     @Test func noBatteryGivesNoItemAndAnUnticketedBatteryGivesNoItemEither() {
@@ -54,19 +54,19 @@ import Testing
     }
 
     @Test func thePercentIsRoundedToAWholeNumberAndClampedForTheGlyphAndTheText() {
-        #expect(items(battery(66.6)).first == .battery(percent: 67, charging: false, level: .normal))
-        #expect(items(battery(0.2)).first == .battery(percent: 0, charging: false, level: .critical))
-        #expect(items(battery(100)).first == .battery(percent: 100, charging: false, level: .normal))
-        #expect(items(battery(140)).first == .battery(percent: 100, charging: false, level: .normal))
-        #expect(items(battery(-3)).first == .battery(percent: 0, charging: false, level: .critical))
+        #expect(items(battery(66.6)).first == .battery(percent: 67, power: .onBattery, level: .normal))
+        #expect(items(battery(0.2)).first == .battery(percent: 0, power: .onBattery, level: .critical))
+        #expect(items(battery(100)).first == .battery(percent: 100, power: .onBattery, level: .normal))
+        #expect(items(battery(140)).first == .battery(percent: 100, power: .onBattery, level: .normal))
+        #expect(items(battery(-3)).first == .battery(percent: 0, power: .onBattery, level: .critical))
     }
 
     @Test func theItemIsNotAFlagAndAChargingDifferenceMakesItDifferent() {
-        #expect(!MenuBarItem.battery(percent: 5, charging: true).isFlag)
-        #expect(MenuBarItem.battery(percent: 5, charging: true) != .battery(percent: 5, charging: false))
-        #expect(MenuBarItem.battery(percent: 5, charging: false) != .battery(percent: 6, charging: false))
-        #expect(MenuBarItem.battery(percent: 5, charging: false) != .battery(percent: 5, charging: false, level: .high))
-        #expect(MenuBarItem.battery(percent: 5, charging: false, level: .high).level == .high)
+        #expect(!MenuBarItem.battery(percent: 5, power: .charging).isFlag)
+        #expect(MenuBarItem.battery(percent: 5, power: .charging) != .battery(percent: 5, power: .onBattery))
+        #expect(MenuBarItem.battery(percent: 5, power: .onBattery) != .battery(percent: 6, power: .onBattery))
+        #expect(MenuBarItem.battery(percent: 5, power: .onBattery) != .battery(percent: 5, power: .onBattery, level: .high))
+        #expect(MenuBarItem.battery(percent: 5, power: .onBattery, level: .high).level == .high)
     }
 
     @Test func theBatteryStillComesLastAfterTheFlag() {
@@ -74,35 +74,35 @@ import Testing
         var s = snapshot(battery: battery(80))
         s.network = net
         let list = MenuBarItem.items(for: s, cpu: false, gpu: false, memory: false, disk: false, network: true, battery: true, publicIPCountryCode: "FR")
-        #expect(list.last == .battery(percent: 80, charging: false, level: .normal))
+        #expect(list.last == .battery(percent: 80, power: .onBattery, level: .normal))
         #expect(list.contains(.flag(countryCode: "FR")))
     }
 
     // Texte sur une ligne : la forme « BAT 67% » reste, un « ⚡︎ » signale la charge.
     @Test func inlineTextKeepsTheBatForm() {
-        let on = MenuBarItem.battery(percent: 67, charging: false)
+        let on = MenuBarItem.battery(percent: 67, power: .onBattery)
         #expect(MenuBarItem.inlineText([on]) == "BAT \(Format.percent(0.67))")
-        let charging = MenuBarItem.battery(percent: 67, charging: true)
+        let charging = MenuBarItem.battery(percent: 67, power: .charging)
         #expect(MenuBarItem.inlineText([.stacked(label: "CPU", value: "43%"), charging]) == "CPU 43% · BAT ⚡︎ \(Format.percent(0.67))")
     }
 
     // Infobulle : la charge se dit, et la phrase des valeurs colorées est celle d'avant.
     @Test func theTooltipSaysTheBatteryIsCharging() {
         let s = snapshot(battery: battery(67, charging: true, plugged: true))
-        let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: [.battery(percent: 67, charging: true)], locale: Locale(identifier: "en"))
+        let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: [.battery(percent: 67, power: .charging)], locale: Locale(identifier: "en"))
         #expect(text == "Soaro: everything is fine\n\nBattery: \(Format.percent(0.67)) · Charging")
         #expect(!text.contains("Colored values"))
     }
 
     @Test func theTooltipSaysNothingForANormalBatteryOnBattery() {
         let s = snapshot(battery: battery(67))
-        let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: [.battery(percent: 67, charging: false)], locale: Locale(identifier: "en"))
+        let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: [.battery(percent: 67, power: .onBattery)], locale: Locale(identifier: "en"))
         #expect(text == "Soaro: everything is fine")
     }
 
     @Test func aColouredBatteryIsExplainedLikeBefore() {
         let s = snapshot(battery: battery(9))
-        let item = MenuBarItem.battery(percent: 9, charging: false, level: .high)
+        let item = MenuBarItem.battery(percent: 9, power: .onBattery, level: .high)
         let lines = MenuBarTooltip.explanations(for: [item], snapshot: s)
         #expect(lines == ["Battery at \(Format.percent(0.09)), not plugged in (level: high)"])
         let text = MenuBarTooltip.text(recommendations: [], snapshot: s, items: [item], locale: Locale(identifier: "en"))
@@ -137,33 +137,33 @@ import Testing
     @Test func aNormalBatteryKeepsTheLabelATemplateImage() throws {
         for charging in [false, true] {
             for percent in [100, 67, 21, 20 + 1] {
-                #expect(try render([Self.cpu, .battery(percent: percent, charging: charging)]).isTemplate, "\(percent) %, charging \(charging)")
+                #expect(try render([Self.cpu, .battery(percent: percent, power: charging ? .charging : .onBattery)]).isTemplate, "\(percent) %, charging \(charging)")
             }
         }
-        #expect(try render([.battery(percent: 67, charging: true)], compact: false).isTemplate)
+        #expect(try render([.battery(percent: 67, power: .charging)], compact: false).isTemplate)
     }
 
     @Test func aColouredLevelMakesTheLabelACarriedColourImage() throws {
         for level in [PressureLevel.medium, .high, .critical] {
-            #expect(try !render([.battery(percent: 8, charging: false, level: level)]).isTemplate, "\(level)")
+            #expect(try !render([.battery(percent: 8, power: .onBattery, level: level)]).isTemplate, "\(level)")
         }
     }
 
     @Test func aFlagStillMakesItNonTemplateWithABatteryNextToIt() throws {
-        let image = try render([Self.pair, .flag(countryCode: "FR"), .battery(percent: 67, charging: true)])
+        let image = try render([Self.pair, .flag(countryCode: "FR"), .battery(percent: 67, power: .charging)])
         #expect(!image.isTemplate)
     }
 
     @Test func everyDisplayedValueChangesTheImage() throws {
-        let base = try render([.battery(percent: 67, charging: false)])
-        #expect(try render([.battery(percent: 67, charging: false)]) === base, "même liste : le cache sert la même image")
-        let other = try render([.battery(percent: 66, charging: false)])
+        let base = try render([.battery(percent: 67, power: .onBattery)])
+        #expect(try render([.battery(percent: 67, power: .onBattery)]) === base, "même liste : le cache sert la même image")
+        let other = try render([.battery(percent: 66, power: .onBattery)])
         #expect(other !== base, "le pourcentage fait partie de la clé de cache")
-        let charging = try render([.battery(percent: 66, charging: true)])
+        let charging = try render([.battery(percent: 66, power: .charging)])
         #expect(charging !== other, "la charge aussi")
-        let level = try render([.battery(percent: 66, charging: true, level: .medium)])
+        let level = try render([.battery(percent: 66, power: .charging, level: .medium)])
         #expect(level !== charging && !level.isTemplate && charging.isTemplate, "et le niveau")
-        let contrast = try render([.battery(percent: 66, charging: true, level: .medium)], contrast: true)
+        let contrast = try render([.battery(percent: 66, power: .charging, level: .medium)], contrast: true)
         #expect(contrast !== level, "et le contraste renforcé (le trait change)")
     }
 
@@ -172,24 +172,24 @@ import Testing
     @Test func theHeightStays22PointsInBothStyles() throws {
         for compact in [true, false] {
             for charging in [false, true] {
-                #expect(try render([Self.cpu, .battery(percent: 67, charging: charging)], compact: compact).size.height == 22, "compact \(compact)")
+                #expect(try render([Self.cpu, .battery(percent: 67, power: charging ? .charging : .onBattery)], compact: compact).size.height == 22, "compact \(compact)")
             }
         }
     }
 
     @Test func theLabelWidthDoesNotChangeBetween9And100Percent() throws {
-        let nine = try render([Self.cpu, .battery(percent: 9, charging: false)])
-        let hundred = try render([Self.cpu, .battery(percent: 100, charging: false)])
-        let fifty = try render([Self.cpu, .battery(percent: 50, charging: true)])
+        let nine = try render([Self.cpu, .battery(percent: 9, power: .onBattery)])
+        let hundred = try render([Self.cpu, .battery(percent: 100, power: .onBattery)])
+        let fifty = try render([Self.cpu, .battery(percent: 50, power: .charging)])
         #expect(nine.size.width == hundred.size.width, "largeur mini de \(MenuBarWidgetsView.batteryMinWidth) pt : « 9% » et « 100% » ne décalent rien")
         #expect(fifty.size.width == hundred.size.width)
     }
 
     @Test func theBatteryItemIsAsWideAsTheWrittenMinimum() throws {
         let without = try render([Self.cpu])
-        let with = try render([Self.cpu, .battery(percent: 100, charging: false)])
+        let with = try render([Self.cpu, .battery(percent: 100, power: .onBattery)])
         #expect(abs((with.size.width - without.size.width) - (MenuBarWidgetsView.batteryMinWidth + 9)) < 1.0, "icône + valeur + l'espace entre blocs")
-        let classic = try render([Self.cpu, .battery(percent: 100, charging: false)], compact: false)
+        let classic = try render([Self.cpu, .battery(percent: 100, power: .onBattery)], compact: false)
         let classicWithout = try render([Self.cpu], compact: false)
         #expect(classic.size.width > classicWithout.size.width + 30)
     }
@@ -197,7 +197,7 @@ import Testing
     @Test func theOtherItemsDoNotMoveWhenTheBatteryIsAdded() throws {
         let items = [Self.cpu, Self.pair]
         let without = try GlyphInk(image: render(items))
-        let with = try GlyphInk(image: render(items + [.battery(percent: 67, charging: true)]))
+        let with = try GlyphInk(image: render(items + [.battery(percent: 67, power: .charging)]))
         var moved = 0
         for x in 0..<without.width { for y in 0..<without.height where abs(without.alpha(x, y) - with.alpha(x, y)) > 0.1 { moved += 1 } }
         #expect(moved == 0, "\(moved) pixels ont bougé")
@@ -207,7 +207,7 @@ import Testing
     @Test func noBatteryLabelTextRemainsInTheItem() throws {
         // L'ancien libellé « BAT » (7,5 pt) a disparu : l'élément tient sur une ligne de 22 pt, vide au-dessus et en dessous de l'icône.
         let without = try GlyphInk(image: render([Self.cpu]))
-        let with = try GlyphInk(image: render([Self.cpu, .battery(percent: 67, charging: false)]))
+        let with = try GlyphInk(image: render([Self.cpu, .battery(percent: 67, power: .onBattery)]))
         let originX = (CGFloat(without.width) / without.scale) + 9
         let rows = (0..<with.height).filter { y in
             (Int(originX * with.scale)..<with.width).contains { with.alpha($0, y) > 0.5 }
@@ -244,7 +244,7 @@ import Testing
     @Test func theIconIsLeftOfTheValueAndItsFillIsProportionalInTheRealLabel() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
         for percent in [10, 50, 90, 100] {
-            let (ink, origin) = try label(.battery(percent: percent, charging: false))
+            let (ink, origin) = try label(.battery(percent: percent, power: .onBattery))
             let row = Int(((origin.y + g.innerRect.midY) * ink.scale).rounded())
             let lo = Int(((origin.x + g.innerRect.minX) * ink.scale).rounded()), hi = Int(((origin.x + g.innerRect.maxX) * ink.scale).rounded())
             let run = ink.opaqueRun(row: row, columns: lo..<hi).count
@@ -255,7 +255,7 @@ import Testing
 
     @Test func theValueTextSitsRightOfTheIcon() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let (ink, origin) = try label(.battery(percent: 67, charging: false))
+        let (ink, origin) = try label(.battery(percent: 67, power: .onBattery))
         let afterIcon = Int(((origin.x + g.totalSize.width + 1) * ink.scale).rounded())
         let inkAfter = (afterIcon..<ink.width).reduce(0) { sum, x in sum + (0..<ink.height).filter { ink.alpha(x, $0) > 0.5 }.count }
         #expect(inkAfter > 40, "le pourcentage est à droite de l'icône")
@@ -263,17 +263,17 @@ import Testing
 
     @Test func theBoltAppearsInTheTemplateLabelOnlyWhenCharging() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let (off, offOrigin) = try label(.battery(percent: 0, charging: false))
-        let (on, onOrigin) = try label(.battery(percent: 0, charging: true))
+        let (off, offOrigin) = try label(.battery(percent: 0, power: .onBattery))
+        let (on, onOrigin) = try label(.battery(percent: 0, power: .charging))
         let box = g.boltRect
         #expect(on.opaqueCount(in: box, origin: onOrigin) > off.opaqueCount(in: box, origin: offOrigin) + 6)
-        #expect(try render([Self.cpu, .battery(percent: 0, charging: true)]).isTemplate)
+        #expect(try render([Self.cpu, .battery(percent: 0, power: .charging)]).isTemplate)
     }
 
     @Test func theIconIsDrawnOnBothBarTonesInTheColouredImage() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
         for dark in [false, true] {
-            let (ink, origin) = try label(.battery(percent: 40, charging: false, level: .high), dark: dark)
+            let (ink, origin) = try label(.battery(percent: 40, power: .onBattery, level: .high), dark: dark)
             let y = Int(((origin.y + g.bodyRect.midY) * ink.scale).rounded())
             // Le trait (1,2 pt) tombe à cheval sur les pixels : on prend le plus opaque de ses colonnes.
             let first = Int((origin.x * ink.scale).rounded())
@@ -287,7 +287,7 @@ import Testing
 
     @Test func theScarletCriticalFillAndThePillStayTogether() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let (ink, origin) = try label(.battery(percent: 40, charging: false, level: .critical), dark: true)
+        let (ink, origin) = try label(.battery(percent: 40, power: .onBattery, level: .critical), dark: true)
         let y = Int(((origin.y + g.bodyRect.midY) * ink.scale).rounded())
         let fill = ink.pixel(Int(((origin.x + g.innerRect.minX + 1.5) * ink.scale).rounded()), y)
         #expect(fill.a > 0.8 && fill.r > 0.9 && fill.g < 0.3 && fill.b < 0.1, "remplissage écarlate : \(fill)")
@@ -302,7 +302,7 @@ import Testing
     @Test func increaseContrastThickensTheOutlineInTheLabel() throws {
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
         func outlineRun(_ contrast: Bool) throws -> Int {
-            let (ink, origin) = try label(.battery(percent: 0, charging: false), contrast: contrast)
+            let (ink, origin) = try label(.battery(percent: 0, power: .onBattery), contrast: contrast)
             let y = Int(((origin.y + g.bodyRect.midY) * ink.scale).rounded())
             let lo = Int((origin.x * ink.scale).rounded())
             return ink.opaqueRun(row: y, columns: lo..<(lo + Int(3 * ink.scale))).count

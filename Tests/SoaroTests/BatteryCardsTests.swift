@@ -43,7 +43,7 @@ import Testing
 
     @Test func theStatCardAcceptsACustomIconAndRenders() throws {
         let card = StatCard(title: "Battery", systemImage: "battery.100percent", value: "67%", subtitle: "Charging",
-                            icon: AnyView(BatteryGlyph(percent: 67, charging: true, level: .normal, base: .primary, body: BatteryGlyphGeometry.cardBody)))
+                            icon: AnyView(BatteryGlyph(percent: 67, power: .charging, level: .normal, base: .primary, body: BatteryGlyphGeometry.cardBody)))
             .frame(width: 180)
         let renderer = ImageRenderer(content: card)
         let image = try #require(renderer.nsImage)
@@ -54,6 +54,6 @@ import Testing
         let b = try #require(DemoData.snapshot().battery)
         #expect(b.percent == 67 && b.isCharging)
         let list = MenuBarItem.items(for: DemoData.snapshot(), cpu: false, gpu: false, memory: false, disk: false, network: false, battery: true)
-        #expect(list == [.battery(percent: 67, charging: true, level: .normal)])
+        #expect(list == [.battery(percent: 67, power: .charging, level: .normal)])
     }
 }

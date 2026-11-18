@@ -74,6 +74,38 @@ struct BatteryStats: Equatable {
     var adapterWatts: Int?
 }
 
+/// Les trois états d'alimentation que montre l'icône de batterie (SL21).
+/// Ils se lisent sur deux valeurs d'`AppleSmartBattery` que l'échantillonneur lit déjà : `ExternalConnected` (branché) et
+/// `IsCharging` (charge en cours). « Branché sans charge » couvre la batterie pleine et la charge mise en pause (charge limitée
+/// à 80 %, charge optimisée) : on ne lit pas `FullyCharged`, qui reste faux quand macOS retient la charge.
+enum BatteryPowerState: Equatable {
+    /// Débranché.
+    case onBattery
+    /// Branché et en charge : l'icône montre un éclair.
+    case charging
+    /// Branché, mais la batterie ne charge pas : l'icône montre une prise.
+    case pluggedNotCharging
+
+    /// Une charge en cours prouve qu'une source d'énergie est là, même si `ExternalConnected` manquait : l'éclair l'emporte.
+    /// Sans rien lire de sûr (clé absente), on ne montre ni éclair ni prise : jamais une fausse prise (ADR 0005).
+    init(isPluggedIn: Bool, isCharging: Bool) {
+        if isCharging { self = .charging } else if isPluggedIn { self = .pluggedNotCharging } else { self = .onBattery }
+    }
+
+    /// Le repère dessiné dans l'icône : un seul à la fois, ou aucun.
+    var mark: BatteryGlyphMark? {
+        switch self {
+        case .onBattery: nil
+        case .charging: .bolt
+        case .pluggedNotCharging: .plug
+        }
+    }
+}
+
+extension BatteryStats {
+    var powerState: BatteryPowerState { BatteryPowerState(isPluggedIn: isPluggedIn, isCharging: isCharging) }
+}
+
 struct WiFiInfo: Equatable {
     var rssi: Int
     var noise: Int?

@@ -52,8 +52,8 @@ struct OverviewTab: View {
                     StatCard(
                         title: "Battery", systemImage: "", value: Format.percent(b.percent / 100),
                         subtitle: Self.batterySubtitle(b),
-                        tint: b.isPluggedIn ? .green : levelColor(b.percent / 100), fraction: b.percent / 100,
-                        icon: AnyView(BatteryGlyph(percent: b.percent, charging: b.isCharging, level: .battery(b, thresholds: PressureThresholds.load().battery),
+                        tint: BatteryGlyphColors.barTint(for: b, thresholds: PressureThresholds.load().battery), fraction: b.percent / 100,
+                        icon: AnyView(BatteryGlyph(percent: b.percent, power: b.powerState, level: .battery(b, thresholds: PressureThresholds.load().battery),
                                                    body: BatteryGlyphGeometry.cardBody))
                     )
                 }
