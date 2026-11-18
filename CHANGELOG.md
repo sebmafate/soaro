@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- In Settings, the colour thresholds (processor and GPU load, disk, battery) are set on one track with three draggable handles instead of three steppers. The coloured bands follow the handles as you drag, each handle shows its value, and a small mark shows the current value of that measure. Same steps of 5, same limits, and your saved thresholds are kept. Each handle can also be moved with the arrow keys (Shift for 10, Home and End for the limits) and with VoiceOver (increment and decrement). (SL17)
+
 ## [1.1.0] - 2026-11-18
 
 ### Added
