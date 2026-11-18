@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Status | validated for the Must scope (simulators, Android emulators, NuGet); the Docker part waits for a test (see Kill criteria) |
+| Status | validated for the Must scope (simulators, Android emulators, NuGet); the Docker part passed its test on 2026-11-18 (see Kill criteria, Test B) |
 | Version | 0.3 (R2 covered by the existing cleaner) |
 | Date | 2026-11-15 |
 
@@ -106,7 +106,7 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 | # | Assumption or risk | Impact if false | Status |
 | --- | --- | --- | --- |
 | A1 | **Riskiest (Must):** Soaro can show which simulators are disposable clearly enough for the author to dare delete them. | The feature is dangerous or never used. | Partly tested (Test A): 83 % of the space is idle for more than 60 days (29 % at 90 days); 23 % is superseded duplicates; "no app of yours" is useless as a signal (14 devices carry the author's own app). The 5-device check by the author was done on 2026-11-17: confirmed (60 days stays the default). |
-| A2 | **Riskiest (Should):** a Docker cleanup started from Soaro returns real space to the Mac, without touching volumes. | Docker support has no value. | Untested (Test B) |
+| A2 | **Riskiest (Should):** a Docker cleanup started from Soaro returns real space to the Mac, without touching volumes. | Docker support has no value. | **Confirmed 2026-11-18** (Test B, SPK-002: 89.7 % of the announced space back on the Mac) |
 | A3 | Removing a simulator in the supported way needs no administrator rights. | Needs a privileged step, which the app avoids. | Untested |
 | A4 | Other developers want this and can ignore it if not. | Low: costs only space in the view. | Untested; low impact |
 | A5 | The output of `simctl`, `dotnet`, `docker` and the Android tools stays readable across Xcode, Docker and Android updates. | Cleaner hidden or broken after an update. | Mitigated by R6 |
@@ -118,11 +118,11 @@ What Soaro adds is small: the cleanup lives inside a monitor that is already ins
 
 - **Test A (simulators), done 2026-11-15, read-only, on the author's Mac.** Criterion: at least 80 % of the space gets a readable reason. Result: met at a 60-day threshold (83 %), not at 90 days (29 %), so the threshold stays adjustable with 60 as default. The check on a sample of 5 devices by the author was done on 2026-11-17: confirmed.
 - **Test A2 (Android), done 2026-11-15, read-only.** Sizes and dates measured (see Problem and A6). Result: the size signal is strong (Pixel_9a alone is 11 GB); the "last used" signal was weak and was settled on 2026-11-17 (A6: the newest of four emulator files).
-- **Test B (Docker), to do, about one evening.** With Docker Desktop running, measure `df` and the disk image size before and after a build-cache prune and an unused-image prune (no volumes), with and without Docker's own space-reclaim command. Criterion: at least half of what Docker says it freed comes back on the Mac. OrbStack cannot be tested (not installed).
+- **Test B (Docker), done 2026-11-18 (SPK-002): 89.7 % of the announced 22.46 GB came back after a build-cache prune; kill criterion 1 not met.** Original plan: With Docker Desktop running, measure `df` and the disk image size before and after a build-cache prune and an unused-image prune (no volumes), with and without Docker's own space-reclaim command. Criterion: at least half of what Docker says it freed comes back on the Mac. OrbStack cannot be tested (not installed).
 
 ## Kill criteria
 
-1. **Docker:** if Test B shows less than half of the announced space coming back, drop Docker (R10, R11). The rest continues.
+1. **Docker:** if Test B shows less than half of the announced space coming back, drop Docker (R10, R11). The rest continues. **Not met:** Test B on 2026-11-18 showed 89.7 % coming back (SPK-002).
 2. **Safety:** one confirmed case of data lost because of Soaro removes the feature from the published version until its design is reviewed.
 3. **Overrun:** if the Must scope (R1 to R9 and R16 to R18) is not finished after 14 working days, stop and cut the scope to iOS simulators and Android virtual devices only (R3 to R5, R16, R17, with R6 to R9 and R18).
 4. **Use:** if 2 months after the release the author has not used it at least once a month, mark it as low value and stop extending it.

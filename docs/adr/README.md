@@ -13,4 +13,4 @@ One decision per file. An accepted ADR is never edited: a new one supersedes it.
 | [0007](0007-privacy-by-default.md) | Nothing leaves the Mac by default | accepted (reconstructed) | unknown |
 | [0008](0008-release-built-on-github-actions-xcode-26.md) | Release built by GitHub Actions on Xcode 26 | accepted (reconstructed) | unknown |
 | [0009](0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract | accepted | 2026-11-15 |
-| [0010](0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | proposed (pending Test B) | 2026-11-15 |
+| [0010](0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | accepted 2026-11-18 (Test B passed, SPK-002) | 2026-11-15 |

@@ -26,7 +26,7 @@ Goals: fast feedback while coding (the suite stays in the order of tens of secon
 | **T9** | A wrong suggestion (R3, R16) or a wrong size or "freed" amount (R7) | Misleads the user; `Docker.raw` is 995 GB apparent and 24 GB real | Pure function tested at a fixed date; allocated size tested on a sparse file |
 | **T10** | Confirmations: Return deletes today, and the accessibility slice changes shared components (R8) | Regression on screens already published | Test of the alert construction; the existing tool tests |
 | **T11** | A network call, or an incomplete translation (R9, R12) | Privacy promise; missing texts in eight languages | Two repository-level tests: `NetworkAllowlistTests`, `TranslationCatalogTests` (both read the repository through `#filePath`, no network) |
-| **T12** | Docker gives no space back to the Mac (R11) | The Docker feature has no value | Test B, manual, once |
+| **T12** | Docker gives no space back to the Mac (R11) | The Docker feature has no value | Test B, manual, once (done 2026-11-18, SPK-002: 89.7 % came back, so this risk is not realised on this Mac) |
 
 Hard to test: private HID and SMC interfaces (real hardware), the real `simctl`, Android tools and `docker`, a really running emulator, Sparkle in a running app, the menu bar panel behaviour, VoiceOver, Liquid Glass and contrast on glass, notarization.
 
@@ -220,4 +220,4 @@ Still open from the baseline:
 - The opt-in default of the two network features (T6): closed by SL2 for the registered defaults (`SettingsKey.defaults`); the view-level `@AppStorage` defaults stay unreadable from a test. Open: `Text("...")` was not checked for the no-placeholder rule of the catalog test (only `String(localized:)`).
 - A local `swift test` before each commit stays a habit, not a hook (a gate that is too strict gets bypassed).
 - Not tested on macOS 14 or 15, the stated minimum.
-- Test B (Docker) has no date; it needs the author to start Docker Desktop.
+- Test B (Docker) was done on 2026-11-18 (SPK-002). It was a manual run, with the author confirming the prune.

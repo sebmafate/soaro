@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Status | proposed (becomes accepted only if the Docker test, "Test B" of the spec, passes) |
+| Status | accepted on 2026-11-18 (Test B passed: [SPK-002](../spikes/SPK-002-docker-test-b.md), 89.7 % of the announced space came back after `docker builder prune -a -f`) |
 | Date | 2026-11-15 |
 | Supersedes | none. Applies the contract of [0009](0009-cleanup-actions-by-supported-route-under-one-contract.md) to Docker |
 | Drives from | R10, R11, R9; kill criterion 1; drivers: safety of deletion, privacy, honesty about fragile data |
@@ -37,7 +37,7 @@ On the author's Mac (read-only inspection, 2026-11-15):
 
 ## Decision
 
-Proposed: **Option C**, with these rules, to be accepted if Test B passes:
+**Option C**, with these rules (accepted on 2026-11-18 after Test B passed):
 
 1. **Through the `docker` command only**, found from a list of candidate paths (Docker Desktop's, Homebrew's, OrbStack's), under the ADR 0009 contract (runner with time limit, confirmation, rescan). No reading of Docker's own folders.
 2. **Engine stopped or unreachable:** the section says so, or hides itself. Soaro never starts or stops it.
@@ -58,5 +58,5 @@ Proposed: **Option C**, with these rules, to be accepted if Test B passes:
 
 ## Open points
 
-- Test B is to run: with Docker Desktop started by the author, measure `df`, the allocated size of `Docker.raw` and `docker system df` before and after `docker builder prune` and an untagged-image prune, with no volumes and no reclaim container. Criterion: at least half comes back. Soaro runs nothing destructive on the author's Docker without his confirmation at that moment.
+- **Test B done on 2026-11-18** ([SPK-002](../spikes/SPK-002-docker-test-b.md): 22.46 GB announced, 89.7 % back on the Mac after 10 minutes, no volume touched; the untagged-image part could not be measured, there were none). It was to run with Docker Desktop started by the author, measure `df`, the allocated size of `Docker.raw` and `docker system df` before and after `docker builder prune` and an untagged-image prune, with no volumes and no reclaim container. Criterion: at least half comes back. Soaro runs nothing destructive on the author's Docker without his confirmation at that moment.
 - The exact commands and flags to list and prune are chosen at implementation, after the test.

@@ -37,7 +37,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL10b | Android last-used signal settled, Android pre-selection back on | S | SL10, SL11 | no | under 0.25, **not counted in the 14 days** (measured from the first commit at 20:13 to the last (the second fix round) at about 20:55 on 2026-11-17, about 42 min of agent time, of which the two fix rounds after the QA and the review are the larger part; the reading before the first commit is not counted; QA review and the author's manual checks not included). The running total of the 14 days does not change | done |
 | SL12a | Android system images, read-only (Should) | S | SL10 | no | 0.25, **not counted in the 14 days** (measured from the first commit at 18:00 to the last code commit (T7) at 18:16 on 2026-11-17, about 16 min of agent time plus the documents, rounded up to a quarter day; the reading before the first commit is not counted; QA review and the author's manual checks not included). The running total of the 14 days does not change | done |
 | SL12b | Remove unused Android system images (Should) | S | SL12a, SL11 | no | | todo (blocked on the author) |
-| SP1 | Docker Test B (spike, the author starts Docker Desktop) | | | no | | todo |
+| SP1 | Docker Test B (spike, the author starts Docker Desktop) | | | no | about 0.1 (measured: 08:42 to 08:59 on 2026-11-18, about 17 min including a 4-minute baseline and 11 minutes of readings; the framing and the notes are not counted) | done |
 | SL13 | Docker (Should, coarse; only if SP1 passes) | M | SP1, SL8 | no | | todo |
 | SL14 | Release 1.1 | S | the slices done | no | | todo |
 
@@ -343,13 +343,13 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Goal**: decide ADR 0010 with a measurement.
 - **Serves**: R10, R11; kill criterion 1.
 - **Acceptance criteria**
-  - [ ] With Docker Desktop started by the author, free space (`df`), the allocated size of `Docker.raw` and `docker system df` are noted before and after a build-cache prune and an untagged-image prune, with no volumes and no reclaim container, each prune confirmed by the author.
-  - [ ] ADR 0010 becomes `accepted` if at least half of the announced space comes back, or `deprecated` (and R10, R11 are dropped) otherwise.
-- **Notes**: no date: it needs the author.
+  - [x] With Docker Desktop started by the author, free space (`df`), the allocated size of `Docker.raw` and `docker system df` are noted before and after a build-cache prune and an untagged-image prune, with no volumes and no reclaim container, each prune confirmed by the author.
+  - [x] ADR 0010 becomes `accepted` if at least half of the announced space comes back, or `deprecated` (and R10, R11 are dropped) otherwise.
+- **Notes**: done on 2026-11-18, see `docs/spikes/SPK-002-docker-test-b.md`: `docker builder prune -a -f` (confirmed by the author) announced 22.46 GB, 89.7 % came back after 10 minutes (94.6 % after 1 minute); there were no untagged images, so that prune was not run. ADR 0010 is accepted. The 14-day count is not affected.
 
 ### SL13: Docker (Should, coarse)
 
-- Only if SP1 passes. The tool for Docker (usage, build cache and untagged images, honest space returned), with the command allowlist of ADR 0010 and a fake runner. To be detailed after SP1.
+- SP1 passed on 2026-11-18, so SL13 may start. To detail with its own decisions (`-a` or not, what the confirmation says about the rebuild cost). The tool for Docker (usage, build cache and untagged images, honest space returned), with the command allowlist of ADR 0010 and a fake runner. To be detailed after SP1.
 
 ### SL14: Release 1.1
 
@@ -415,3 +415,4 @@ States from `DESIGN.md`: S1 (first use, tool absent, busy, error) in SL6 and SL8
 | 2026-11-17 | SL12a review round: alias registrations no longer make images "cannot tell"; every name of a linked image folder is kept; `ANDROID_SDK_HOME` and `ANDROID_PREFS_ROOT` added to the "cannot tell" triggers (unverified, the author can drop them); the read-only source guard widened and described as a word-list test; demo usage recomputed after a demo deletion; 1020 tests in 91 suites | Reviewer (Should 1 to 3, nits) and QA (Important, Minor) findings on the SL12a pull request |
 | 2026-11-17 | SL10b done on its branch. The author settled the Android last-used signal: first `userdata-qemu.img` alone, withdrawn the same day after the QA and the review found a real AVD whose raw image was 56 days old while the overlay and snapshot were 3 days old; then the newest modification date among four emulator files (60-day default unchanged, a date before 2005 unknown). The SL10 entry condition is met and the Android pre-selection is switched on; not counted in the 14 days | The author's decision of 2026-11-17 (SPEC A6, ARCHITECTURE); no requirement changed |
 | 2026-11-18 | Risk 5 spike done (SPK-001): the pair route and `avdmanager delete avd` leave the same state; the first gate of SL12b (SL11 checks and risk 5 result) is met, its decisions remain | The author asked for the spike; an agent ran it on a disposable AVD |
+| 2026-11-18 | SP1 done (SPK-002): Docker Test B passed (89.7 % of the announced space came back), ADR 0010 accepted, SL13 may start | Author's go; each prune confirmed by the author |
