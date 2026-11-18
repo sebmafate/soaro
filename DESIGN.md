@@ -233,6 +233,7 @@ Tone: short, concrete, no marketing; same style as the app ("Your sources are no
 | Where | Text |
 | --- | --- |
 | NuGet row (S1) | **NuGet packages**: "Downloaded packages, downloaded again when needed" |
+| About (Settings, SL18) | The app logo and the link **soaro.app** (to `https://soaro.app`, or `https://soaro.app/fr/` when the app runs in French), above **Buy me a coffee**. Accessibility hint: "Website" |
 | Tool row (S1) | **Simulators and emulators**: "iOS Simulators and Android emulators" |
 | Footer of S2 | "26 small devices (0.5 GB) not shown." then "Devices inactive for more than 60 days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio." |
 | Confirmation (S3) | Title "Delete the selected devices? (7)"; message "18.3 GB will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."; button "Delete" |
@@ -319,6 +320,7 @@ Rules (decided 2026-11-15): essential information is text-primary; supporting te
 | Scanning state | native `ProgressView` with a caption | none | loading |
 | Confirmation (S3) | native `NSAlert` through `AppState.confirm` | destructive: `critical: true` | default |
 | Toast | existing | none | visible 4 s |
+| `WebsiteLinkRow` (Settings > About, SL18) | new small view over the native `Link` | none | default, hover, focus (system focus ring); the app logo (38 pt, hidden from VoiceOver) and the text "soaro.app"; the whole row is the target (38 pt high); one element for VoiceOver ("soaro.app", hint "Website") |
 
 Every screen of Part 1 uses only these. There is no custom component. The extensions (unavailable row, busy bar, the header with its "Select all" checkbox) are small variants of existing components; `SelectAllCheckbox` is a plain button with the same glyph family and the same 24 x 24 pt target as the row check.
 
@@ -376,3 +378,4 @@ Every screen of Part 1 uses only these. There is no custom component. The extens
 | 2026-11-17 | SL12a: S2b as built, read-only (section order, row text, the three usage lines, the footer, the failed state, no checkbox and no Select all, no Delete bar on an images-only screen, demo, six new keys). Removal and the download-again warning stay in SL12b. Factual notes, no decision changed |
 | 2026-11-17 | SL12a review round: in demo, who uses each demo image is recomputed after a demo deletion; the `--scan` note wording changed (no UI text change). Factual notes, no decision changed |
 | 2026-11-17 | SL10b: S2 as built, the Android pre-selection is on (inactive for more than the limit, never a running device, never an unknown date); the last-used date is the newest of four emulator files (not `userdata-qemu.img` alone: withdrawn after a real AVD showed the raw file 56 days old and the overlay 3); the banner counts Android again; the demo AVD inactive for 70 days is pre-selected. No UI string changed. No decision changed (the author settled the signal) | SL10b brief |
+| 2026-11-18 | SL18: Settings > About as built (logo and link to soaro.app before the coffee link, one element for VoiceOver, the logo decorative, the French site for an app in French, one new string). Factual note, no decision changed |

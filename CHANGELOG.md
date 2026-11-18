@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- Settings > About now links to the website, soaro.app, next to the app logo (the French page when Soaro runs in French).
+
 ## [1.1.0] - 2026-11-18
 
 ### Added
