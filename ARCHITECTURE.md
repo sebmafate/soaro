@@ -143,6 +143,7 @@ All **[H]**, from `docs/architecture.md` and the sources.
 | [0009](docs/adr/0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract (completes 0006) | accepted |
 | [0010](docs/adr/0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | accepted 2026-11-18 (Test B passed, SPK-002) |
 | [0011](docs/adr/0011-public-ip-lookup-also-runs-while-its-flag-is-shown.md) | The public IP lookup also runs while its flag is shown in the menu bar (extends 0007, does not supersede it) | accepted 2026-11-18 |
+| [0012](docs/adr/0012-public-ip-lookup-triggers-and-confirmation.md) | The public IP lookup: more change signals, one confirmation lookup, no shorter interval (extends 0011, does not supersede it) | accepted 2026-11-18 |
 
 Smaller choices (notes, no ADR), developer cleanup, decided 2026-11-15:
 
