@@ -22,6 +22,9 @@ enum PublicIPLookupPolicy {
     /// SL25 : une empreinte qui vient de changer doit rester la même ce temps-là avant de compter comme un changement détecté
     /// (les événements réseau arrivent en rafale et l'IP publique n'est pas encore la bonne au premier). Même valeur pour le moniteur.
     static let quietPeriod: TimeInterval = 3
+    /// SL25 : la toute première recherche du drapeau attend la fin de la détection du VPN (quelques centaines de millisecondes), au plus ce temps-là :
+    /// sans cela elle part avec une empreinte incomplète (`vpn` pas encore lu). Passé ce délai, on cherche avec ce qu'on a.
+    static let firstLookupWaitCap: TimeInterval = 10
 
     struct Inputs {
         /// « Show public IP and country » (`SettingsKey.publicIP`).
@@ -79,6 +82,14 @@ enum PublicIPLookupPolicy {
         if forced { return true }
         guard current != attempted else { return false }
         return attempted.isEmpty || settled || tabOpen
+    }
+
+    /// La première recherche attend-elle la fin de la détection du VPN ? Seulement pour le drapeau (l'onglet Réseau et un appel forcé cherchent tout de
+    /// suite), seulement tant qu'aucune base n'existe, et au plus `firstLookupWaitCap` depuis le début de l'attente.
+    static func mustWaitForFirstFingerprint(hadBaseline: Bool, vpnDetectionPending: Bool, tabOpen: Bool, force: Bool,
+                                            waitingSince: Date?, now: Date) -> Bool {
+        guard !hadBaseline, vpnDetectionPending, !tabOpen, !force else { return false }
+        return now.timeIntervalSince(waitingSince ?? now) < firstLookupWaitCap
     }
 
     /// Pourquoi une recherche part (journal `SOARO_DEBUG`).
