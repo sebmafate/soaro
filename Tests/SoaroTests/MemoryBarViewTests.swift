@@ -8,11 +8,11 @@ import Testing
 /// On lit les pixels d'une image produite par `ImageRenderer` à l'échelle 1 et 2.
 @MainActor
 @Suite struct MemoryBarViewTests {
-    private static let GB: UInt64 = 1_073_741_824
-    private static func gb(_ x: Double) -> UInt64 { UInt64((x * Double(GB)).rounded()) }
+    nonisolated private static let GB: UInt64 = 1_073_741_824
+    nonisolated private static func gb(_ x: Double) -> UInt64 { UInt64((x * Double(GB)).rounded()) }
 
     /// Les chiffres de la capture de l'auteur : pression élevée, 6,41 Go de swap.
-    static let screenshot = MemoryStats(total: 16 * GB, app: gb(4.03), wired: gb(2.83), compressed: gb(5.8), cached: gb(2.45),
+    nonisolated static let screenshot = MemoryStats(total: 16 * GB, app: gb(4.03), wired: gb(2.83), compressed: gb(5.8), cached: gb(2.45),
                                         swapUsed: gb(6.41), pressure: .warning)
 
     // MARK: Lecture des pixels
@@ -32,7 +32,7 @@ import Testing
         let background: Color = dark ? DesignTokens.darkReferenceBackground.color : .white
         let content = view
             .environment(\.colorScheme, dark ? .dark : .light)
-            .environment(\.colorSchemeContrast, increased ? .increased : .standard)
+            .environment(\.contrastIncreasedOverride, increased)
             .environment(\.displayScale, scale)
             .background(background)
         let renderer = ImageRenderer(content: content)
@@ -189,14 +189,17 @@ import Testing
         }
     }
 
-    @Test func theTrackEndsStayOnWholePixelsAtTheEdgeOfTheFrame() throws {
-        // 300,5 pt à 1x : la piste fait 300 px, le pixel 300 est le fond (pas de demi-pixel peint).
-        let pixels = try #require(Self.render(Self.bar(Self.screenshot, width: 300.5), scale: 1))
+    @Test(arguments: [1.0, 2.0])
+    func theTrackFillsTheFrameFromItsFirstToItsLastPixelWithNothingBeyond(scale: Double) throws {
+        // Les bouts de la piste tombent sur des pixels entiers : premier et dernier pixel de l'image sont la piste, pleins
+        // (pas de demi-pixel mélangé au fond), sur une ligne qui ne touche pas les coins arrondis.
+        let width: CGFloat = scale == 2 ? 300.5 : 300      // 601 px à 2x : un nombre impair de pixels
+        let pixels = try #require(Self.render(Self.bar(nil, width: width), scale: scale))
+        #expect(pixels.width == Int(width * scale))
         let mid = pixels.height / 2
-        let layout = Self.layout(scale: 1, width: 300.5)
-        #expect(layout.trackPixels == 300)
-        if pixels.width > 300 { #expect(Self.near(pixels.rgb(300, mid), (255, 255, 255), tolerance: 2)) }
-        #expect(!Self.near(pixels.rgb(299, mid), (255, 255, 255), tolerance: 2))
+        #expect(Self.near(pixels.rgb(0, mid), Self.expectedTrack(dark: false), tolerance: 1))
+        #expect(Self.near(pixels.rgb(pixels.width - 1, mid), Self.expectedTrack(dark: false), tolerance: 1))
+        #expect(MemoryBarLayout.make(memory: nil, trackWidth: Double(width), scale: scale).trackPixels == pixels.width)
     }
 
     @Test func theBarHasAWholePointHeight() throws {

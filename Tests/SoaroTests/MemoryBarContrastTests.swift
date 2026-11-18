@@ -134,7 +134,7 @@ import Testing
         for (dark, increased) in Self.modes {
             var environment = EnvironmentValues()
             environment.colorScheme = dark ? .dark : .light
-            environment.colorSchemeContrast = increased ? .increased : .standard
+            environment.contrastIncreasedOverride = increased
             for kind in Self.kinds {
                 let a = MemorySegmentStyle.color(kind, in: environment).resolve(in: environment)
                 let t = Tokens.memorySegment(kind, dark: dark, contrastIncreased: increased)
