@@ -46,8 +46,16 @@ import Testing
         let window = try await makeWindow()
         defer { window.orderOut(nil) }
         let items = try #require(window.toolbar?.items)
-        let toggle = try #require(items.first { $0.label == String(localized: "Toggle Sidebar") })
-        #expect(toggle.toolTip == String(localized: "Toggle Sidebar"))
+        let expected = String(localized: "Toggle Sidebar")
+        let toggle = try #require(items.first { $0.label == expected })
+        // Selon l'OS, SwiftUI expose `.help` et `.accessibilityLabel` par un mécanisme différent : `toolTip` de l'`NSToolbarItem`
+        // (macOS 27, constaté), `toolTip` ou aide d'accessibilité de la vue de l'élément, de ses descendants ou de son conteneur.
+        // Le test exige la PROPRIÉTÉ (une info-bulle exacte, un nom exact pour VoiceOver) par au moins un de ces chemins.
+        let tooltips = WindowProbe.tooltipSources(of: toggle)
+        let labels = WindowProbe.accessibilityLabelSources(of: toggle)
+        print("INFO bouton de la barre latérale sur \(ProcessInfo.processInfo.operatingSystemVersionString) : info-bulle par \(tooltips.filter { $0.text == expected }.map(\.mechanism)) ; nom VoiceOver par \(labels.filter { $0.text == expected }.map(\.mechanism))")
+        #expect(tooltips.contains { $0.text == expected }, "aucune info-bulle \"\(expected)\" : \(tooltips) ; toolTip de l'élément : \(String(describing: toggle.toolTip))")
+        #expect(labels.contains { $0.text == expected }, "aucun nom VoiceOver \"\(expected)\" : \(labels)")
         #expect(toggle.isEnabled)
     }
 
