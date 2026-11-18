@@ -117,7 +117,8 @@ import Testing
         #expect(text.contains("WindowGlassBackground()"))
         #expect(text.contains("window.isOpaque = false"))
         // La barre latérale ne reçoit pas le fond opaque.
-        let sidebar = try #require(text.range(of: "NavigationSplitView {"))
+        // Le conteneur peut porter un argument (`NavigationSplitView(columnVisibility: …) {`, bouton de la barre latérale) : on accepte les deux écritures.
+        let sidebar = try #require(text.range(of: #"NavigationSplitView(\([^)]*\))? \{"#, options: .regularExpression))
         let detail = try #require(text.range(of: "} detail: {", range: sidebar.upperBound..<text.endIndex))
         #expect(!text[sidebar.lowerBound..<detail.lowerBound].contains("windowMainAreaBackground"))
     }
