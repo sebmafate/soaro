@@ -45,22 +45,22 @@ On <https://account.apple.com> go to **Sign-In and Security**, **App-Specific Pa
 
 The file holds one line. It is the same key as in [updates.md](updates.md#the-eddsa-keys): if you already made the backup, you can use that file.
 
-### 4. Store the five secrets in GitHub
+### 4. Store the six secrets in the `release` environment
 
-Use the `gh` CLI, which reads the value from a file or from the terminal so nothing is written to your shell history.
+Since 2026-11-18 the secrets live in the GitHub **Environment** `release` (Settings, Environments), not in the repository secrets: the job declares `environment: release`, so every run waits for the required reviewer and only `main` and the tags `v*` may use them. Use the `gh` CLI with `--env release`, which reads the value from a file or from the terminal so nothing is written to your shell history.
 
 ```bash
 cd ~/.t3/projects/mycleaner
 
-base64 -i ~/Desktop/soaro-developer-id.p12 | gh secret set MACOS_CERTIFICATE
-gh secret set MACOS_CERTIFICATE_PASSWORD          # paste the .p12 password
-gh secret set APPLE_ID                            # your Apple ID e-mail
-gh secret set APPLE_APP_PASSWORD                  # the app-specific password from step 2
-gh secret set APPLE_TEAM_ID --body K8H46QQHGX
-gh secret set SPARKLE_PRIVATE_KEY < /tmp/soaro-sparkle-key
+base64 -i ~/Desktop/soaro-developer-id.p12 | gh secret set MACOS_CERTIFICATE --env release
+gh secret set MACOS_CERTIFICATE_PASSWORD --env release   # paste the .p12 password
+gh secret set APPLE_ID --env release                     # your Apple ID e-mail
+gh secret set APPLE_APP_PASSWORD --env release           # the app-specific password from step 2
+gh secret set APPLE_TEAM_ID --env release --body K8H46QQHGX
+gh secret set SPARKLE_PRIVATE_KEY --env release < /tmp/soaro-sparkle-key
 ```
 
-Check with `gh secret list`: the six names of the table below must appear.
+Check with `gh secret list --env release`: the six names of the table below must appear, and `gh secret list` (the repository secrets) must be empty, otherwise any workflow could still read them without the protection.
 
 | Secret | Content |
 | --- | --- |
@@ -87,9 +87,9 @@ Keep the backup of the Sparkle key in your password manager (see [updates.md](up
 - **The write token is not left in the checkout.** `actions/checkout` runs with `persist-credentials: false`; the workflow is read-only by default and only this job has `contents: write`, which the last step (`gh release create`, with `GH_TOKEN`) uses. `ci.yml` is read-only too.
 - Not done on purpose: splitting the build and the publish into two jobs (the publish job could not be tested without publishing) and pinning the GitHub actions by commit (`@v4` is kept).
 
-**Still to do in GitHub, by the owner (settings, not code):** the two steps below. Without them a person or a stolen token with write access can still push a tag from `main`.
+**GitHub settings, by the owner (not code):** the two steps below. The Environment is done; the tag ruleset is still to do. Without it a person or a stolen token with write access can still push a tag from `main` (the run would then wait for your approval in the Environment, which is the last line of defence).
 
-1. **A protected Environment.** Create a GitHub **Environment** named `release` (Settings, Environments), add a required reviewer, move the secrets into it, and add `environment: release` to the job. Every release then waits for your click. Fork pull requests never receive the secrets either way.
+1. **A protected Environment: done on 2026-11-18.** The Environment `release` has the owner as required reviewer (self-review allowed, there is a single maintainer), allows only the branch `main` and the tags `v*`, holds the six secrets, and the repository secrets were deleted; the job declares `environment: release`. Every release, and every trial run, waits for your click in the Actions tab. Fork pull requests never receive the secrets either way.
 2. **A tag ruleset.** In Settings, Rules, Rulesets, add a **tag** ruleset for `v*`: restrict creations, updates and deletions to the repository admin (bypass list), and require signed commits. Then create release tags with `git tag -s vX.Y.Z` (today the tags are lightweight and unsigned). This is a repository setting that only the owner can change; nothing in the code applies it.
 
 ## Trial run (nothing is published)
@@ -98,7 +98,7 @@ Do this before the first real release.
 
 1. Push the workflow to GitHub (merge it into `main`).
 2. In the **Actions** tab choose **Release**, **Run workflow**, branch `main`.
-3. Keep **notarize** on to test the Apple credentials too (a few minutes).
+3. Keep **notarize** on to test the Apple credentials too (a few minutes). The run first waits for your approval (Review deployments, Approve) because the job uses the `release` environment.
 4. When it is green, download the workflow artifact `soaro-<version>` and test the DMG on a Mac (see "Check the result" below).
 
 A manual run never creates a release and never touches the website. A failure in step 5 or 6 almost always means a wrong secret.
