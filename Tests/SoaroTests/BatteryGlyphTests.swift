@@ -5,7 +5,8 @@ import Testing
 @testable import Soaro
 
 /// SL21 : l'icône de batterie « comme celle de macOS » (contour, bout, remplissage continu, éclair en charge).
-/// Ici : la géométrie pure, la règle des couleurs et le rendu hors écran du glyphe lu en pixels. La vraie barre de menus (teinte réelle, Mac à encoche) se vérifie à la main.
+/// Ici : la géométrie de RÉFÉRENCE en points (celle que lisent les tests de la barre de menus) et la lecture de pixels `GlyphInk`. Le dessin lui-même (SL24)
+/// est en pixels entiers : voir `BatteryPixelGeometryGenericTests` et `BatteryGlyphImageTests`. La vraie barre de menus (teinte réelle, Mac à encoche) se vérifie à la main.
 
 // MARK: Géométrie pure
 
@@ -112,25 +113,6 @@ import Testing
     }
 }
 
-// MARK: Couleurs
-
-@Suite struct BatteryGlyphColorTests {
-    @Test func theFillFollowsTheLevelColourAndTheBaseColourWhenNormal() {
-        #expect(BatteryGlyphColors.fill(level: .normal, base: .black) == .black)
-        #expect(BatteryGlyphColors.fill(level: .normal, base: .white) == .white)
-        #expect(BatteryGlyphColors.fill(level: .medium, base: .white) == .orange)
-        #expect(BatteryGlyphColors.fill(level: .high, base: .black) == .red)
-        #expect(BatteryGlyphColors.fill(level: .critical, base: .white) == PressureLevel.scarlet)
-    }
-
-    @Test func theOutlineAndTheNubAlwaysKeepTheBaseColour() {
-        for level in [PressureLevel.normal, .medium, .high, .critical] {
-            #expect(BatteryGlyphColors.outline(level: level, base: .white) == .white)
-            #expect(BatteryGlyphColors.outline(level: level, base: .black) == .black)
-        }
-    }
-}
-
 // MARK: Rendus hors écran
 
 /// Pixels d'une image, lus à l'échelle demandée (RGBA non prémultiplié).
@@ -185,152 +167,3 @@ struct GlyphInk {
         return n
     }
 }
-
-@MainActor @Suite(.serialized) struct BatteryGlyphRenderTests {
-    private static let scale: CGFloat = 4
-
-    /// Le glyphe seul, sur fond transparent, à l'échelle 4 (un pixel = 0,25 pt).
-    private func glyph(percent: Double, charging: Bool = false, level: PressureLevel = .normal, base: Color = .black,
-                       body: CGSize = BatteryGlyphGeometry.menuBarBody, contrast: Bool = false) throws -> GlyphInk {
-        let view = BatteryGlyph(percent: percent, power: charging ? .charging : .onBattery, level: level, base: base, body: body, increasedContrast: contrast)
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = Self.scale
-        return try GlyphInk(cg: try #require(renderer.cgImage), scale: Self.scale)
-    }
-
-    private func fillRun(_ ink: GlyphInk, body: CGSize = BatteryGlyphGeometry.menuBarBody, contrast: Bool = false) -> [Int] {
-        let g = BatteryGlyphGeometry(body: body, increasedContrast: contrast)
-        let row = Int((g.innerRect.midY * Self.scale).rounded())
-        let lo = Int((g.innerRect.minX * Self.scale).rounded()), hi = Int((g.innerRect.maxX * Self.scale).rounded())
-        return ink.opaqueRun(row: row, columns: lo..<hi)
-    }
-
-    @Test func theGlyphFrameIsTheBodyPlusTheNub() throws {
-        let renderer = ImageRenderer(content: BatteryGlyph(percent: 50, power: .onBattery, level: .normal, base: .black, body: BatteryGlyphGeometry.menuBarBody))
-        renderer.scale = 2
-        let image = try #require(renderer.nsImage)
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        #expect(abs(image.size.width - g.totalSize.width) < 0.01 && abs(image.size.height - g.totalSize.height) < 0.01)
-    }
-
-    // MARK: remplissage proportionnel
-
-    @Test(arguments: [10.0, 50.0, 90.0, 100.0])
-    func theFillWidthIsProportionalToTheLevel(percent: Double) throws {
-        let ink = try glyph(percent: percent)
-        let run = fillRun(ink)
-        let expected = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody).fillWidth(percent: percent) * Self.scale
-        #expect(abs(Double(run.count) - Double(expected)) <= 1.5, "\(percent) % : \(run.count) px lus, \(expected) px attendus")
-        // Le remplissage est d'un seul tenant et part de la gauche.
-        if let first = run.first, let last = run.last { #expect(last - first + 1 == run.count) }
-        #expect(run.first.map { Double($0) / Double(Self.scale) } ?? 99 <= 2.0 + 0.3)
-    }
-
-    @Test func fillGrowsWithTheLevel() throws {
-        var previous = -1
-        for percent in [0.0, 1, 5, 10, 25, 50, 75, 90, 99, 100] {
-            let n = fillRun(try glyph(percent: percent)).count
-            #expect(n >= previous, "\(percent) %")
-            previous = n
-        }
-        #expect(fillRun(try glyph(percent: 0)).isEmpty)
-    }
-
-    @Test func aLevelOfOneToFourPercentStillShowsASliver() throws {
-        for percent in [1.0, 2, 3, 4] {
-            #expect(fillRun(try glyph(percent: percent)).count >= Int(BatteryGlyphGeometry.minSliver * Self.scale) - 1, "\(percent) %")
-        }
-    }
-
-    @Test func onlyAFullBatteryFillsTheWholeInside() throws {
-        let full = fillRun(try glyph(percent: 100)).count
-        let almost = fillRun(try glyph(percent: 99)).count
-        #expect(full > almost)
-    }
-
-    @Test func theOutlineAndTheNubAreAlwaysThereEvenOnAnEmptyBattery() throws {
-        let ink = try glyph(percent: 0)
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        // Ligne du milieu : le contour à gauche, rien à l'intérieur, le contour à droite, puis le bout.
-        let row = Int((g.bodyRect.midY * Self.scale).rounded())
-        #expect(ink.alpha(1, row) > 0.5, "contour gauche")
-        #expect(ink.alpha(Int(g.bodyRect.maxX * Self.scale) - 2, row) > 0.5, "contour droit")
-        #expect(ink.alpha(Int((g.nubRect.midX) * Self.scale), row) > 0.5, "bout")
-        #expect(ink.opaqueCount(in: g.innerRect) == 0, "rien à l'intérieur à 0 %")
-        // Le bout n'est pas plus haut que la moitié du corps.
-        let nubColumn = Int(g.nubRect.midX * Self.scale)
-        let nubPixels = (0..<ink.height).filter { ink.alpha(nubColumn, $0) > 0.5 }.count
-        #expect(Double(nubPixels) / Double(Self.scale) <= g.bodyRect.height / 2 + 0.5)
-    }
-
-    // MARK: éclair
-
-    @Test func noBoltWhenNotChargingAndABoltWhenCharging() throws {
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        for percent in [0.0, 50, 100] {
-            let plain = try glyph(percent: percent), charging = try glyph(percent: percent, charging: true)
-            var different = 0
-            for x in 0..<plain.width { for y in 0..<plain.height where abs(plain.alpha(x, y) - charging.alpha(x, y)) > 0.5 { different += 1 } }
-            // L'éclair mesure environ 3,5 x 6 pt : au moins quelques dizaines de pixels à l'échelle 4.
-            #expect(different > 25, "\(percent) % : \(different) pixels de différence")
-            // Rien ne change hors du corps : le contour et le bout restent identiques.
-            let outside = (0..<plain.width).flatMap { x in (0..<plain.height).map { (x, $0) } }.filter { x, y in
-                !g.boltRect.insetBy(dx: -(BatteryGlyphGeometry.haloWidth + 0.6), dy: -(BatteryGlyphGeometry.haloWidth + 0.6)).contains(CGPoint(x: Double(x) / Double(Self.scale), y: Double(y) / Double(Self.scale)))
-            }
-            #expect(outside.allSatisfy { abs(plain.alpha($0.0, $0.1) - charging.alpha($0.0, $0.1)) < 0.5 }, "\(percent) % : l'éclair déborde de sa zone")
-        }
-    }
-
-    @Test func theBoltIsVisibleInAMonochromeImageOnAnEmptyAndOnAFullBattery() throws {
-        // Image modèle : seul l'alpha compte. Sur une batterie vide, l'éclair est de l'encre là où il n'y avait rien ;
-        // sur une batterie pleine, c'est un trou transparent dans l'encre du remplissage.
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let emptyPlain = try glyph(percent: 0), emptyBolt = try glyph(percent: 0, charging: true)
-        #expect(emptyBolt.opaqueCount(in: g.boltRect) > emptyPlain.opaqueCount(in: g.boltRect) + 20)
-        let fullPlain = try glyph(percent: 100), fullBolt = try glyph(percent: 100, charging: true)
-        #expect(fullBolt.clearCount(in: g.innerRect) > fullPlain.clearCount(in: g.innerRect) + 25, "le trou en forme d'éclair se voit dans le remplissage")
-        #expect(fullBolt.opaqueCount(in: g.boltRect) < fullPlain.opaqueCount(in: g.boltRect), "il y a moins d'encre là où est l'éclair")
-    }
-
-    // MARK: couleurs, barre claire et sombre
-
-    @Test func aNormalBatteryIsPureInkOfTheBaseColour() throws {
-        for base in [Color.black, .white] {
-            let ink = try glyph(percent: 60, charging: true, base: base)
-            let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-            let p = ink.pixel(Int(g.innerRect.minX * Self.scale) + 3, Int(g.innerRect.midY * Self.scale))
-            let expected = base == .white ? 1.0 : 0.0
-            #expect(p.a > 0.9 && abs(p.r - expected) < 0.1 && abs(p.g - expected) < 0.1 && abs(p.b - expected) < 0.1, "remplissage en couleur de base")
-        }
-    }
-
-    @Test(arguments: [(PressureLevel.medium, 1.0, 0.5, 0.0), (.high, 1.0, 0.2, 0.2), (.critical, 1.0, 0.14, 0.0)])
-    func aColouredLevelColoursTheFillButNotTheOutline(level: PressureLevel, r: Double, g gg: Double, b: Double) throws {
-        for base in [Color.black, .white] {
-            let ink = try glyph(percent: 40, level: level, base: base)
-            let geo = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-            let fill = ink.pixel(Int(geo.innerRect.minX * Self.scale) + 3, Int(geo.innerRect.midY * Self.scale))
-            #expect(fill.a > 0.9)
-            #expect(abs(fill.r - r) < 0.15 && abs(fill.g - gg) < 0.3 && abs(fill.b - b) < 0.3, "remplissage \(level) : \(fill)")
-            let outline = ink.pixel(2, Int(geo.bodyRect.midY * Self.scale))
-            let expected = base == .white ? 1.0 : 0.0
-            #expect(outline.a > 0.9 && abs(outline.r - expected) < 0.1 && abs(outline.g - expected) < 0.1, "contour de la couleur de base")
-        }
-    }
-
-    // MARK: Accessibilité : contraste renforcé
-
-    @Test func increaseContrastThickensTheOutline() throws {
-        let g1 = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let row = Int(g1.bodyRect.midY * Self.scale)
-        func leftOutline(_ contrast: Bool) throws -> Int {
-            let ink = try glyph(percent: 0, contrast: contrast)
-            return ink.opaqueRun(row: row, columns: 0..<Int(4 * Self.scale)).count
-        }
-        let normal = try leftOutline(false), strong = try leftOutline(true)
-        #expect(strong > normal, "\(strong) px contre \(normal) px")
-        #expect(abs(Double(normal) - 1.2 * Double(Self.scale)) <= 1.5)
-        #expect(abs(Double(strong) - 1.5 * Double(Self.scale)) <= 1.5)
-    }
-}
-

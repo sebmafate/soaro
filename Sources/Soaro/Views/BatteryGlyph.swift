@@ -108,22 +108,7 @@ struct BatteryGlyphGeometry: Equatable {
         return CGRect(x: (body.width - w) / 2, y: (body.height - h) / 2, width: w, height: h)
     }
 
-    func plugPath() -> Path {
-        let r = plugRect
-        var path = Path()
-        for u in Self.plugRects {
-            path.addRect(CGRect(x: r.minX + u.minX * r.width, y: r.minY + u.minY * r.height, width: u.width * r.width, height: u.height * r.height))
-        }
-        return path
-    }
-
-    func markPath(_ mark: BatteryGlyphMark) -> Path { mark == .bolt ? boltPath() : plugPath() }
     func markRect(_ mark: BatteryGlyphMark) -> CGRect { mark == .bolt ? boltRect : plugRect }
-
-    /// Le halo : le repère élargi de `haloWidth` de chaque côté (un trait de `2 x haloWidth`, angles arrondis, sur le contour du repère).
-    func haloPath(_ mark: BatteryGlyphMark) -> Path {
-        markPath(mark).strokedPath(StrokeStyle(lineWidth: 2 * Self.haloWidth, lineJoin: .round))
-    }
 
     /// Plage de niveaux (en %) où le bord du remplissage est caché derrière le repère et son halo : on lit alors le niveau d'un côté seulement
     /// (le texte à côté dit le chiffre). Hors de cette plage, le bord se voit.
@@ -132,107 +117,99 @@ struct BatteryGlyphGeometry: Equatable {
         func percent(at x: CGFloat) -> Double { Double(min(100, max(0, (x - innerRect.minX) / innerRect.width * 100))) }
         return percent(at: r.minX - Self.haloWidth + 0.5)...percent(at: r.maxX + Self.haloWidth - 0.5)
     }
-
-    func boltPath() -> Path {
-        let r = boltRect
-        var path = Path()
-        let points = Self.boltPoints.map { CGPoint(x: r.minX + $0.x * r.width, y: r.minY + $0.y * r.height) }
-        path.move(to: points[0])
-        points.dropFirst().forEach { path.addLine(to: $0) }
-        path.closeSubpath()
-        return path
-    }
-
-    /// Rectangle à angles inégaux, rayons ramenés à ce que la place permet (un remplissage de 1 pt n'a pas de grands angles).
-    func roundedRect(_ rect: CGRect, left: CGFloat, right: CGFloat) -> Path {
-        let limit = min(rect.width, rect.height) / 2
-        let l = min(left, limit), r = min(right, limit)
-        return UnevenRoundedRectangle(topLeadingRadius: l, bottomLeadingRadius: l, bottomTrailingRadius: r, topTrailingRadius: r).path(in: rect)
-    }
 }
 
 /// Le repère dessiné dans l'icône : l'éclair quand la batterie charge, la prise quand le Mac est branché sans charger.
 enum BatteryGlyphMark: Equatable { case bolt, plug }
 
-/// La règle des couleurs : le contour et le bout gardent la couleur de base ; le remplissage suit le niveau
-/// (normal : la couleur de base ; orange, rouge ; écarlate en critique), comme la valeur à côté de l'icône.
+/// Les couleurs de la barre de progression de la batterie. (La règle des couleurs de l'icône elle-même, SL21 : le contour et le bout gardent la
+/// couleur de base, le remplissage suit le niveau, est dans `LabelPalette.color(for:)` : une seule règle pour le libellé et les cartes.)
 enum BatteryGlyphColors {
-    static func fill(level: PressureLevel, base: Color) -> Color { level.color ?? base }
-    static func outline(level: PressureLevel, base: Color) -> Color { base }
-
     /// Couleur de la barre de progression de la batterie (carte de l'aperçu, anneau de l'onglet) : celle du niveau, donc des seuils réglés,
     /// comme le glyphe et la valeur. Au niveau normal, vert comme avant (le glyphe garde alors la couleur de base).
     static func barTint(for level: PressureLevel) -> Color { level.color ?? .green }
     static func barTint(for b: BatteryStats, thresholds: LevelThresholds) -> Color { barTint(for: .battery(b, thresholds: thresholds)) }
 }
 
-/// L'icône de batterie « comme celle de macOS », dessinée (pas un symbole SF, qui n'a que quelques niveaux).
+/// L'icône de batterie de la carte de l'aperçu (28 x 13 pt) et de l'en-tête de l'onglet Batterie (32 x 15 pt) (SL24).
 ///
-/// **Image modèle (barre de menus).** Le libellé de la barre est une image modèle tant que rien n'est coloré : seul son canal
-/// alpha compte, macOS la teinte. Ici tout se lit donc à l'alpha : le contour, le bout et le remplissage sont de l'encre pleine, et
-/// le repère (éclair ou prise) est *creusé dans le remplissage* (mode de fusion `destinationOut` : un trou transparent en forme d'éclair) et, là où il
-/// n'y a pas de remplissage, dessiné en encre pleine : il se voit sur une batterie pleine (trou clair dans l'encre) comme sur une
-/// batterie vide (encre sur le vide), et à cheval sur le bord du remplissage il s'inverse, comme sur macOS.
-/// Une batterie normale ne rend donc pas l'image colorée ; seul un niveau orange, rouge ou écarlate la rend non modèle,
-/// et le dessin reste juste sur une barre claire ou sombre (`base` blanc ou noir).
-struct BatteryGlyph: View {
+/// **Le même dessin que le libellé de la barre de menus** (SL23) : une image dynamique, `NSImage(size:flipped:drawingHandler:)`, dont le dessin
+/// lit l'échelle dans le contexte où AppKit l'affiche (1x, 2x, 3x ; il est refait quand la fenêtre change d'écran) et pose chaque forme sur des
+/// pixels entiers (`BatteryPixelGeometry`, `LabelShapes.drawBattery`). Plus de dessin SwiftUI aux coordonnées fractionnaires, qui donnait des bords
+/// gris à demi-intensité sur un écran 1x.
+///
+/// **Clair et sombre.** Les couleurs (le jeton « texte de soutien » pour le contour, le bout et le remplissage normal ; orange, rouge, écarlate
+/// pour les niveaux) sont résolues ICI, depuis l'environnement SwiftUI (thème, « Augmenter le contraste »), puis copiées dans le dessin : l'image est
+/// refaite quand le thème change, sans dépendre de l'apparence courante au moment où AppKit appelle le dessin.
+///
+/// La taille de mise en page ne change pas : le corps plus le bout. Le repère (éclair, prise) déborde en haut et en bas dans la marge de l'image,
+/// compensée par un remplissage négatif.
+struct BatteryGlyphImage: View {
     let percent: Double
     let power: BatteryPowerState
     let level: PressureLevel
-    /// Couleur du contour, du bout et (niveau normal) du remplissage. `nil` : le jeton « texte de soutien » du thème (les cartes) ;
-    /// le libellé de la barre de menus donne noir ou blanc.
-    let base: Color?
+    /// Le corps sans le bout, en points : `BatteryGlyphGeometry.cardBody` ou `.tabBody`.
     let bodySize: CGSize
-    /// `nil` : suit le réglage du système (les cartes). Le libellé de la barre le donne explicitement (`ImageRenderer` ne voit pas l'environnement).
+    /// `nil` : suit le réglage du système (les cartes).
     let increasedContrast: Bool?
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.self) private var environment
 
-    init(percent: Double, power: BatteryPowerState, level: PressureLevel = .normal, base: Color? = nil,
-         body: CGSize = BatteryGlyphGeometry.menuBarBody, increasedContrast: Bool? = nil) {
+    init(percent: Double, power: BatteryPowerState, level: PressureLevel = .normal, body: CGSize, increasedContrast: Bool? = nil) {
         self.percent = percent
         self.power = power
         self.level = level
-        self.base = base
         self.bodySize = body
         self.increasedContrast = increasedContrast
     }
 
-    private var geometry: BatteryGlyphGeometry {
-        BatteryGlyphGeometry(body: bodySize, increasedContrast: increasedContrast ?? (contrast == .increased))
+    var body: some View {
+        let nub = BatteryPixelGeometry.nubPoints(forBody: bodySize)
+        let size = BatteryPixelGeometry.imageSizePoints(bodyPoints: bodySize, nubPoints: nub)
+        let margin = BatteryPixelGeometry.overflowPoints(bodyPoints: bodySize)
+        let image = BatteryGlyphDrawing.image(percent: percent, power: power, level: level, bodyPoints: bodySize, nubPoints: nub,
+                                              palette: BatteryGlyphDrawing.palette(in: environment), increasedContrast: increasedContrast ?? (contrast == .increased))
+        Image(nsImage: image)
+            .frame(width: size.width, height: size.height)
+            .padding(.vertical, -margin)      // la marge où le repère déborde ne change pas la taille de mise en page
+            .accessibilityHidden(true)      // le texte à côté dit le niveau (et la carte l'état de charge)
+    }
+}
+
+/// Le dessin de l'icône dans une image dynamique, et la résolution des couleurs.
+enum BatteryGlyphDrawing {
+    /// Les couleurs de l'icône pour un environnement SwiftUI (thème clair ou sombre, contraste).
+    static func palette(in environment: EnvironmentValues) -> LabelPalette {
+        func cg(_ color: Color) -> CGColor { color.resolve(in: environment).cgColor }
+        return LabelPalette(base: cg(SupportingTextShapeStyle.color(in: environment)), orange: cg(.orange), red: cg(.red), scarlet: cg(PressureLevel.scarlet),
+                            white: CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1))
     }
 
-    var body: some View {
-        let g = geometry
-        let ink = base ?? SupportingTextShapeStyle.color(in: environment)
-        let outline = BatteryGlyphColors.outline(level: level, base: ink)
-        let fill = BatteryGlyphColors.fill(level: level, base: ink)
-        Canvas { context, _ in
-            context.translateBy(x: 0, y: g.verticalOverflow)      // le dessin commence sous la marge réservée au repère
-            // 1. le remplissage (angles intérieurs arrondis ; côté droit droit tant que la batterie n'est pas pleine)
-            let innerRadius = max(0.5, g.cornerRadius - g.lineWidth - BatteryGlyphGeometry.gap / 2)
-            let width = g.fillWidth(percent: percent)
-            if width > 0 {
-                let isFull = width >= g.innerRect.width
-                context.fill(g.roundedRect(g.fillRect(percent: percent), left: innerRadius, right: isFull ? innerRadius : 0.5), with: .color(fill))
-            }
-            // 2. le contour et le bout
-            let strokeRect = g.bodyRect.insetBy(dx: g.lineWidth / 2, dy: g.lineWidth / 2)
-            context.stroke(RoundedRectangle(cornerRadius: g.cornerRadius - g.lineWidth / 2).path(in: strokeRect), with: .color(outline), lineWidth: g.lineWidth)
-            context.fill(g.roundedRect(g.nubRect, left: 0, right: g.nubRect.width * 0.8), with: .color(outline))
-            // 3. le repère (éclair en charge, prise branché sans charge) : d'abord son halo, un jeu transparent creusé dans tout ce qui est déjà
-            //    dessiné, contour et remplissage (mode de fusion `destinationOut` : de l'alpha en moins, aucune couleur) ; puis le repère, en encre
-            //    pleine dans la couleur du contour, par-dessus le jeu. Que du canal alpha : l'image modèle reste monochrome.
-            if let mark = power.mark {
-                var cut = context
-                cut.blendMode = .destinationOut
-                cut.fill(g.haloPath(mark), with: .color(.black))
-                cut.fill(g.markPath(mark), with: .color(.black))
-                context.fill(g.markPath(mark), with: .color(outline))
-            }
+    /// L'image dynamique : sa taille en points ne dépend pas de l'échelle, son dessin se refait à chaque échelle demandée. Le dessin ne touche
+    /// qu'à des valeurs copiées ici.
+    static func image(percent: Double, power: BatteryPowerState, level: PressureLevel, bodyPoints: CGSize, nubPoints: CGFloat,
+                      palette: LabelPalette, increasedContrast: Bool) -> NSImage {
+        let size = BatteryPixelGeometry.imageSizePoints(bodyPoints: bodyPoints, nubPoints: nubPoints)
+        return NSImage(size: size, flipped: true) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            draw(percent: percent, power: power, level: level, bodyPoints: bodyPoints, nubPoints: nubPoints, palette: palette,
+                 increasedContrast: increasedContrast, scale: MenuBarRenderer.pixelScale(of: context), in: context)
+            return true
         }
-        .frame(width: g.totalSize.width, height: g.totalSize.height + 2 * g.verticalOverflow)
-        .padding(.vertical, -g.verticalOverflow)       // la marge où le repère déborde ne change pas la taille de mise en page
-        .accessibilityHidden(true)      // le texte à côté dit le niveau (et la carte l'état de charge)
+    }
+
+    /// Dessine l'icône dans un contexte dont l'unité est le point, l'axe y descend et l'origine est le coin haut gauche de l'image.
+    /// Le dessin passe en pixels (une unité = un pixel) : chaque coordonnée est un entier.
+    static func draw(percent: Double, power: BatteryPowerState, level: PressureLevel, bodyPoints: CGSize, nubPoints: CGFloat,
+                     palette: LabelPalette, increasedContrast: Bool, scale rawScale: Int, in context: CGContext) {
+        let scale = max(1, rawScale)
+        let geometry = BatteryPixelGeometry(bodyPoints: bodyPoints, nubPoints: nubPoints, scale: scale, increasedContrast: increasedContrast)
+        let origin = BatteryPixelGeometry.bodyOriginPoints(bodyPoints: bodyPoints)
+        context.saveGState()
+        context.scaleBy(x: 1 / CGFloat(scale), y: 1 / CGFloat(scale))
+        context.setShouldAntialias(true)
+        LabelShapes.drawBattery(geometry, percent: percent, power: power, level: level, palette: palette,
+                                origin: CGPoint(x: origin.x * CGFloat(scale), y: origin.y * CGFloat(scale)), in: context)
+        context.restoreGState()
     }
 }

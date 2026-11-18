@@ -4,7 +4,7 @@ import SwiftUI
 import Testing
 @testable import Soaro
 
-/// SL21 : l'icône de batterie sur la carte de l'aperçu et dans l'onglet Batterie.
+/// SL21 : l'icône de batterie sur la carte de l'aperçu et dans l'onglet Batterie (SL24 : la vue est `BatteryGlyphImage`, le dessin de la barre de menus ; voir `BatteryGlyphImageTests`).
 
 @MainActor @Suite struct BatteryCardsTests {
     private func read(_ path: String) throws -> String {
@@ -19,12 +19,12 @@ import Testing
         #expect(!source.contains("battery.50percent"))
         #expect(!source.contains("battery.25percent"))
         #expect(!source.contains("battery.0percent"))
-        #expect(source.contains("BatteryGlyph("))
+        #expect(source.contains("BatteryGlyphImage("))
     }
 
     @Test func theBatteryTabHeaderUsesTheGlyphInsteadOfTheSystemIcons() throws {
         let source = try read("Sources/Soaro/Views/BatteryTab.swift")
-        #expect(source.contains("BatteryGlyph("))
+        #expect(source.contains("BatteryGlyphImage("))
         #expect(!source.contains("\"battery.50percent\""))
         #expect(!source.contains("\"bolt.fill\""))
         #expect(!source.contains("\"powerplug.fill\""))
@@ -43,7 +43,7 @@ import Testing
 
     @Test func theStatCardAcceptsACustomIconAndRenders() throws {
         let card = StatCard(title: "Battery", systemImage: "battery.100percent", value: "67%", subtitle: "Charging",
-                            icon: AnyView(BatteryGlyph(percent: 67, power: .charging, level: .normal, base: .primary, body: BatteryGlyphGeometry.cardBody)))
+                            icon: AnyView(BatteryGlyphImage(percent: 67, power: .charging, level: .normal, body: BatteryGlyphGeometry.cardBody)))
             .frame(width: 180)
         let renderer = ImageRenderer(content: card)
         let image = try #require(renderer.nsImage)

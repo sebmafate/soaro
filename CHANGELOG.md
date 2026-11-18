@@ -19,6 +19,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon. A small plug replaces the bolt while the Mac is plugged in but not charging (full, or charge held by a limit), and the battery bar on the card and the tab now turns orange, red or scarlet at your own thresholds.
 - The menu bar label is sharper, in particular on an external display that is not Retina: it is now drawn for the screen it appears on (and redrawn when it moves), with its shapes and text aligned on the pixel grid (the battery icon is 0.5 pt taller, 10 pt).
 - The memory bar in the Performance tab is now split into coloured segments by kind of use (apps, system, compressed, and the reclaimable cache as an outlined part); each row below has a matching coloured dot, and a dot before the percentage shows when memory pressure is above normal. (SL26)
+- The battery icon on the Overview card and in the Battery tab is sharper too, in particular on an external display that is not Retina: it is drawn the same way as the menu bar icon, on the pixel grid of the screen it appears on.
 
 ## [1.1.0] - 2026-11-18
 

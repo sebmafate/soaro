@@ -31,8 +31,8 @@ import Testing
                     let b = battery(percent, plugged: plugged)
                     let level = PressureLevel.battery(b, thresholds: thresholds)
                     let bar = BatteryGlyphColors.barTint(for: b, thresholds: thresholds)
-                    // Le glyphe dessine le niveau coloré ; au niveau normal il garde la couleur de base, la barre reste verte comme avant.
-                    let glyphFill = BatteryGlyphColors.fill(level: level, base: .black)
+                    // Le glyphe dessine le niveau coloré (`LabelPalette.color(for:)`, la même règle que `PressureLevel.color`) ; au niveau normal il garde la couleur de base, la barre reste verte comme avant.
+                    let glyphFill = level.color
                     if level > .normal {
                         #expect(bar == glyphFill, "\(percent) % \(thresholds) branché \(plugged)")
                     } else {
@@ -186,81 +186,9 @@ import Testing
         #expect(rects.contains { $0.maxY == 1 && abs($0.midX - 0.5) < 1e-9 })
     }
 
-    @Test func theMarkPathsAreTheBoltAndThePlugAndNothingElse() {
-        #expect(bar.markPath(.bolt).boundingRect.equalTo(bar.boltPath().boundingRect))
-        #expect(bar.markPath(.plug).boundingRect.integral.intersects(bar.plugRect.insetBy(dx: 0.1, dy: 0.1)))
-        #expect(!bar.markPath(.plug).boundingRect.equalTo(bar.markPath(.bolt).boundingRect))
+    @Test func theMarkRectsAreTheBoltAndThePlugBoxes() {
         #expect(bar.markRect(.plug) == bar.plugRect && bar.markRect(.bolt) == bar.boltRect)
-    }
-}
-
-// MARK: Rendu hors écran de la prise
-
-@MainActor @Suite(.serialized) struct BatteryPlugRenderTests {
-    private static let scale: CGFloat = 4
-
-    private func glyph(_ power: BatteryPowerState, percent: Double, level: PressureLevel = .normal, base: Color = .black,
-                       body: CGSize = BatteryGlyphGeometry.menuBarBody) throws -> GlyphInk {
-        let renderer = ImageRenderer(content: BatteryGlyph(percent: percent, power: power, level: level, base: base, body: body, increasedContrast: false))
-        renderer.scale = Self.scale
-        return try GlyphInk(cg: try #require(renderer.cgImage), scale: Self.scale)
-    }
-
-    private func mask(_ a: GlyphInk, _ b: GlyphInk) -> Set<Int> {
-        var set = Set<Int>()
-        for x in 0..<a.width { for y in 0..<a.height where abs(a.alpha(x, y) - b.alpha(x, y)) > 0.5 { set.insert(y * a.width + x) } }
-        return set
-    }
-
-    @Test func thePlugShowsOnlyWhenPluggedNotChargingAndInsideItsBox() throws {
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        for percent in [0.0, 50, 100] {
-            let plain = try glyph(.onBattery, percent: percent), plug = try glyph(.pluggedNotCharging, percent: percent)
-            let diff = mask(plain, plug)
-            #expect(diff.count > 25, "\(percent) % : \(diff.count) pixels de prise")
-            // Rien ne change hors de la boîte de la prise.
-            let box = g.plugRect.insetBy(dx: -(BatteryGlyphGeometry.haloWidth + 0.6), dy: -(BatteryGlyphGeometry.haloWidth + 0.6))
-            for index in diff {
-                let p = CGPoint(x: Double(index % plain.width) / Double(Self.scale), y: Double(index / plain.width) / Double(Self.scale))
-                #expect(box.contains(p), "\(percent) % : un pixel change hors de la prise")
-            }
-        }
-    }
-
-    @Test func thePlugAndTheBoltAreDifferentShapesAndNeverDrawnTogether() throws {
-        for percent in [0.0, 100] {
-            let plain = try glyph(.onBattery, percent: percent)
-            let plugMask = mask(plain, try glyph(.pluggedNotCharging, percent: percent))
-            let boltMask = mask(plain, try glyph(.charging, percent: percent))
-            let both = plugMask.intersection(boltMask)
-            #expect(Double(both.count) < 0.85 * Double(min(plugMask.count, boltMask.count)), "deux formes distinctes (\(percent) %)")
-            // Les deux repères ne tiennent pas dans la même image : « un seul à la fois » est dans le type (`mark` est optionnel, pas un ensemble).
-            #expect(!plugMask.isEmpty && !boltMask.isEmpty)
-        }
-    }
-
-    @Test func thePlugIsVisibleInAMonochromeImageOnAnEmptyAndOnAFullBattery() throws {
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let emptyPlain = try glyph(.onBattery, percent: 0), emptyPlug = try glyph(.pluggedNotCharging, percent: 0)
-        #expect(emptyPlug.opaqueCount(in: g.plugRect) > emptyPlain.opaqueCount(in: g.plugRect) + 20, "encre pleine sur le vide")
-        let fullPlain = try glyph(.onBattery, percent: 100), fullPlug = try glyph(.pluggedNotCharging, percent: 100)
-        #expect(fullPlug.clearCount(in: g.innerRect) > fullPlain.clearCount(in: g.innerRect) + 20, "prise creusée dans le remplissage")
-    }
-
-    @Test func thePlugIsDrawnAtTheCardAndTabSizesToo() throws {
-        for body in [BatteryGlyphGeometry.cardBody, BatteryGlyphGeometry.tabBody] {
-            let g = BatteryGlyphGeometry(body: body)
-            let plain = try glyph(.onBattery, percent: 0, body: body), plug = try glyph(.pluggedNotCharging, percent: 0, body: body)
-            #expect(plug.opaqueCount(in: g.plugRect) > plain.opaqueCount(in: g.plugRect) + 60, "\(body)")
-        }
-    }
-
-    @Test func aColouredLevelKeepsAnInkPlugOfTheBaseColourWhereThereIsNoFill() throws {
-        // Le repère est de la couleur du contour (blanc sur barre sombre) ; le remplissage seul prend la couleur du niveau.
-        let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)
-        let ink = try glyph(.pluggedNotCharging, percent: 0, level: .high, base: .white)
-        let centre = ink.pixel(Int(g.plugRect.midX * Self.scale), Int(g.plugRect.midY * Self.scale))
-        #expect(centre.a > 0.9 && centre.r > 0.9 && centre.g > 0.9 && centre.b > 0.9)
+        #expect(bar.plugRect != bar.boltRect)
     }
 }
 

@@ -40,6 +40,21 @@ enum SharpnessMetric {
         return EdgeSoftness(soft: soft, inked: inked)
     }
 
+    /// Comme `edgeSoftness`, mais « plein » veut dire « aussi opaque que le pixel le plus opaque de la zone » (SL24) : l'encre des cartes est le
+    /// jeton « texte de soutien », noir ou blanc à 56 % d'opacité, donc jamais d'alpha 1. Une zone qui ne porte qu'une couleur d'encre et au moins
+    /// un pixel plein (le trait, le remplissage) donne le même résultat que la mesure absolue sur une encre opaque.
+    static func relativeEdgeSoftness(_ ink: GlyphInk, xs: Range<Int>, ys: Range<Int>) -> EdgeSoftness {
+        var peak = 0.0
+        for y in ys { for x in xs { peak = max(peak, ink.alpha(x, y)) } }
+        guard peak > inkFloor else { return EdgeSoftness(soft: 0, inked: 0) }
+        var soft = 0, inked = 0
+        for y in ys { for x in xs {
+            let a = ink.alpha(x, y) / peak
+            if a > inkFloor { inked += 1; if a < solidCeiling { soft += 1 } }
+        } }
+        return EdgeSoftness(soft: soft, inked: inked)
+    }
+
     static func edgeSoftness(_ ink: GlyphInk, region: CGRect) -> EdgeSoftness {
         let p = pixels(of: region, scale: ink.scale, in: ink)
         return edgeSoftness(ink, xs: p.xs, ys: p.ys)
