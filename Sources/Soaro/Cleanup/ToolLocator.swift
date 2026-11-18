@@ -2,13 +2,28 @@ import Foundation
 
 /// Trouve un outil externe par chemin ABSOLU (ADR 0009) : jamais de PATH, jamais de shell, jamais `which`.
 /// Volontairement minimal : `xcrun` (simulateurs), `ps` (émulateurs Android en cours d'exécution) et la recherche du SDK Android.
-/// Les candidats de Docker (SL13) seront ajoutés avec leur tranche.
+/// SL13 : les candidats de `docker`, par chemin absolu seulement.
 enum ToolLocator {
     /// Candidats pour les simulateurs iOS : exactement `/usr/bin/xcrun` (le relais installé par macOS).
     static let simulatorCandidates = ["/usr/bin/xcrun"]
 
     /// Candidats pour la liste des processus (émulateurs Android en cours d'exécution) : exactement `/bin/ps`.
     static let processListCandidates = ["/bin/ps"]
+
+    /// Candidats pour `docker` (SL13, ADR 0010), dans l'ordre : le lien de Docker Desktop, Homebrew, le binaire dans l'application
+    /// Docker Desktop, OrbStack (dans le dossier personnel ; non vérifiable ici, R15). Fonction PURE : ne lit ni le PATH ni
+    /// aucune variable, ne lance rien. Chemins absolus seulement.
+    static func dockerCandidates(home: URL) -> [String] {
+        ["/usr/local/bin/docker",
+         "/opt/homebrew/bin/docker",
+         "/Applications/Docker.app/Contents/Resources/bin/docker",
+         home.appendingPathComponent(".orbstack/bin/docker", isDirectory: false).path]
+    }
+
+    /// Le `docker` trouvé sur le disque (aucun lancement), `nil` s'il n'y en a pas : l'outil n'apparaît alors pas.
+    static func dockerPath(home: URL, locate: ([String]) -> String? = { firstExecutable(in: $0) }) -> String? {
+        locate(dockerCandidates(home: home))
+    }
 
     /// Cherche le SDK Android (R18). Fonction PURE : ne lance rien, ne lit jamais le PATH ni aucune autre variable.
     /// 1. De `ANDROID_SDK_ROOT` puis `ANDROID_HOME`, la PREMIÈRE variable définie et non vide décide : si sa valeur est un chemin
