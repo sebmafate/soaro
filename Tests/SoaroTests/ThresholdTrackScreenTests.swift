@@ -40,4 +40,18 @@ import Testing
         // Pas de taille de police fixe (DESIGN.md partie 2).
         #expect(!track.contains(".system(size:"))
     }
+
+    @Test func oneGestureOnTheTrackPicksTheHandleByDistance() throws {
+        // Les poignées se recouvrent (3 pt d'écart) : un seul geste sur la piste choisit la plus proche (`pickHandle`), pas celle du dessus.
+        let track = try source("Sources/Soaro/Views/ThresholdTrack.swift")
+        #expect(track.components(separatedBy: "DragGesture(").count == 2, "un seul DragGesture attendu")
+        #expect(track.contains("pickHandle("))
+        #expect(track.contains("resolve("))
+    }
+
+    @Test func stepAndGapAreEachOneNamedConstant() throws {
+        let logic = try source("Sources/Soaro/Views/ThresholdTrackLogic.swift")
+        #expect(logic.components(separatedBy: "static let step = ").count == 2)
+        #expect(logic.components(separatedBy: "static let minimumGap = ").count == 2)
+    }
 }
