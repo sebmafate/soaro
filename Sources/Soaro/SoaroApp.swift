@@ -71,7 +71,8 @@ struct MenuBarLabel: View {
 
     private var items: [MenuBarItem] {
         guard let s = state.snapshot else { return [] }
-        let flagCode = MenuBarFlag.countryCode(lookupEnabled: publicIPLookup, demo: DemoMode.isEnabled, info: state.publicIP)
+        let flagCode = MenuBarFlag.countryCode(lookupEnabled: publicIPLookup, demo: DemoMode.isEnabled, info: state.publicIP,
+                                               matchesNetwork: state.publicIPMatchesNetwork, now: Date())
         return MenuBarItem.items(for: s, cpu: showCPU, gpu: showGPU, memory: showMemory, disk: showDisk, network: showNetwork, battery: showBattery,
                                   thresholds: .load(), publicIPCountryCode: flagCode)
     }

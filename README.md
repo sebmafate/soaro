@@ -48,7 +48,7 @@ The app is signed with a Developer ID and notarized by Apple. It updates itself 
 ## Privacy
 
 - Soaro runs **locally**. Your history stays in `~/Library/Application Support/Soaro` and is kept for 30 days.
-- Two options are **off by default**: the latency test (a small ping to `1.1.1.1`) and the public IP and country lookup. The lookup asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. VPN detection is fully local.
+- Two options are **off by default**: the latency test (a small ping to `1.1.1.1`) and the public IP and country lookup. The lookup asks a third-party service (ipwho.is, or ipapi.co as a backup), which then sees your public IP. It asks while the Network tab is open and while the country flag is shown in the menu bar: about every 5 minutes, and again when your network or VPN changes. VPN detection is fully local.
 - The update check downloads a public file from soaro.app once a day. It sends no personal data.
 - There is no account, no analytics and no tracking in the app. The website soaro.app counts visits with [Umami](https://umami.is), without cookies.
 

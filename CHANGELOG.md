@@ -7,7 +7,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 ### Added
 
 - Settings > About now links to the website, soaro.app, next to the app logo (the French page when Soaro runs in French).
-- With “Show public IP and country” on and the network rates in the menu bar, the flag of your public IP's country now shows to the right of the rates (and its name in the tooltip); it asks nothing more of the network, and shows nothing when the country is unknown.
+- With “Show public IP and country” on and the network rates in the menu bar, the flag of your public IP's country now shows to the right of the rates (and its name in the tooltip); the flag stays up to date (it follows a VPN or network change within seconds, which means Soaro asks the lookup service about every 5 minutes while the flag shows, not only when the Network tab is open), and it shows nothing when the country is unknown.
 
 ### Changed
 
