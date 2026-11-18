@@ -106,7 +106,7 @@ enum MenuBarItem: Equatable {
     case flag(countryCode: String)
     /// Batterie (SL21) : l'icône suivie du pourcentage, sur une seule ligne, sans libellé « BAT ».
     /// `percent` est le pourcentage entier affiché (0…100) : la même valeur dessine le remplissage et écrit le texte.
-    case battery(percent: Int, charging: Bool, level: PressureLevel = .normal)
+    case battery(percent: Int, power: BatteryPowerState, level: PressureLevel = .normal)
 
     var level: PressureLevel {
         switch self {
@@ -131,7 +131,7 @@ enum MenuBarItem: Equatable {
             }
         }
         if battery, let b = s.battery {
-            items.append(.battery(percent: wholePercent(b.percent), charging: b.isCharging, level: .battery(b, thresholds: t.battery)))
+            items.append(.battery(percent: wholePercent(b.percent), power: b.powerState, level: .battery(b, thresholds: t.battery)))
         }
         return items
     }
@@ -156,7 +156,7 @@ enum MenuBarItem: Equatable {
         for item in items {
             switch item {
             case .stacked(let label, let value, _): parts.append("\(label) \(value)")
-            case .battery(let percent, let charging, _): parts.append("\(charging ? "BAT ⚡︎" : "BAT") \(batteryValue(percent))")
+            case .battery(let percent, let power, _): parts.append("\(power == .charging ? "BAT ⚡︎" : "BAT") \(batteryValue(percent))")
             case .pair(let top, let bottom): parts.append("\(bottom) \(top)")
             case .flag(let code):
                 guard let flag = MenuBarFlag.emoji(forCountryCode: code) else { continue }
@@ -344,8 +344,8 @@ struct MenuBarWidgetsView: View {
                             valueText(value, level: level, size: 13)
                         }
                     }
-                case .battery(let percent, let charging, let level):
-                    batteryItem(percent: percent, charging: charging, level: level)
+                case .battery(let percent, let power, let level):
+                    batteryItem(percent: percent, power: power, level: level)
                 case .flag(let code):
                     if let flag = MenuBarFlag.emoji(forCountryCode: code) {
                         // Émoji en couleur : il ignore la couleur du texte. Aucune largeur ni hauteur imposée aux autres blocs.
@@ -371,8 +371,8 @@ struct MenuBarWidgetsView: View {
     }
 
     /// L'icône à gauche du pourcentage, sur une ligne centrée dans les 22 pt. Le texte suit les mêmes règles de couleur qu'avant.
-    @ViewBuilder private func batteryItem(percent: Int, charging: Bool, level: PressureLevel) -> some View {
-        let icon = BatteryGlyph(percent: Double(percent), charging: charging, level: level, base: baseColor, body: Self.batteryBody, increasedContrast: increasedContrast)
+    @ViewBuilder private func batteryItem(percent: Int, power: BatteryPowerState, level: PressureLevel) -> some View {
+        let icon = BatteryGlyph(percent: Double(percent), power: power, level: level, base: baseColor, body: Self.batteryBody, increasedContrast: increasedContrast)
         let value = valueText(MenuBarItem.batteryValue(percent), level: level, size: compact ? 12 : 13)
         if compact {
             HStack(spacing: Self.batterySpacing) {
@@ -448,12 +448,14 @@ enum MenuBarTooltip {
             lines.append(String(localized: "Colored values:"))
             lines.append(contentsOf: colored.map { "• \($0)" })
         }
-        // La charge de la batterie (l'icône dessine un éclair, l'infobulle le dit avec des mots).
-        if let charging = items.compactMap({ item -> String? in
-            if case .battery(let percent, true, _) = item { "\(String(localized: "Battery")): \(MenuBarItem.batteryValue(percent)) · \(String(localized: "Charging"))" } else { nil }
+        // L'état d'alimentation (l'icône dessine un éclair ou une prise, l'infobulle le dit avec des mots déjà traduits).
+        if let power = items.compactMap({ item -> String? in
+            guard case .battery(let percent, let power, _) = item, power != .onBattery else { return nil }
+            let state = power == .charging ? String(localized: "Charging") : String(localized: "On power adapter")
+            return "\(String(localized: "Battery")): \(MenuBarItem.batteryValue(percent)) · \(state)"
         }).first {
             lines.append("")
-            lines.append(charging)
+            lines.append(power)
         }
         // Le pays de l'IP publique (jamais l'adresse elle-même) quand le drapeau est affiché.
         if let code = items.compactMap({ item -> String? in if case .flag(let code) = item { code } else { nil } }).first {

@@ -204,7 +204,7 @@ struct GlyphInk {
     /// Le glyphe seul, sur fond transparent, à l'échelle 4 (un pixel = 0,25 pt).
     private func glyph(percent: Double, charging: Bool = false, level: PressureLevel = .normal, base: Color = .black,
                        body: CGSize = BatteryGlyphGeometry.menuBarBody, contrast: Bool = false) throws -> GlyphInk {
-        let view = BatteryGlyph(percent: percent, charging: charging, level: level, base: base, body: body, increasedContrast: contrast)
+        let view = BatteryGlyph(percent: percent, power: charging ? .charging : .onBattery, level: level, base: base, body: body, increasedContrast: contrast)
         let renderer = ImageRenderer(content: view)
         renderer.scale = Self.scale
         return try GlyphInk(cg: try #require(renderer.cgImage), scale: Self.scale)
@@ -218,7 +218,7 @@ struct GlyphInk {
     }
 
     @Test func theGlyphFrameIsTheBodyPlusTheNub() throws {
-        let renderer = ImageRenderer(content: BatteryGlyph(percent: 50, charging: false, level: .normal, base: .black, body: BatteryGlyphGeometry.menuBarBody))
+        let renderer = ImageRenderer(content: BatteryGlyph(percent: 50, power: .onBattery, level: .normal, base: .black, body: BatteryGlyphGeometry.menuBarBody))
         renderer.scale = 2
         let image = try #require(renderer.nsImage)
         let g = BatteryGlyphGeometry(body: BatteryGlyphGeometry.menuBarBody)

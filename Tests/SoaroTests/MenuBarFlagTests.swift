@@ -94,7 +94,7 @@ import Testing
             .stacked(label: "CPU", value: Format.percent(0.43)),
             .pair(top: "↑ 99 KB/s", bottom: "↓ 13 KB/s"),
             .flag(countryCode: "FR"),
-            .battery(percent: 100, charging: true),
+            .battery(percent: 100, power: .charging),
         ])
     }
 
@@ -133,7 +133,7 @@ import Testing
     // MARK: Style classique (une ligne de texte)
 
     @Test func inlineTextPutsTheFlagRightAfterTheNetworkPairWithoutASeparator() {
-        let items: [MenuBarItem] = [.stacked(label: "CPU", value: "43%"), .pair(top: "↑ 1 KB/s", bottom: "↓ 2 KB/s"), .flag(countryCode: "FR"), .battery(percent: 100, charging: false)]
+        let items: [MenuBarItem] = [.stacked(label: "CPU", value: "43%"), .pair(top: "↑ 1 KB/s", bottom: "↓ 2 KB/s"), .flag(countryCode: "FR"), .battery(percent: 100, power: .onBattery)]
         #expect(MenuBarItem.inlineText(items) == "CPU 43% · ↓ 2 KB/s ↑ 1 KB/s 🇫🇷 · BAT \(Format.percent(1))")
         #expect(MenuBarItem.inlineText([.pair(top: "↑ 1 KB/s", bottom: "↓ 2 KB/s"), .flag(countryCode: "FR")]) == "↓ 2 KB/s ↑ 1 KB/s 🇫🇷")
     }

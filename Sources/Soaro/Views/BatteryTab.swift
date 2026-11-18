@@ -20,7 +20,8 @@ struct BatteryTab: View {
 
     private func gauge(_ b: BatteryStats) -> some View {
         let fraction = b.percent / 100
-        let color: Color = b.isPluggedIn ? .green : levelColor(fraction)
+        // Même niveau que le glyphe et la valeur de la barre de menus : les seuils réglés, pas une règle fixe.
+        let color = BatteryGlyphColors.barTint(for: b, thresholds: PressureThresholds.load().battery)
         return HStack(spacing: 18) {
             ZStack {
                 // `inset` : le trait est centré sur le bord, sans marge il déborderait du cadre.
@@ -32,7 +33,7 @@ struct BatteryTab: View {
                 VStack(spacing: 0) {
                     Text(Format.percent(fraction))
                         .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
-                    BatteryGlyph(percent: b.percent, charging: b.isCharging, level: .battery(b, thresholds: PressureThresholds.load().battery),
+                    BatteryGlyph(percent: b.percent, power: b.powerState, level: .battery(b, thresholds: PressureThresholds.load().battery),
                                  body: BatteryGlyphGeometry.tabBody)
                 }
             }

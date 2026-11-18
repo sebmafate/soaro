@@ -17,7 +17,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
-- The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon.
+- The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon. A small plug replaces the bolt while the Mac is plugged in but not charging (full, or charge held by a limit), and the battery bar on the card and the tab now turns orange, red or scarlet at your own thresholds.
 
 ## [1.1.0] - 2026-11-18
 

@@ -27,15 +27,6 @@ func loadColor(_ fraction: Double) -> Color {
     }
 }
 
-/// Couleur d'un niveau où « bas » est mauvais (batterie, santé).
-func levelColor(_ fraction: Double) -> Color {
-    switch fraction {
-    case ..<0.2: .red
-    case ..<0.4: .orange
-    default: .green
-    }
-}
-
 struct Sparkline: View {
     let values: [Double]
     let color: Color
