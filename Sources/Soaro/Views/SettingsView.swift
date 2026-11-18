@@ -1,4 +1,3 @@
-import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
@@ -14,7 +13,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.menuBarDisk) private var showDisk = false
     @AppStorage(SettingsKey.menuBarCompact) private var compact = true
     @AppStorage(SettingsKey.publicIP) private var publicIP = false
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @StateObject private var launchAtLogin = LaunchAtLoginModel.live()
     @State private var thresholds = PressureThresholds.load()
 
     var body: some View {
@@ -56,7 +55,7 @@ struct SettingsView: View {
             Section("Behavior") {
                 Toggle("Notify on critical problems", isOn: $notifications)
                 Toggle("Open at login", isOn: Binding(
-                    get: { launchAtLogin },
+                    get: { launchAtLogin.isEnabled },
                     set: { setLaunchAtLogin($0) }
                 ))
             }
@@ -102,12 +101,9 @@ struct SettingsView: View {
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
-        do {
-            if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-        } catch {
+        if !launchAtLogin.set(enabled) {
             state.showToast(String(localized: "Cannot open at login: put the app in Applications."))
         }
-        launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 }
 

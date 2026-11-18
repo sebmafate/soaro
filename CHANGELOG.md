@@ -28,6 +28,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The scroll bar of the Cleanup and Settings pages now sits at the right edge of the window; the explanation under the simulators list is no longer cut off.
 - In demo mode (`SOARO_DEMO=1`), confirming in the Cleanup rows, Large files, Inactive projects, the Uninstaller and Startup items no longer deletes, trashes or removes real files or changes real login items, and the Quit buttons no longer quit real apps.
+- In demo mode (`SOARO_DEMO=1`), the “Open at login” switch in Settings no longer adds or removes the real login item of Soaro: it only changes on screen.
 - French: the battery explanation no longer shows "100 %%".
 
 ## [1.0.1] - 2026-11-15
