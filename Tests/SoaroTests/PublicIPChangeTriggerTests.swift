@@ -631,8 +631,8 @@ import Testing
         rig.signals.value = wifi("192.0.2.83")
         await rig.event(at: t0.addingTimeInterval(20))
         #expect(rig.lookups == 2)
-        for s in stride(from: 23.0, through: 75, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
-        #expect(rig.lookups == 2, "pas de confirmation après un échec, ni de nouvelle tentative avant 60 s")
+        for s in stride(from: 23.0, through: 140, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.lookups == 2, "pas de confirmation après un échec, ni de nouvelle tentative (la réponse de 20 s est encore jeune)")
         #expect(!rig.reasons.contains("confirmation"))
     }
 

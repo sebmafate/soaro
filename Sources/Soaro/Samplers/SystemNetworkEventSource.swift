@@ -18,14 +18,6 @@ import SystemConfiguration
         init(_ deliver: @escaping @MainActor (NetworkChangeReason) -> Void) { self.deliver = deliver }
     }
 
-    private let keys: [String]
-    private let patterns: [String]
-    /// Les clés sont celles de l'empreinte ; un test peut en donner d'autres pour vérifier la livraison réelle sans toucher aux vraies clés.
-    init(keys: [String] = SystemNetworkEventSource.keys, patterns: [String] = SystemNetworkEventSource.patterns) {
-        self.keys = keys
-        self.patterns = patterns
-    }
-
     private var store: SCDynamicStore?
     private var runLoopSource: CFRunLoopSource?
     private var wakeObserver: NSObjectProtocol?
@@ -45,7 +37,7 @@ import SystemConfiguration
             Task { @MainActor in box.deliver(.configuration) }
         }
         guard let store = SCDynamicStoreCreate(nil, "Soaro network events" as CFString, callback, &context),
-              SCDynamicStoreSetNotificationKeys(store, keys as CFArray, patterns as CFArray),
+              SCDynamicStoreSetNotificationKeys(store, Self.keys as CFArray, Self.patterns as CFArray),
               let source = SCDynamicStoreCreateRunLoopSource(nil, store, 0) else { return false }
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         self.store = store
