@@ -56,4 +56,19 @@ protocol CommandRunner {
     ///   - timeLimit: durée maximale en secondes ; au-delà le processus est tué.
     ///   - outputLimit: nombre maximal d'octets conservés, par flux (standard, erreur).
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome
+
+    /// Comme `run`, sans transmettre au programme les variables d'environnement nommées dans `removingEnvironment` (SL16 : `DOCKER_HOST`…).
+    /// Tout le reste de l'environnement de l'application est hérité, comme avant ; liste vide : exactement `run` à quatre arguments.
+    /// La réalisation par défaut REFUSE de lancer quand la liste n'est pas vide (`.failedToLaunch`) : un lanceur qui ne sait pas retirer
+    /// une variable ne la transmet jamais en silence. Seuls `RealCommandRunner` et le faux lanceur des tests la réalisent.
+    func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int,
+             removingEnvironment: [String]) -> CommandOutcome
+}
+
+extension CommandRunner {
+    func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int,
+             removingEnvironment: [String]) -> CommandOutcome {
+        guard removingEnvironment.isEmpty else { return .failedToLaunch }
+        return run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit)
+    }
 }

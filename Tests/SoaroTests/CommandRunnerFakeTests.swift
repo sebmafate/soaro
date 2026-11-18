@@ -29,6 +29,35 @@ import Testing
         #expect(fake.unscriptedCalls.isEmpty)
     }
 
+    /// SL16 T1 : le nom des variables d'environnement à retirer est noté avec l'appel ; l'ancienne forme à quatre arguments n'en retire aucune.
+    @Test func recordsTheEnvironmentNamesToRemoveAndTheFourArgumentFormRemovesNone() {
+        let fake = FakeCommandRunner()
+        fake.script(.finished(), executable: "/usr/bin/one", arguments: [])
+
+        _ = fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 5, outputLimit: 100)
+        _ = fake.run(executable: "/usr/bin/one", arguments: [], timeLimit: 5, outputLimit: 100, removingEnvironment: ["DOCKER_HOST", "BUILDX_BUILDER"])
+
+        #expect(fake.calls.map(\.removedEnvironment) == [[], ["DOCKER_HOST", "BUILDX_BUILDER"]])
+    }
+
+    /// Un lanceur qui ne réalise que la forme à quatre arguments (comme ceux des autres tests) ne transmet jamais en silence une variable
+    /// qu'on lui demande de retirer : il refuse de lancer.
+    private final class FourArgumentRunner: CommandRunner {
+        var launches = 0
+        func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
+            launches += 1
+            return .finished()
+        }
+    }
+
+    @Test func aRunnerWithoutEnvironmentSupportRefusesToLaunchWhenAVariableMustBeRemoved() {
+        let runner = FourArgumentRunner()
+        #expect(runner.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1, removingEnvironment: ["DOCKER_HOST"]) == .failedToLaunch)
+        #expect(runner.launches == 0)
+        #expect(runner.run(executable: "/usr/bin/one", arguments: [], timeLimit: 1, outputLimit: 1, removingEnvironment: []) == .finished())
+        #expect(runner.launches == 1)
+    }
+
     @Test func anUnscriptedCallIsReportedAndNeverLaunchesAnything() {
         let fake = FakeCommandRunner()
         var reports: [String] = []

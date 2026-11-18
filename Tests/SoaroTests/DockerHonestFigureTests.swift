@@ -16,8 +16,13 @@ final class LoggingDockerRunner: CommandRunner {
     let events: DockerEvents
     init(events: DockerEvents) { self.events = events }
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
+        run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit, removingEnvironment: [])
+    }
+    func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int,
+             removingEnvironment: [String]) -> CommandOutcome {
         events.add("run " + arguments.joined(separator: " "))
-        return fake.run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit)
+        return fake.run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit,
+                        removingEnvironment: removingEnvironment)
     }
 }
 

@@ -8,6 +8,7 @@ import Foundation
 /// - Sortie : lue PENDANT l'exécution (pas d'interblocage de tube), bornée par flux ; au-delà de la borne
 ///   le processus est tué, la sortie coupée et `truncated` vaut `true`.
 /// - Entrée standard : `/dev/null`.
+/// - Environnement : celui de l'application, tel quel, sauf les noms de `removingEnvironment` (SL16) ; sans liste, rien n'est touché.
 struct RealCommandRunner: CommandRunner {
     /// Interpréteurs refusés, plus `env` (il cherche dans le PATH, donc il lancerait n'importe quoi).
     static let refusedNames: Set<String> = ["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "fish", "env"]
@@ -36,6 +37,11 @@ struct RealCommandRunner: CommandRunner {
     }
 
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
+        run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit, removingEnvironment: [])
+    }
+
+    func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int,
+             removingEnvironment: [String]) -> CommandOutcome {
         if let reason = Self.refusal(for: executable) { return .refused(reason) }
 
         let url = URL(fileURLWithPath: executable).standardizedFileURL
@@ -48,6 +54,11 @@ struct RealCommandRunner: CommandRunner {
         process.executableURL = url
         process.arguments = arguments
         process.standardInput = FileHandle.nullDevice
+        if !removingEnvironment.isEmpty {
+            // Une copie de l'environnement de l'application, sans ces noms. Sans liste on laisse `environment` à `nil` : héritage ordinaire.
+            let dropped = Set(removingEnvironment)
+            process.environment = ProcessInfo.processInfo.environment.filter { !dropped.contains($0.key) }
+        }
         let outPipe = Pipe()
         let errPipe = Pipe()
         process.standardOutput = outPipe

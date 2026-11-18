@@ -12,6 +12,8 @@ final class FakeCommandRunner: CommandRunner {
         let arguments: [String]
         let timeLimit: TimeInterval
         let outputLimit: Int
+        /// SL16 : les noms de variables d'environnement à retirer (vide pour la forme à quatre arguments).
+        var removedEnvironment: [String] = []
     }
 
     private struct Key: Hashable {
@@ -48,7 +50,13 @@ final class FakeCommandRunner: CommandRunner {
     }
 
     func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int) -> CommandOutcome {
-        let call = Call(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit)
+        run(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit, removingEnvironment: [])
+    }
+
+    func run(executable: String, arguments: [String], timeLimit: TimeInterval, outputLimit: Int,
+             removingEnvironment: [String]) -> CommandOutcome {
+        let call = Call(executable: executable, arguments: arguments, timeLimit: timeLimit, outputLimit: outputLimit,
+                        removedEnvironment: removingEnvironment)
         calls.append(call)
         let key = Key(executable: executable, arguments: arguments)
         guard var script = scripts[key] else {
