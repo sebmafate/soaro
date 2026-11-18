@@ -19,7 +19,7 @@ Au repos, elle utilise environ 20-35 Mo de RAM et 1-2 % d'un cœur. Elle n'envoi
 | **Batterie** | Niveau, temps restant, **santé**, **cycles**, puissance en watts, **impact énergétique par app** |
 | **Réseau** | Débits, volume du jour, **détection du VPN**, qualité du Wi-Fi, **trafic par app**. IP publique et pays en option |
 | **Historique** | Graphiques sur 1 h, 24 h, 7 j ou 30 j, stockés sur votre Mac |
-| **Nettoyage** | Caches, **gros fichiers**, **projets de dev inactifs** (`node_modules`, `.build`, `Pods`...), **désinstalleur** qui retire aussi les restes, **éléments de démarrage** |
+| **Nettoyage** | Caches, **gros fichiers**, **projets de dev inactifs** (`node_modules`, `.build`, `Pods`...), **cache des paquets NuGet**, **simulateurs iOS** et **émulateurs Android** (ceux inactifs sont pré-cochés, les images système Android sont affichées à titre d'information), **Docker** (cache de build et images sans étiquette, avec l'espace réellement rendu à votre Mac), **désinstalleur** qui retire aussi les restes, **éléments de démarrage** |
 | **Ce Mac** | Modèle, puce, cœurs, mémoire, écrans, numéro de série |
 
 Deux façons de l'utiliser :

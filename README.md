@@ -19,7 +19,7 @@ It uses about 20-35 MB of RAM and 1-2% of one CPU core when idle. It sends no da
 | **Battery** | Level, time left, **health**, **cycle count**, power in watts, and **energy impact per app** |
 | **Network** | Speed, daily volume, **VPN detection**, Wi-Fi quality, and **traffic per app**. Public IP and country are optional |
 | **History** | Charts over 1 hour, 24 hours, 7 days or 30 days, stored on your Mac |
-| **Cleanup** | Caches, **large files**, **inactive dev projects** (`node_modules`, `.build`, `Pods`...), an **app uninstaller** that also removes leftovers, and **login items** |
+| **Cleanup** | Caches, **large files**, **inactive dev projects** (`node_modules`, `.build`, `Pods`...), the **NuGet package cache**, **iOS simulators** and **Android emulators** (inactive ones pre-selected, Android system images shown for information), **Docker** (build cache and untagged images, with the space really returned to your Mac), an **app uninstaller** that also removes leftovers, and **login items** |
 | **This Mac** | Model, chip, cores, memory, displays and serial number |
 
 You can use it in two ways:
