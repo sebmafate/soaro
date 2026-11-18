@@ -10,7 +10,7 @@
 
 ## Next action
 
-The developer cleanup (iOS simulators, Android emulators, Android system images read-only, NuGet; Docker later) is specified in `SPEC.md` (version 0.3) and designed in `ARCHITECTURE.md` (version 0.2) with ADR 0009 (accepted: contract for tool-owned cleanup actions) and ADR 0010 (proposed: Docker, pending Test B). Slices SL1 to SL12a and SL10b are merged (see "Where we are"). **Nothing is waiting on an agent.** Next, in this order:
+The developer cleanup (iOS simulators, Android emulators, Android system images read-only, NuGet; Docker later) is specified in `SPEC.md` (version 0.3) and designed in `ARCHITECTURE.md` (version 0.2) with ADR 0009 (accepted: contract for tool-owned cleanup actions) and ADR 0010 (accepted on 2026-11-18: Docker, Test B passed). Slices SL1 to SL12a and SL10b are merged (see "Where we are"). **Nothing is waiting on an agent.** Next, in this order:
 
 1. **The author:** the manual checks of the merged slices (the list below, "Pending items for the author").
 2. **To unblock SL12b** (remove unused Android system images), the author, in this order (`PLAN.md`, SL12b "Open decisions"):
