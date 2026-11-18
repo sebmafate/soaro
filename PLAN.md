@@ -39,7 +39,7 @@ Sizes: S (about a day), M (about two days), L (split it).
 | SL12b | Remove unused Android system images (Should) | S | SL12a, SL11 | no | | todo (blocked on the author) |
 | SP1 | Docker Test B (spike, the author starts Docker Desktop) | | | no | about 0.1 (measured: 08:42 to 08:59 on 2026-11-18, about 17 min including a 4-minute baseline and 11 minutes of readings; the framing and the notes are not counted) | done |
 | SL13 | Docker (Should) | M | SP1, SL8 | no | 0.25 (measured from the first task commit at 09:49 to the last (the documents) at 10:08 on 2026-11-18, about 19 min of agent time, rounded up to a quarter day; the reading before the first commit is not counted; the independent verification, the pull request and the author's manual checks not included) | done |
-| SL14 | Release 1.1 | S | the slices done | no | | todo |
+| SL14 | Release 1.1 | S | the slices done | no | | in progress (prepared 2026-11-18: `VERSION` 1.1.0, `CHANGELOG` 1.1.0, README; the tag waits for the author's manual checks) |
 
 Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the order of discussion, not the order of execution; the execution order is the order of the table.
 
@@ -379,7 +379,8 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 
 ### SL14: Release 1.1
 
-- Version number and `CHANGELOG` (Keep a Changelog: Return never deletes, supporting text, new cleaners), translations of the new strings, the manual checklists of `TESTING.md`, then `docs/releasing.md` (every outward step confirmed). To be detailed when the other slices are done.
+- Version number and `CHANGELOG` (Keep a Changelog: Return never deletes, supporting text, new cleaners), translations of the new strings, the manual checklists of `TESTING.md`, then `docs/releasing.md` (every outward step confirmed).
+- **Prepared on 2026-11-18** (`/trellis:publish`): version **1.1.0** chosen by the author; `VERSION`, `CHANGELOG.md` (`[1.1.0] - 2026-11-18`, update the date if the release slips) and the Cleanup row of `README.md` and `README.fr.md` done in a documentation pull request. Pre-release checks that day: tree clean and up to date, `swift build` and `swift test` (1165 tests in 104 suites) pass, the six release secrets exist in GitHub, no lint configured. **Not done, before the tag:** the author's manual checks of `STATUS.md` (SL4, SL5, SL9, SL10, SL12a, SL13, "Select all", SL6, the Sparkle update 1.0.0 to 1.0.1), the accessibility checklist, the idle performance sample (RAM and CPU), review of the AI-assisted translations, the dry run of `release.yml` (`workflow_dispatch`), and an optional security review. **Not in 1.1:** SL12b (Android system images stay read-only). **Outward steps still to confirm one by one:** the release commit is already merged, then the tag `v1.1.0` (starts the signed and notarized build on GitHub), the check of the DMG on a clean user, the update from 1.0.1, and the announcement.
 
 ## Coverage
 
