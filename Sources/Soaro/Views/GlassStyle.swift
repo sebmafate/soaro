@@ -66,9 +66,9 @@ extension View {
 
 // MARK: - Surfaces de la fenêtre (expérience 1.2.0)
 
-/// EXPÉRIENCE 1.2.0, à confirmer par l'auteur : dans la fenêtre indépendante uniquement, la zone principale (colonne de détail,
-/// y compris sous la barre d'outils) est opaque, la barre latérale reste translucide (le flou de `WindowGlassBackground`, posé
-/// derrière toute la fenêtre, ne se voit plus qu'à travers elle), et les cartes passent du verre à l'aplat doux du panneau
+/// EXPÉRIENCE 1.2.0, à confirmer par l'auteur : dans la fenêtre indépendante uniquement, le contenu de la zone principale (colonne de
+/// détail, sous la barre de titre et la barre d'outils) est opaque ; la barre latérale et la bande de la barre de titre restent
+/// translucides (le flou de `WindowGlassBackground`, posé derrière toute la fenêtre, ne se voit qu'à travers elles), et les cartes passent du verre à l'aplat doux du panneau
 /// (le verre n'aurait rien à réfracter sur un fond opaque).
 ///
 /// POUR REVENIR À L'ÉTAT 1.1.0 : mettre `opaqueMainArea` à `false`. Rien d'autre à toucher.
@@ -87,11 +87,12 @@ enum WindowSurface {
 }
 
 extension View {
-    /// Fond opaque de la colonne de détail. Il monte sous la barre d'outils (bord haut seulement : sur macOS 26 la barre latérale
-    /// flotte, ignorer aussi le bord gauche ferait passer ce fond derrière elle). Sans effet si l'expérience est coupée.
+    /// Fond opaque de la colonne de détail, limité au contenu : il s'arrête sous la barre de titre et la barre d'outils, où l'on voit
+    /// le fond translucide de la fenêtre (comme la barre latérale), flouté par `TitleBarBlur` pour garder le titre lisible quand le
+    /// contenu défile dessous. Sans effet si l'expérience est coupée.
     @ViewBuilder func windowMainAreaBackground() -> some View {
         if WindowSurface.opaqueMainArea {
-            background(WindowSurface.mainAreaColor.ignoresSafeArea(.container, edges: .top))
+            background(WindowSurface.mainAreaColor)
         } else {
             self
         }

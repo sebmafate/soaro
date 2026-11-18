@@ -393,7 +393,9 @@ struct TitleBarBlur: View {
                 .frame(height: geometry.safeAreaInsets.top)
                 .overlay(alignment: .bottom) { Rectangle().fill(.separator).frame(height: 0.5) }
                 .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea()
+                // Bord haut seulement : à gauche la bande s'arrête au bord de la barre latérale (qui flotte sur macOS 26), elle ne
+                // passe pas dessous ; à droite elle va jusqu'à la barre de défilement.
+                .ignoresSafeArea(.container, edges: .top)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
