@@ -198,6 +198,10 @@ enum MenuBarItem: Equatable {
 
 /// Le libellé d'un `MenuBarExtra` n'affiche que du texte et des images simples : on dessine donc tout le
 /// libellé (icône, badge d'alerte, mesures) dans une image « modèle », qui suit le thème clair/sombre de la barre.
+///
+/// **Une image dessinée à l'échelle de l'écran où elle s'affiche (SL23).** L'image est un `NSImage(size:flipped:drawingHandler:)` : AppKit
+/// appelle le dessin au moment d'afficher, avec le contexte de l'écran réel (1x, 2x…), et le rappelle quand la fenêtre change d'écran.
+/// Le dessin lit l'échelle dans le contexte, jamais dans `NSScreen.main` (l'écran de la fenêtre active, qui n'est pas celui de la barre).
 @MainActor
 enum MenuBarRenderer {
     private struct Key: Equatable {
@@ -207,6 +211,7 @@ enum MenuBarRenderer {
         var darkBar: Bool
         var increasedContrast: Bool
     }
+    /// Une seule image pour toutes les échelles : la clé ne contient PAS l'échelle (le dessin se refait par échelle, dans l'image).
     private static var cache: (key: Key, image: NSImage)?
 
     /// Recalculée seulement si une valeur affichée change.
@@ -222,12 +227,59 @@ enum MenuBarRenderer {
         if let cache, cache.key == key { return cache.image }
 
         let base: Color = colored ? (darkBar ? .white : .black) : .black
-        let renderer = ImageRenderer(content: MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast))
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return nil }
+        let content = MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast)
+        guard let image = scaledImage(content: content) else { return nil }
         image.isTemplate = !colored
         cache = (key, image)
         return image
+    }
+
+    /// Le nombre de pixels par point d'un contexte de dessin (1, 2, 3…), arrondi à l'entier le plus proche : la grille de pixels de l'écran.
+    nonisolated static func pixelScale(of context: CGContext) -> Int {
+        let t = context.userSpaceToDeviceSpaceTransform
+        let scale = hypot(t.a, t.b)
+        return scale.isFinite && scale >= 1 ? Int(scale.rounded()) : 1
+    }
+
+    /// Les images déjà dessinées, une par échelle (un libellé s'affiche rarement à plus de deux échelles).
+    private final class PerScale: @unchecked Sendable {
+        private let lock = NSLock()
+        private var images: [Int: CGImage] = [:]
+        private let content: MenuBarWidgetsView
+        init(content: MenuBarWidgetsView) { self.content = content }
+
+        @MainActor private func render(_ scale: Int) -> CGImage? {
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = CGFloat(scale)
+            return renderer.cgImage
+        }
+
+        func image(scale: Int) -> CGImage? {
+            lock.lock(); defer { lock.unlock() }
+            if let cached = images[scale] { return cached }
+            // Le dessin d'une `NSImage` peut être demandé hors du fil principal ; `ImageRenderer` n'existe que sur lui.
+            let made: CGImage? = Thread.isMainThread
+                ? MainActor.assumeIsolated { render(scale) }
+                : DispatchQueue.main.sync { MainActor.assumeIsolated { render(scale) } }
+            images[scale] = made
+            return made
+        }
+    }
+
+    private static func scaledImage(content: MenuBarWidgetsView) -> NSImage? {
+        let box = PerScale(content: content)
+        guard let reference = box.image(scale: 2) else { return nil }
+        let size = NSSize(width: CGFloat(reference.width) / 2, height: CGFloat(reference.height) / 2)
+        return NSImage(size: size, flipped: true) { rect in
+            guard let context = NSGraphicsContext.current?.cgContext, let cg = box.image(scale: pixelScale(of: context)) else { return false }
+            context.saveGState()
+            context.interpolationQuality = .none
+            context.translateBy(x: 0, y: rect.height)          // contexte « flipped » : l'image se dessine à l'endroit
+            context.scaleBy(x: 1, y: -1)
+            context.draw(cg, in: CGRect(origin: .zero, size: rect.size))
+            context.restoreGState()
+            return true
+        }
     }
 }
 
@@ -241,6 +293,35 @@ extension MenuBarRenderer {
             .filter { String(describing: type(of: $0)).contains("StatusBar") }
             .compactMap(\.contentView)
             .flatMap(find)
+    }
+
+    /// Met l'image dynamique du libellé sur le bouton de barre de menus, SANS y toucher (même instance : AppKit la redessine à l'échelle de
+    /// l'écran du bouton, et de nouveau quand le bouton change d'écran).
+    ///
+    /// Le `MenuBarExtra` de SwiftUI peut aplatir l'image du libellé une fois, à une seule échelle. On ne remplace donc que l'image d'un bouton
+    /// qui en porte déjà une (SwiftUI l'a posée) et qui n'est pas la nôtre ; un bouton sans image (SwiftUI y héberge une vue) n'est pas touché.
+    /// Renvoie le nombre de boutons mis à jour.
+    @discardableResult
+    static func install(_ image: NSImage, on buttons: [NSButton]) -> Int {
+        var updated = 0
+        for button in buttons where button.image != nil && button.image !== image {
+            button.image = image
+            updated += 1
+        }
+        return updated
+    }
+
+    @discardableResult
+    static func installOnStatusBarButtons(_ image: NSImage) -> Int { install(image, on: statusBarButtons) }
+
+    /// Ce que porte chaque bouton (mode `SOARO_DEBUG`) : pour savoir si SwiftUI a posé l'image telle quelle ou une copie aplatie.
+    static func describeButtons(comparedTo image: NSImage?) -> String {
+        statusBarButtons.map { button in
+            let current = button.image
+            let reps = current?.representations.map { String(describing: type(of: $0)) } ?? []
+            let same = current != nil && current === image
+            return "button image: \(current == nil ? "nil" : "oui") sameInstance=\(same) size=\(current?.size ?? .zero) template=\(current?.isTemplate ?? false) reps=\(reps) window=\(button.window?.screen?.backingScaleFactor ?? 0)x"
+        }.joined(separator: "\n")
     }
 
     private static var statusBarWindows: [NSWindow] {

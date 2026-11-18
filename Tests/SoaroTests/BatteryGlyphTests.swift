@@ -148,11 +148,9 @@ struct GlyphInk {
         data = buffer
     }
 
-    /// Image d'une image AppKit (le libellé de la barre de menus), à l'échelle 2.
+    /// Image d'une image AppKit (le libellé de la barre de menus), à l'échelle 2 (SL23 : explicite, plus celle de l'écran de la machine qui lance le test).
     init(image: NSImage) throws {
-        var rect = CGRect(origin: .zero, size: CGSize(width: image.size.width * 2, height: image.size.height * 2))
-        let cg = try #require(image.cgImage(forProposedRect: &rect, context: nil, hints: nil))
-        try self.init(cg: cg, scale: CGFloat(cg.width) / image.size.width)
+        try self.init(image: image, scale: 2)
     }
 
     func pixel(_ x: Int, _ y: Int) -> (r: Double, g: Double, b: Double, a: Double) {
