@@ -15,3 +15,4 @@ One decision per file. An accepted ADR is never edited: a new one supersedes it.
 | [0009](0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract | accepted | 2026-11-15 |
 | [0010](0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | accepted 2026-11-18 (Test B passed, SPK-002) | 2026-11-15 |
 | [0011](0011-public-ip-lookup-also-runs-while-its-flag-is-shown.md) | The public IP lookup also runs while its flag is shown in the menu bar (extends 0007, does not supersede it) | accepted | 2026-11-18 |
+| [0012](0012-public-ip-lookup-triggers-and-confirmation.md) | The public IP lookup: more change signals, one confirmation lookup, no shorter interval (extends 0011, does not supersede it) | accepted | 2026-11-18 |

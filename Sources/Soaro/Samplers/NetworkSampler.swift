@@ -67,7 +67,7 @@ final class NetworkSampler {
         now >= before ? UInt64(now - before) : UInt64(now) + (UInt64(UInt32.max) + 1 - UInt64(before))
     }
 
-    private static func ipv4String(_ addr: UnsafeMutablePointer<sockaddr>) -> String? {
+    static func ipv4String(_ addr: UnsafeMutablePointer<sockaddr>) -> String? {
         var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
         guard getnameinfo(addr, socklen_t(addr.pointee.sa_len), &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST) == 0 else {
             return nil

@@ -18,6 +18,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ### Changed
 
+- The country flag in the menu bar now follows a change of network or VPN faster: Soaro notices a Wi-Fi switch, a new gateway or DNS, a VPN server change and a wake from sleep, looks up your public IP again once things have settled, and checks once more ten seconds later. It still asks about every 5 minutes otherwise, and nothing more when nothing changes.
 - The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon. A small plug replaces the bolt while the Mac is plugged in but not charging (full, or charge held by a limit), and the battery bar on the card and the tab now turns orange, red or scarlet at your own thresholds.
 - The menu bar label is sharper, in particular on an external display that is not Retina: it is now drawn for the screen it appears on (and redrawn when it moves), with its shapes and text aligned on the pixel grid (the battery icon is 0.5 pt taller, 10 pt).
 

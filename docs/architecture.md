@@ -10,6 +10,7 @@ Soaro is a Swift package (Swift 6 tools, Swift 5 language mode, macOS 14+). The 
 | `Samplers/IOKitSamplers.swift` | GPU, battery, disk I/O, SMART (IOKit) |
 | `Samplers/NetworkSampler.swift` | Speeds, Wi-Fi, ping, `nettop` per app, energy per app (`top`), I/O per process |
 | `Samplers/VPNDetector.swift`, `Samplers/PublicIPService.swift` | Local VPN detection. Public IP, country and flag (the reply is validated and never shown if it is not a real IP) |
+| `Samplers/PublicIPLookupPolicy.swift`, `Samplers/NetworkSignals.swift`, `Samplers/NetworkChangeMonitor.swift`, `Samplers/SystemNetworkEventSource.swift`, `Samplers/NetworkWatching.swift` | When the public IP is looked up (one pure function), the local network fingerprint (gateway, network signature, DNS, tunnels), the monitor that wakes the decision after a network change or a wake (SystemConfiguration, 3 s calm period, no request) and the one confirmation lookup (ADR 0012) |
 | `Samplers/SensorSampler.swift` | Temperatures (HID), fans and power (SMC) |
 | `HistoryStore.swift` | SQLite history, aggregation by time slices, 30-day retention |
 | `LeakDetector.swift` | Memory leak detection (linear regression and thresholds) |
@@ -59,7 +60,7 @@ Soaro --advice                      # print the settings read and the tips that 
 Soaro --snapshot <folder> [--dark] [--tools] [--window]   # render each tab to PNG (fake history, in memory)
 ```
 
-For development, these environment variables are available: `SOARO_DEMO=1` runs the app on made-up data, `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` chooses what it shows (`overview`, `performance`, `battery`, `network`, `history`, `cleanup`, `machine`, `settings`, or a cleanup tool such as `cleanup:largeFiles` or `cleanup:simulators`), `SOARO_SCROLL` scrolls it, and `SOARO_DEBUG` adds traces.
+For development, these environment variables are available: `SOARO_DEMO=1` runs the app on made-up data, `SOARO_CAPTURE=<file.png>` saves a capture of the standalone window, `SOARO_SECTION` chooses what it shows (`overview`, `performance`, `battery`, `network`, `history`, `cleanup`, `machine`, `settings`, or a cleanup tool such as `cleanup:largeFiles` or `cleanup:simulators`), `SOARO_SCROLL` scrolls it, and `SOARO_DEBUG` adds traces (including one line per public IP lookup with its reason, never the address or the country).
 
 ## Permissions asked by macOS
 
