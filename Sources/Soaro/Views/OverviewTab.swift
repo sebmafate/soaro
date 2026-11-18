@@ -50,25 +50,16 @@ struct OverviewTab: View {
                 }
                 if let b = s.battery {
                     StatCard(
-                        title: "Battery", systemImage: Self.batterySymbol(b), value: Format.percent(b.percent / 100),
+                        title: "Battery", systemImage: "", value: Format.percent(b.percent / 100),
                         subtitle: Self.batterySubtitle(b),
-                        tint: b.isPluggedIn ? .green : levelColor(b.percent / 100), fraction: b.percent / 100
+                        tint: b.isPluggedIn ? .green : levelColor(b.percent / 100), fraction: b.percent / 100,
+                        icon: AnyView(BatteryGlyph(percent: b.percent, charging: b.isCharging, level: .battery(b, thresholds: PressureThresholds.load().battery),
+                                                   body: BatteryGlyphGeometry.cardBody))
                     )
                 }
             }
         } else {
             ProgressView().frame(maxWidth: .infinity, minHeight: 90)
-        }
-    }
-
-    static func batterySymbol(_ b: BatteryStats) -> String {
-        if b.isCharging { return "battery.100percent.bolt" }
-        switch b.percent {
-        case ..<15: return "battery.0percent"
-        case ..<40: return "battery.25percent"
-        case ..<65: return "battery.50percent"
-        case ..<90: return "battery.75percent"
-        default: return "battery.100percent"
         }
     }
 

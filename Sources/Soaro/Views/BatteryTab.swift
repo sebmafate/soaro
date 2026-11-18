@@ -32,8 +32,8 @@ struct BatteryTab: View {
                 VStack(spacing: 0) {
                     Text(Format.percent(fraction))
                         .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
-                    Image(systemName: b.isCharging ? "bolt.fill" : (b.isPluggedIn ? "powerplug.fill" : "battery.50percent"))
-                        .font(.caption).foregroundStyle(.secondary)
+                    BatteryGlyph(percent: b.percent, charging: b.isCharging, level: .battery(b, thresholds: PressureThresholds.load().battery),
+                                 body: BatteryGlyphGeometry.tabBody)
                 }
             }
             .frame(width: 112, height: 112)
