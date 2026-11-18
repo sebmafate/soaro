@@ -233,6 +233,8 @@ Tone: short, concrete, no marketing; same style as the app ("Your sources are no
 | Where | Text |
 | --- | --- |
 | NuGet row (S1) | **NuGet packages**: "Downloaded packages, downloaded again when needed" |
+| About (Settings, SL18) | The app logo and the link **soaro.app** (to `https://soaro.app`, or `https://soaro.app/fr/` when the app runs in French), above **Buy me a coffee**. Accessibility hint: "Website" |
+| Menu bar tooltip (SL19) | With the flag shown, one line after the status and the coloured values: "Public IP country: France" (the country in the app's language; never the IP address) |
 | Tool row (S1) | **Simulators and emulators**: "iOS Simulators and Android emulators" |
 | Footer of S2 | "26 small devices (0.5 GB) not shown." then "Devices inactive for more than 60 days, and older copies of the same model, are pre-selected. A removed device takes its apps, data and snapshots with it; create a new one from Xcode or Android Studio." |
 | Confirmation (S3) | Title "Delete the selected devices? (7)"; message "18.3 GB will be freed. The devices, the apps and data on them, and their snapshots will be deleted. You can create new devices from Xcode or Android Studio."; button "Delete" |
@@ -339,6 +341,8 @@ To judge by eye on the real app (offscreen screenshots do not draw the blur): th
 | Confirmation (S3) | native `NSAlert` through `AppState.confirm` | destructive: `critical: true` | default |
 | Toast | existing | none | visible 4 s |
 | Threshold track (SL17) | **new, custom** (one `ThresholdTrack` per threshold group in Settings; replaces three native steppers) | ascending (load, disk), descending (battery) | default, hover, dragging, focus (Full Keyboard Access), value raised, "now" mark shown or hidden |
+| `WebsiteLinkRow` (Settings > About, SL18) | new small view over the native `Link` | none | default, hover, focus (system focus ring); the app logo (38 pt, hidden from VoiceOver) and the text "soaro.app"; the whole row is the target (38 pt high); one element for VoiceOver ("soaro.app", hint "Website") |
+| Menu bar flag (SL19) | new item of the menu bar label (`MenuBarItem.flag`), an emoji at 12.5 pt in the 22 pt label | none | shown only with the network item and a known country of the optional public IP lookup; compact and classic; the label is then a coloured image, not a template (white or black text by the bar tone); absent: nothing, the layout does not change |
 
 Every screen of Part 1 uses only these. There is no custom component. The extensions (unavailable row, busy bar, the header with its "Select all" checkbox) are small variants of existing components; `SelectAllCheckbox` is a plain button with the same glyph family and the same 24 x 24 pt target as the row check.
 
@@ -409,3 +413,5 @@ Added on 2026-11-18 at the author's request (an interactive mockup, approved). I
 | 2026-11-18 | Experiment for 1.2.0 (EXP1, branch `exp/fond-opaque-fenetre`), at the author's request, to be confirmed: standalone window with an opaque main area (`textBackgroundColor`), a translucent sidebar and flat cards; the panel is unchanged. One switch, `WindowSurface.opaqueMainArea` (the drag region of the top strip is a fix that stays whatever the switch says). Part 2 describes it; nothing else in this document is decided by it |
 | 2026-11-18 | SL17: the threshold track in Settings (a new custom component, decided by the author after an approved mockup): anatomy, states, accessibility and widths as built. Factual note, no earlier decision changed |
 | 2026-11-18 | SL17 reversed after the author saw the track: step of 1 and gap of 1; labels in one row with leader lines; the handle nearest to the pointer is grabbed. Factual note, no earlier decision of the cleanup design changed |
+| 2026-11-18 | SL18: Settings > About as built (logo and link to soaro.app before the coffee link, one element for VoiceOver, the logo decorative, the French site for an app in French, one new string). Factual note, no decision changed |
+| 2026-11-18 | SL19: the menu bar flag as built (right of the network item, only with it, compact and classic, the label a coloured image while a flag shows, demo shows France, nothing for an unknown code or a lookup that is off, one tooltip line, one new string). Factual note, no decision changed |

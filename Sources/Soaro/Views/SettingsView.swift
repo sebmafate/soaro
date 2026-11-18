@@ -91,6 +91,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.supportingText)
                 // Opens the browser: the app itself sends nothing.
+                WebsiteLinkRow(url: SupportLink.websiteURL(preferredLanguages: Bundle.main.preferredLocalizations))
                 Link(destination: SupportLink.url) {
                     Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
                 }
@@ -109,7 +110,19 @@ struct SettingsView: View {
     }
 }
 
-/// Where the "Buy me a coffee" button leads.
+/// Where the "Buy me a coffee" button and the website link lead. Both open the browser: the app itself sends nothing.
 enum SupportLink {
     static let url = URL(string: "https://buymeacoffee.com/sebmafate")!
+
+    /// The website (SL18). The text shown next to the logo is the domain.
+    static let website = URL(string: "https://soaro.app")!
+    static let websiteFrench = URL(string: "https://soaro.app/fr/")!
+    static let websiteText = "soaro.app"
+
+    /// Le site existe en anglais et en français : la première langue de l'app décide (« fr », « fr-CA », « fr_FR »…, pas « frisian »).
+    static func websiteURL(preferredLanguages: [String]) -> URL {
+        guard let first = preferredLanguages.first?.lowercased() else { return website }
+        let code = first.split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map(String.init) ?? first
+        return code == "fr" ? websiteFrench : website
+    }
 }

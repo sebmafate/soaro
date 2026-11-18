@@ -66,11 +66,14 @@ struct MenuBarLabel: View {
     @AppStorage(SettingsKey.menuBarBattery) private var showBattery = false
     @AppStorage(SettingsKey.menuBarNetwork) private var showNetwork = false
     @AppStorage(SettingsKey.menuBarCompact) private var compact = true
+    /// Le réglage facultatif qui existe déjà : le drapeau ne lit que son résultat, il ne demande rien.
+    @AppStorage(SettingsKey.publicIP) private var publicIPLookup = false
 
     private var items: [MenuBarItem] {
         guard let s = state.snapshot else { return [] }
+        let flagCode = MenuBarFlag.countryCode(lookupEnabled: publicIPLookup, demo: DemoMode.isEnabled, info: state.publicIP)
         return MenuBarItem.items(for: s, cpu: showCPU, gpu: showGPU, memory: showMemory, disk: showDisk, network: showNetwork, battery: showBattery,
-                                  thresholds: .load())
+                                  thresholds: .load(), publicIPCountryCode: flagCode)
     }
 
     var body: some View {
