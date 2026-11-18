@@ -95,6 +95,45 @@ import Testing
         }
     }
 
+    /// macOS 26 (constaté par le diagnostic de la CI) : la barre latérale est un verre flottant décalé de 8 pt, et la colonne de détail
+    /// occupe TOUTE la largeur de la fenêtre dessous. Les 8 pt au-dessus de la barre latérale (y 0 à 8) et à sa gauche (x 0 à 8) tombent
+    /// donc sur la colonne de détail : si sa vue de glissement ne part pas du bord gauche de la fenêtre, rien n'y déplace la fenêtre.
+    /// Ce test s'exprime sur la vue (macOS 27 : barre latérale à x = 0, le détail passe dessous) ; les sondes ci-dessous sur le résultat.
+    @Test(arguments: [false, true])
+    func theDetailDragStripStartsAtTheLeadingEdgeOfTheWindow(dark: Bool) async throws {
+        guard NSScreen.main != nil else { return }
+        let window = try await makeWindow(dark: dark)
+        defer { window.orderOut(nil) }
+        let root = try #require(window.contentView?.superview)
+        let stripHeight = window.frame.height - window.contentLayoutRect.height     // barre de titre + barre d'outils
+        let wide = WindowProbe.allViews(root).filter { $0 is WindowDragView && WindowProbe.rect($0, in: root).width > root.bounds.width / 2 }
+        let detailStrip = try #require(wide.first, "vue de glissement de la colonne de détail introuvable")
+        let rect = WindowProbe.rect(detailStrip, in: root)
+        #expect(rect.minX < 0.5, "doit partir du bord gauche de la fenêtre : \(rect)")
+        #expect(abs(rect.maxX - root.bounds.width) < 0.5, "jusqu'au bord droit : \(rect)")
+        #expect(abs(rect.maxY - root.bounds.height) < 0.5, "collée au haut de la fenêtre : \(rect)")
+        #expect(abs(rect.height - stripHeight) < 0.5, "hauteur \(rect.height), attendue \(stripHeight)")
+    }
+
+    @Test(arguments: [false, true])
+    func theTopBandAndTheLeadingMarginAboveTheSidebarAreDragRegions(dark: Bool) async throws {
+        guard NSScreen.main != nil else { return }
+        let window = try await makeWindow(dark: dark)
+        defer { window.orderOut(nil) }
+        let root = try #require(window.contentView?.superview)
+        // x = 3 : la marge gauche (macOS 26) ; x = 120 et 195 : au-dessus et au bord de la barre latérale ; dy = 4 : la bande du haut.
+        // Pas de sonde à moins de 1 pt du haut, ni dans le coin haut gauche (x = 3 et dy < 20, x = 10 et dy < 14) : sur macOS 27 et 26 la vue-cadre
+        // (`NSThemeFrame`) y répond elle-même, ce sont les zones de redimensionnement de la fenêtre, pas un trou.
+        var probes: [(x: CGFloat, dy: CGFloat)] = []
+        for x in [CGFloat(120), 195] { for dy in [CGFloat(4), 14, 26, 40, 50] { probes.append((x, dy)) } }
+        for dy in [CGFloat(14), 26, 40, 50] { probes.append((10, dy)) }
+        for dy in [CGFloat(26), 40, 50] { probes.append((3, dy)) }
+        for probe in probes {
+            let view = try hit(window, x: probe.x, fromTop: probe.dy)
+            #expect(WindowProbe.dragSource(of: view) != nil, "x=\(probe.x), à \(probe.dy) pt du haut : rien ne déplace la fenêtre. \(WindowProbe.hitReport(view, in: root))")
+        }
+    }
+
     @Test(arguments: [false, true])
     func theTopOfTheDetailColumnMovesTheWindow(dark: Bool) async throws {
         guard NSScreen.main != nil else { return }

@@ -62,7 +62,12 @@ private struct WindowDragStrip: View {
             WindowDragRepresentable()
                 .frame(height: geometry.safeAreaInsets.top)
                 .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea(.container, edges: .top)       // bord haut seulement, comme `TitleBarBlur`
+                // Haut et gauche : sur macOS 26 la barre latérale est un verre flottant décalé de 8 pt et la colonne de détail passe
+                // dessous sur toute la largeur ; sans le bord gauche, les 8 pt au-dessus et à gauche de la barre latérale ne déplaçaient pas
+                // la fenêtre. Sous la barre latérale (au-dessus dans l'empilement) la bande est sans effet : ses lignes gardent leurs clics.
+                // Pour la barre latérale elle-même l'inset gauche est nul, donc rien ne change. La bande est transparente (pas de teinte
+                // sous le verre, contrairement à `TitleBarBlur` qui reste limité au haut).
+                .ignoresSafeArea(.container, edges: [.top, .leading])
         }
         .accessibilityHidden(true)
     }
