@@ -562,6 +562,27 @@ Statuses: `todo`, `in progress`, `done`, `dropped`. The slice IDs follow the ord
 - **Tests**: unit (the order type, `items(order:)`, persistence, VoiceOver text), source guards (Settings, no key handlers, the plist type, the strings), offscreen renders read as pixels (`.serialized`: `MenuBarRenderer` keeps one cached image). Tests first (the order and preview test files failed to compile on the missing `MenuBarMeasure`, `MenuBarOrder`, `MenuBarPreviewStrip`).
 - **Notes** (done 2026-11-18, branch `slice/SL22-apercu-et-ordre-barre-de-menus`, stacked on `slice/SL21-icone-batterie`): 1493 tests in 142 suites (77 added, 10 suites, on 1416 in 132). **Looked at** (offscreen renders in the session folder): the Settings section at 430 pt and 860 pt, light and dark; the preview with 1, 3 and 6 items, compact and single line, light and dark, and empty; a reordered list. **Mutations run:** the shrink-to-fit scale forced to 1 (caught after the test was strengthened: the first version of the test let it pass), the base colour swapped (caught). **Not verified:** the real drag feel (a drag cannot be made offscreen), that `draggable` and `dropDestination` behave inside this Form on a real macOS (the type and the code are in place; this is the point to check first), VoiceOver (the accessibility tree is not built without a client, so the handle element, the actions and the announcement are not observed), the real menu bar (tint, notch Mac), the Info.plist type being picked up by the system (only the plist content was read), Reduce Motion on a real system.
 
+### SL23: A crisp menu bar label (external 1x display)
+
+- **Goal**: the menu bar label (brand glyph, stacked or one-line values, network rates, flag, battery icon) is crisp on every display, in particular on an external 1x display next to a Retina laptop screen. The author's report of 2026-11-18: "c'est surtout sur l'écran externe, l'ensemble ne fait pas net, mon écran externe est en 1x", and the decision: "quitte à faire les choses bien, partir sur la solution 3 voire 4": align the drawn shapes on the pixel grid (3), draw the text with Core Text (4), on top of the base (1: the image is drawn at the backing scale of the screen where it is shown; 2: it is redrawn when that scale changes). For 1.2.0. **Depends on the SL22 branch** (`slice/SL23-barre-de-menus-nette` is stacked on `slice/SL22-apercu-et-ordre-barre-de-menus`): it rewrites the drawing that SL19, SL21 and SL22 added.
+- **Serves**: no requirement (a rendering quality change). No network call, no file access, no new permission, no new setting.
+- **Stage 0, measured state before the change** (2026-11-18, this Mac: two displays, `LG HDR WQHD` 3440 x 1440 at `backingScaleFactor` 1.0 (the primary display, so `NSScreen.main` is 1.0 when no window is key) and `Built-in Retina Display` at 2.0). Diagnosis checked in the code: `MenuBarRenderer.image` draws once with `ImageRenderer` at `NSScreen.main?.backingScaleFactor ?? 2`, caches the `NSImage` by value only (not by scale) and nothing redraws it when the screen changes; `NSScreen.main` is the screen of the key window, not of the menu bar. So an image drawn at 2x is down-sampled on the 1x bar and an image drawn at 1x is stretched on the Retina bar. Side finding: the existing offscreen tests read the label through `GlyphInk(image:)`, which takes the representation as it is, so they ran at the scale of the machine running them (1x here, 2x on a headless runner): their pixel assertions did not test one fixed scale.
+  - **Sharpness metric** (`Tests/SoaroTests/SharpnessMetric.swift`, tested on synthetic drawings in `SharpnessMetricTests`): for axis-aligned edges, the share of inked pixels (alpha above 0.04) whose alpha is intermediate (below 0.96) in a region that holds only straight edges; for text, the weight of the first and of the last ink row of a text box (top of the digits, baseline) relative to its neighbour row, rows under 10 % of the peak ignored (the smoothing veil of the font): 1 = hard edges, near 0 = text straddling two pixel rows.
+  - **Baseline of the current SwiftUI drawing, drawn at the scale shown** (share of intermediate pixels; the pill is already crisp by luck of its size, the ground line of the brand glyph never is):
+
+    | | 1x | 2x | 3x |
+    | --- | --- | --- | --- |
+    | battery top, bottom, left and fill edges | 0.68 | 0.30 | 0.33 |
+    | battery top / bottom edge | 0.50 / 1.00 | 0.33 / 0.33 | 0.40 / 0.40 |
+    | brand glyph ground line | 1.00 | 1.00 | 1.00 |
+    | critical pill (top, bottom, left, right) | 0.04 / 0 / 0 / 0 | 0.02 / 0 / 0 / 0 | 0 / 0 / 0 / 0 |
+    | text hardness (1 = hard): label "CPU" 7.5 pt | 0.37 | 0.63 | 0.13 |
+    | text hardness: value "11%" 12 pt | 0.77 | 0.15 | 0.67 |
+    | text hardness: network rates 9 pt (top line, bottom line) | 0.42, 0.44 | 0.81, 0.82 | 0.15, 0.36 |
+
+  - **The mismatch case (what the author sees on a 1x external display)**: the same drawing at the wrong scale. Battery edges: drawn 2x shown 1x **0.90**, drawn 1x shown 2x **0.95** (against 0.68 and 0.30 at the right scale). Text hardness (label "CPU", value "11%"): drawn 2x shown 1x 0.67 and 0.28; drawn 1x shown 2x 0.16 and 0.85 (the text is soft on one of its two edges in both cases).
+  - Renders kept in the session folder (`scratchpad/sl23/before`): the rich label (CPU, RAM, network, flag, battery charging), a low battery and a critical pill, light and dark bar, at 1x, 2x and 3x.
+
 ## Coverage
 
 | Requirement | Priority | Slices |
