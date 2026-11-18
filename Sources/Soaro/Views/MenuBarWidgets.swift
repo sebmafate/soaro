@@ -198,6 +198,10 @@ enum MenuBarItem: Equatable {
 
 /// Le libellé d'un `MenuBarExtra` n'affiche que du texte et des images simples : on dessine donc tout le
 /// libellé (icône, badge d'alerte, mesures) dans une image « modèle », qui suit le thème clair/sombre de la barre.
+///
+/// **Une image dessinée à l'échelle de l'écran où elle s'affiche (SL23).** L'image est un `NSImage(size:flipped:drawingHandler:)` : AppKit
+/// appelle le dessin au moment d'afficher, avec le contexte de l'écran réel (1x, 2x…), et le rappelle quand la fenêtre change d'écran.
+/// Le dessin lit l'échelle dans le contexte, jamais dans `NSScreen.main` (l'écran de la fenêtre active, qui n'est pas celui de la barre).
 @MainActor
 enum MenuBarRenderer {
     private struct Key: Equatable {
@@ -207,6 +211,7 @@ enum MenuBarRenderer {
         var darkBar: Bool
         var increasedContrast: Bool
     }
+    /// Une seule image pour toutes les échelles : la clé ne contient PAS l'échelle (le dessin se refait par échelle, dans l'image).
     private static var cache: (key: Key, image: NSImage)?
 
     /// Recalculée seulement si une valeur affichée change.
@@ -221,13 +226,37 @@ enum MenuBarRenderer {
         let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar, increasedContrast: contrast)
         if let cache, cache.key == key { return cache.image }
 
-        let base: Color = colored ? (darkBar ? .white : .black) : .black
-        let renderer = ImageRenderer(content: MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast))
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
-        guard let image = renderer.nsImage else { return nil }
+        let image = scaledImage(severity: severity, compact: compact, items: items, darkBar: darkBar, colored: colored, increasedContrast: contrast)
         image.isTemplate = !colored
         cache = (key, image)
         return image
+    }
+
+    /// L'image du libellé pour l'aperçu des Réglages (SL22, SL23) : le MÊME dessin que le vrai libellé, mais toujours « non modèle » et à la couleur
+    /// de la bande (blanc sur bande sombre, noir sur bande claire) : une image modèle n'est teintée que par macOS, dans la vraie barre.
+    static func previewImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkStrip: Bool, increasedContrast: Bool) -> NSImage {
+        scaledImage(severity: severity, compact: compact, items: items, darkBar: darkStrip, colored: true, increasedContrast: increasedContrast)
+    }
+
+    /// Le nombre de pixels par point d'un contexte de dessin (1, 2, 3…), arrondi à l'entier le plus proche : la grille de pixels de l'écran.
+    nonisolated static func pixelScale(of context: CGContext) -> Int {
+        let t = context.userSpaceToDeviceSpaceTransform
+        let scale = hypot(t.a, t.b)
+        return scale.isFinite && scale >= 1 ? Int(scale.rounded()) : 1
+    }
+
+    /// L'image dynamique : sa taille en points ne dépend pas de l'échelle, son dessin se refait à chaque échelle demandée (AppKit rappelle le
+    /// dessin quand la fenêtre change d'écran). Le dessin ne touche qu'à des valeurs copiées ici : il peut être appelé hors du fil principal.
+    private static func scaledImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool, colored: Bool, increasedContrast: Bool) -> NSImage {
+        let layout = MenuBarLabelLayout(items: items, compact: compact, severity: severity)
+        let base = CGColor(gray: colored && darkBar ? 1 : 0, alpha: 1)
+        let palette = LabelPalette.make(darkBar: darkBar, base: base)
+        let size = NSSize(width: layout.widthPoints, height: MenuBarLabelLayout.height)
+        return NSImage(size: size, flipped: true) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            MenuBarLabelDrawer.draw(items: items, layout: layout, palette: palette, increasedContrast: increasedContrast, scale: pixelScale(of: context), in: context)
+            return true
+        }
     }
 }
 
@@ -241,6 +270,35 @@ extension MenuBarRenderer {
             .filter { String(describing: type(of: $0)).contains("StatusBar") }
             .compactMap(\.contentView)
             .flatMap(find)
+    }
+
+    /// Met l'image dynamique du libellé sur le bouton de barre de menus, SANS y toucher (même instance : AppKit la redessine à l'échelle de
+    /// l'écran du bouton, et de nouveau quand le bouton change d'écran).
+    ///
+    /// Le `MenuBarExtra` de SwiftUI peut aplatir l'image du libellé une fois, à une seule échelle. On ne remplace donc que l'image d'un bouton
+    /// qui en porte déjà une (SwiftUI l'a posée) et qui n'est pas la nôtre ; un bouton sans image (SwiftUI y héberge une vue) n'est pas touché.
+    /// Renvoie le nombre de boutons mis à jour.
+    @discardableResult
+    static func install(_ image: NSImage, on buttons: [NSButton]) -> Int {
+        var updated = 0
+        for button in buttons where button.image != nil && button.image !== image {
+            button.image = image
+            updated += 1
+        }
+        return updated
+    }
+
+    @discardableResult
+    static func installOnStatusBarButtons(_ image: NSImage) -> Int { install(image, on: statusBarButtons) }
+
+    /// Ce que porte chaque bouton (mode `SOARO_DEBUG`) : pour savoir si SwiftUI a posé l'image telle quelle ou une copie aplatie.
+    static func describeButtons(comparedTo image: NSImage?) -> String {
+        statusBarButtons.map { button in
+            let current = button.image
+            let reps = current?.representations.map { String(describing: type(of: $0)) } ?? []
+            let same = current != nil && current === image
+            return "button image: \(current == nil ? "nil" : "oui") sameInstance=\(same) size=\(current?.size ?? .zero) template=\(current?.isTemplate ?? false) reps=\(reps) window=\(button.window?.screen?.backingScaleFactor ?? 0)x"
+        }.joined(separator: "\n")
     }
 
     private static var statusBarWindows: [NSWindow] {
@@ -333,116 +391,6 @@ struct BrandGlyph: Shape {
         path.move(to: p(200, 694))
         path.addLine(to: p(824, 694))
         return path
-    }
-}
-
-struct MenuBarWidgetsView: View {
-    let severity: Severity?
-    let compact: Bool
-    let items: [MenuBarItem]
-    var baseColor: Color = .black
-    var increasedContrast = false
-
-    /// Icône de batterie du libellé : corps de 20 x 9,5 pt, plus le bout (SL21).
-    static let batteryBody = BatteryGlyphGeometry.menuBarBody
-    /// Espace entre l'icône et le pourcentage.
-    static let batterySpacing: CGFloat = 3
-    /// Largeur mini du pourcentage : 40 pt, ce qu'il faut à « 100 % » (avec l'espace insécable des langues qui en mettent une) en
-    /// 12 pt demi-gras à chiffres de même chasse (mesuré : 39 pt ; « 100% » sans espace : 36 pt).
-    static let batteryValueMinWidth: CGFloat = 40
-    /// Largeur mini de tout l'élément (icône + espace + pourcentage), en style compact : « 9% » et « 100% » ne décalent pas les voisins.
-    static var batteryMinWidth: CGFloat {
-        BatteryGlyphGeometry(body: batteryBody).totalSize.width + batterySpacing + batteryValueMinWidth
-    }
-
-    var body: some View {
-        HStack(spacing: compact ? 9 : 6) {
-            brand
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                switch item {
-                case .stacked(let label, let value, let level):
-                    if compact {
-                        VStack(spacing: -1) {
-                            Text(label).font(.system(size: 7.5, weight: .medium))
-                            valueText(value, level: level, size: 12)
-                        }
-                        .frame(minWidth: 31)          // largeur mini : « 9% » et « 100% » ne décalent pas les voisins
-                    } else {
-                        HStack(spacing: 3) {
-                            Text(label).font(.system(size: 13))
-                            valueText(value, level: level, size: 13)
-                        }
-                    }
-                case .battery(let percent, let power, let level):
-                    batteryItem(percent: percent, power: power, level: level)
-                case .flag(let code):
-                    if let flag = MenuBarFlag.emoji(forCountryCode: code) {
-                        // Émoji en couleur : il ignore la couleur du texte. Aucune largeur ni hauteur imposée aux autres blocs.
-                        Text(flag).font(.system(size: MenuBarFlag.fontSize))
-                    }
-                case .pair(let top, let bottom):
-                    if compact {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            Text(top)
-                            Text(bottom)
-                        }
-                        .font(.system(size: 9, weight: .medium)).monospacedDigit()
-                        .frame(minWidth: 54, alignment: .trailing)     // largeur de « ↓ 999 KB/s » : le bloc réseau ne bouge plus
-                    } else {
-                        Text("\(bottom) \(top)").font(.system(size: 13)).monospacedDigit()
-                    }
-                }
-            }
-        }
-        .foregroundStyle(baseColor)
-        .frame(height: 22)
-        .fixedSize()
-    }
-
-    /// L'icône à gauche du pourcentage, sur une ligne centrée dans les 22 pt. Le texte suit les mêmes règles de couleur qu'avant.
-    @ViewBuilder private func batteryItem(percent: Int, power: BatteryPowerState, level: PressureLevel) -> some View {
-        let icon = BatteryGlyph(percent: Double(percent), power: power, level: level, base: baseColor, body: Self.batteryBody, increasedContrast: increasedContrast)
-        let value = valueText(MenuBarItem.batteryValue(percent), level: level, size: compact ? 12 : 13)
-        if compact {
-            HStack(spacing: Self.batterySpacing) {
-                icon
-                value.frame(minWidth: Self.batteryValueMinWidth, alignment: .leading)
-            }
-        } else {
-            HStack(spacing: Self.batterySpacing) { icon; value }
-        }
-    }
-
-    /// Orange puis rouge colorent le texte. Le niveau critique passe en pastille écarlate : sur une barre de menus,
-    /// rouge et écarlate en simple texte seraient indiscernables (et la couleur seule ne suffit pas aux daltoniens).
-    @ViewBuilder private func valueText(_ value: String, level: PressureLevel, size: CGFloat) -> some View {
-        let text = Text(value).font(.system(size: size, weight: compact ? .semibold : .regular)).monospacedDigit()
-        if level == .critical {
-            text.foregroundStyle(.white)
-                .padding(.horizontal, 3)
-                .background(PressureLevel.scarlet, in: RoundedRectangle(cornerRadius: 3.5))
-        } else if let color = level.color {
-            text.foregroundStyle(color)
-        } else {
-            text
-        }
-    }
-
-    /// L'icône de l'app est toujours là ; une alerte s'ajoute en petit badge au lieu de la remplacer.
-    private var brand: some View {
-        HStack(alignment: .top, spacing: 1.5) {
-            BrandGlyph()
-                .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                .frame(width: 16, height: 12)
-            switch severity {
-            case .critical:
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 8, weight: .bold))
-            case .warning:
-                Circle().frame(width: 4.5, height: 4.5)
-            default:
-                EmptyView()
-            }
-        }
     }
 }
 

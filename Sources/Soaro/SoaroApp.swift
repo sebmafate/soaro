@@ -80,24 +80,40 @@ struct MenuBarLabel: View {
                                   order: MenuBarOrder(parsing: orderSetting))
     }
 
+    /// L'image du libellé : la même instance tant que rien ne change (`MenuBarRenderer` la garde), à toutes les échelles.
+    private var labelImage: NSImage? {
+        // `.info` (simples suggestions) ne mérite pas de badge permanent dans la barre de menus.
+        let severity = state.worstSeverity.flatMap { $0 >= .warning ? $0 : nil }
+        return MenuBarRenderer.image(severity: severity, compact: compact, items: items)
+    }
+
     var body: some View {
+        let image = labelImage
         Group {
-            // `.info` (simples suggestions) ne mérite pas de badge permanent dans la barre de menus.
-            let severity = state.worstSeverity.flatMap { $0 >= .warning ? $0 : nil }
-            if let image = MenuBarRenderer.image(severity: severity, compact: compact, items: items) {
+            if let image {
                 Image(nsImage: image)
             } else {
                 Image(systemName: "water.waves")
             }
         }
         .task { state.start() }
-        // Réappliquée à chaque mesure : SwiftUI peut recréer le bouton de barre de menus.
+        // Réappliquée à chaque mesure : SwiftUI peut recréer le bouton de barre de menus (et y reposer sa propre copie de l'image).
         .onChange(of: state.snapshot?.date, initial: true) {
             let text = MenuBarTooltip.text(recommendations: state.recommendations, snapshot: state.snapshot, items: items)
             let count = MenuBarRenderer.setToolTip(text)
+            installLabelImage()
             if ProcessInfo.processInfo.environment["SOARO_DEBUG"] != nil {
-                FileHandle.standardError.write(Data("tooltip: \(count) view(s) updated\n\(MenuBarRenderer.debugHierarchy())---\n".utf8))
+                FileHandle.standardError.write(Data("tooltip: \(count) view(s) updated\n\(MenuBarRenderer.debugHierarchy())\(MenuBarRenderer.describeButtons(comparedTo: labelImage))\n---\n".utf8))
             }
         }
+        // Quand l'image change (une valeur, l'ordre, un réglage), on la repose aussitôt, puis au tour suivant de la boucle d'événements :
+        // SwiftUI applique son propre libellé après le calcul de `body`.
+        .onChange(of: image.map(ObjectIdentifier.init), initial: true) { installLabelImage() }
+    }
+
+    private func installLabelImage() {
+        guard let image = labelImage else { return }
+        MenuBarRenderer.installOnStatusBarButtons(image)
+        DispatchQueue.main.async { MenuBarRenderer.installOnStatusBarButtons(image) }
     }
 }

@@ -181,14 +181,14 @@ import Testing
         let nine = try render([Self.cpu, .battery(percent: 9, power: .onBattery)])
         let hundred = try render([Self.cpu, .battery(percent: 100, power: .onBattery)])
         let fifty = try render([Self.cpu, .battery(percent: 50, power: .charging)])
-        #expect(nine.size.width == hundred.size.width, "largeur mini de \(MenuBarWidgetsView.batteryMinWidth) pt : « 9% » et « 100% » ne décalent rien")
+        #expect(nine.size.width == hundred.size.width, "largeur mini de \(MenuBarLabelLayout.batteryMinWidth) pt : « 9% » et « 100% » ne décalent rien")
         #expect(fifty.size.width == hundred.size.width)
     }
 
     @Test func theBatteryItemIsAsWideAsTheWrittenMinimum() throws {
         let without = try render([Self.cpu])
         let with = try render([Self.cpu, .battery(percent: 100, power: .onBattery)])
-        #expect(abs((with.size.width - without.size.width) - (MenuBarWidgetsView.batteryMinWidth + 9)) < 1.0, "icône + valeur + l'espace entre blocs")
+        #expect(abs((with.size.width - without.size.width) - CGFloat(MenuBarLabelLayout.batteryMinWidth + 9)) < 1.0, "icône + valeur + l'espace entre blocs")
         let classic = try render([Self.cpu, .battery(percent: 100, power: .onBattery)], compact: false)
         let classicWithout = try render([Self.cpu], compact: false)
         #expect(classic.size.width > classicWithout.size.width + 30)
