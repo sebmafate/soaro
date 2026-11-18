@@ -36,14 +36,14 @@ This design covers only the developer cleanup. It reuses the existing Cleanup ta
 | J3 | **Clean simulators and emulators** (critical moment) | Disk filling up, or the monthly chore | 1. Open the tool (the scan starts by itself). 2. Review the list (pre-selected rows are checked). 3. Delete. 4. Confirm | Chosen devices leave the list; the space really freed is shown | A device is running (not selectable, explained); the tool is too slow; partial removal | R3 to R9, R16 to R18 |
 | J4 | Adjust what is pre-selected | The 60-day limit does not fit | 1. Change "Inactive for more than". 2. Pre-selection is recomputed. 3. Continue as J3 | Selection follows the new limit | Nothing at that limit: "Nothing to suggest" banner | R3, R16 |
 | J5 | Android system images (Should) | A removed AVD leaves an unused image | 1. In the same tool, group "Android system images". 2. Check an unused image. 3. Delete. 4. Confirm, with the download-again warning | Image removed | Image still used: not selectable, names the AVD | R19 |
-| J6 | Docker (Should, after Test B) | Engine running | Separate tool, designed only if Test B passes | not designed | Engine stopped: section hidden or "engine stopped" | R10, R11 |
+| J6 | **Docker** (Should; designed in SL13, 2026-11-18) | Disk filling up, Docker Desktop running | 1. Open the tool **Docker** (the scan starts by itself). 2. Review the two checked rows (build cache, untagged images). 3. Clean. 4. Confirm. 5. Wait about a minute ("Measuring…") | The toast and the screen say how much came back **on the Mac**, next to what Docker reported; under half of Docker's figure, they say the disk image did not give the space back | Engine stopped: "Docker is not running…"; engine silent: "Docker did not answer…"; a cleanup fails or times out; `docker` absent: the tool is not in the list | R8, R10, R11 |
 
 ## Information structure
 
 - **Names (one per thing):** the tool is **Simulators and emulators**; an item is a **device** (groups "iOS Simulators" and "Android emulators"); the reason is **inactive for N d** or **older copy**; a checked row is **pre-selected**; the limit is **Inactive for more than N days**; an Android image is a **system image** (iOS runtimes are out of scope, so the word "runtime" is not used).
 - **Relations:** a platform group contains devices; an Android device depends on a system image; an image used by a device cannot be removed before that device.
 - **Navigation:** the existing one. The Cleanup list opens a tool; "Cleanup" goes back. Two levels, no new depth.
-- **Placement decision (2026-11-15):** NuGet is one row in **Developer**; one tool **Simulators and emulators** in **Tools** covers iOS and Android, and later the Android system images as a group; Docker would be a separate tool.
+- **Placement decision (2026-11-15):** NuGet is one row in **Developer**; one tool **Simulators and emulators** in **Tools** covers iOS and Android, and later the Android system images as a group; Docker is a separate tool (**Docker**, built in SL13, listed after Simulators and emulators and before Uninstall apps, shown only when the `docker` command is found).
 
 ## Screens
 
@@ -53,7 +53,7 @@ This design covers only the developer cleanup. It reuses the existing Cleanup ta
 | S2 | Simulators and emulators (new) | Choose and delete devices | Row in S1, or an advice | Delete (action bar) | scanning; no device; nothing pre-selected; device running; platform unreadable; deleting; partial failure; result | R3 to R9, R16 to R18 |
 | S3 | Confirmation (existing alert) | Last guard before deleting | Delete in S2, Clean in S1 | Confirm or cancel | one variant per kind of target | R8 |
 | S2b | "Android system images" group, inside S2 (Should) | Remove an unused image (read-only in SL12a: list, size, who uses it; removal and the download-again warning in SL12b) | S2 | Delete (SL12b) | image in use (not selectable); download-again warning | R19 |
-| S4 | Docker (Should, after Test B) | not designed | S1 | not designed | not designed | R10, R11 |
+| S4 | Docker (Should; SL13) | Choose and clean the Docker build cache and untagged images, and see what really came back | Row "Docker" in S1 (only when `docker` is found), or an advice | Clean (action bar) | scanning; engine not running; engine not answering; unreadable output; `docker` not found (screen only; the row is hidden); nothing to clean; listed; cleaning; measuring; result; failure and time-out | R8, R10, R11 |
 
 ### Wireframes
 
@@ -128,6 +128,48 @@ Deleting         action bar disabled with a spinner; the list updates at the end
 - **No Delete bar on an images-only screen.** Delete acts on devices only; images never enter the header summary, the "Selected" count or the confirmation.
 - **Demo (`SOARO_DEMO=1`):** four made-up images (API 36 to 33) shown at once, three used by the demo devices and the API 33 one "not used by any listed device"; nothing is read or measured.
 - **New text** (6 keys, nine languages, AI-assisted, to review by the author): "Android system images", "Could not read the Android system images.", "used by %@", "not used by any listed device", "cannot tell whether a device uses it", and the footer above. "API %@" and the size text are reused. Vocabulary: "system image" and "device", never "runtime", never "AVD".
+
+**S4 Docker, as designed and built (SL13, 2026-11-18)**
+
+```
++--------------------------------------------------------------------+
+| < Cleanup                      Docker                              |
+|--------------------------------------------------------------------|
+|                                                    [ Scan again ]  |
+|--------------------------------------------------------------------|
+| 19 GB returned to this Mac (Docker reported 21.59 GB).             |   only after a cleanup
+| Measured as the change in free space about a minute after the…    |
+|                                                                    |
+| (o) CAN BE CLEANED                                                 |   Select all
+| (x)  Build cache                                         21.19 GB  |
+|      Rebuilt by your next build                                    |
+| (x)  Untagged images                                       397 MB  |
+|      Images no container uses: 1                                   |
+|                                                                    |
+| NOT TOUCHED                                                        |
+|      Containers                                          114.7 kB  |
+|      In use: 2 of 11                                               |
+|      Volumes                                             915.6 MB  |
+|      In use: 8 of 23                                               |
+|      Other unused images                                 183.7 MB  |
+|      Images no container uses: 5                                   |
+|      Containers, volumes and images with a tag are never removed  |
+|      here. Removing a tagged image means downloading it again.     |
+|--------------------------------------------------------------------|
+| Selected: 2 · 21.59 GB                                 [  Clean  ] |
++--------------------------------------------------------------------+
+```
+
+- **Placement and visibility:** a row **Docker** ("Build cache and untagged images") in the Tools list of S1, after "Simulators and emulators". It exists only when a `docker` command is found at an absolute candidate path (`/usr/local/bin/docker`, `/opt/homebrew/bin/docker`, `/Applications/Docker.app/Contents/Resources/bin/docker`, `~/.orbstack/bin/docker`; found on disk, nothing is launched to find it) and in demo mode. OrbStack's path is a candidate but its output was never checked (R15). If the screen is reached anyway (an advice, `SOARO_SECTION`), it says "Docker was not found on this Mac."
+- **Two sections.** **Can be cleaned** (header with "Select all"): the **build cache** (size: what Docker calls reclaimable) and the **untagged images** (count of images no container uses, size: sum of their sizes), both **checked when listed**, because the author decided so (ADR 0010, decision D2); they are `SelectionRow`s, so VoiceOver reads name, size, detail and "Selected" / "Not selected". A row appears only when there is something to clean: a cache with nothing reclaimable has no row; an image a container uses (or whose use Docker does not say) is never in the list. **Not touched**: **Containers** and **Volumes** ("In use: A of T", Docker's own size), and one line **Other unused images** (images with a tag that no container uses: count and size from `docker system df`, without the untagged ones), shown only when there is any. These lines have **no checkbox, no button and no action**: they are not `SelectionRow`s. A volume or a container is never touched by this tool; removing a tagged image is **not** in this slice (D2). The footer says so. Sizes are Docker's (decimal), written with the app's formatter.
+- **Unknown values** are said, never guessed: a size Docker did not give or that cannot be read is "unknown size"; "In use" is left out when the counts are missing; a build cache whose size cannot be read is a read-only line ("Build cache", "Docker did not say how big it is") and never checked.
+- **Confirmation (S3 variant, R8):** title "Clean the selected Docker items? (2)"; message "About 21.59 GB will be removed:", a blank line, "• Build cache · 21.19 GB", "• Untagged images · 397 MB", a blank line, "The next build will be slower, because the cache is rebuilt. Containers, volumes and images with a tag are not touched."; buttons **Cancel (default)** and **Clean** (destructive, no key). With the untagged images only, the sentence about the next build is left out. When a size is unknown the first line is "These will be removed:" and that row reads "unknown size". Cancelling changes nothing and shows nothing.
+- **Cleaning and measuring:** the action bar shows a spinner and "Cleaning…", then "Measuring…" while Soaro waits 60 s before reading the free space again (SPK-002: 73 % was back at once, 95 % after a minute); "Clean", "Scan again" and the checkboxes are disabled. The cleanups run in order (build cache, then untagged images) and the batch stops at the first failure or time-out. One batch at a time in the whole app (a second window or the panel sees it too and reads "Cleaning…" or "Measuring…" instead of "Looking at Docker…"). Leaving the screen (Back) does not stop the batch: the toast still comes, and the screen reads "not scanned" and scans again when it is opened.
+- **Result (R11):** the toast and, until the next batch or Back, a line at the top of the list (the toast stays only 4 s) with the note "Measured as the change in free space about a minute after the cleanup. Other activity on this Mac can change it." The figure is the free space of the volume of the home folder after minus before, **never negative**. Texts: "19 GB returned to this Mac (Docker reported 21.59 GB)." ; **under half of Docker's figure**: "5 GB returned to this Mac, but Docker reported 21.59 GB: Docker’s disk image did not give the space back." (zero is written like the app's other zeros, "Zero KB" or "0 bytes" depending on the formatter, and is never negative); Docker's figure unknown: "3 GB returned to this Mac."; free space unreadable: "Docker reported 21.59 GB. The space returned to this Mac could not be measured." ; nothing measurable: "The space returned to this Mac could not be measured." Docker's figure is what the prune printed ("Total: …"), else the size shown before. A time-out adds "Docker did not answer. Try again in a moment."; a failure adds "Cleanups that failed: N"; parts are joined by " · ". The list is read again afterwards.
+- **States:** scanning ("Looking at Docker…", spinner); **engine not running** ("Docker is not running. Start it, then scan again.", warning icon: Soaro never starts Docker, there is no Start button); **engine not answering** ("Docker did not answer. Try again in a moment."); **unreadable** ("Could not read Docker’s disk usage."); **nothing to clean** ("Nothing to clean in Docker." above the read-only lines; no action bar); a stopped or silent engine shows no rows and runs no cleanup. No exit code, error output or path is ever shown. "Scan again" stays in the header in every state.
+- **Demo (`SOARO_DEMO=1`):** the row is always in the list; made-up figures (a 14.8 GB build cache, three untagged images, 6 containers, 14 volumes), both rows checked; the same confirmation; once confirmed the rows leave at once with a made-up toast; no `docker` is found or launched, no free space is read, nothing waits and nothing is written.
+- **Accessibility and tokens:** the shared `SelectionRow`, `SectionHeader` with "Select all", `ActionBar` (danger tint, never the default action, no shortcut); supporting-text token for sizes, details, footer and note; the read-only lines are one VoiceOver element (name, size, detail) with no control; the focus order is Scan again, the rows, Clean.
+- **New text** (nine languages, AI-assisted, to review by the author): "Docker", "Build cache and untagged images", "Can be cleaned", "Not touched", "Build cache", "Untagged images", "Containers", "Volumes", "Other unused images", "Rebuilt by your next build", "Images no container uses: %lld", "In use: %lld of %lld", "unknown size", "Docker did not say how big it is", the footer, the measurement note, "Nothing to clean in Docker.", the five state messages ("Docker was not found on this Mac.", "Docker is not running. Start it, then scan again.", "Docker did not answer. Try again in a moment.", "Could not read Docker’s disk usage.", "Looking at Docker…"), "Cleaning…", "Measuring…", the confirmation (title, "About %@ will be removed:", "These will be removed:", the two closing sentences) and the result texts above. "Clean", "Scan again", "Nothing selected" and "Selected: %lld · %@" are reused. Vocabulary: "build cache", "untagged images", "tag"; never "prune", "dangling", "layer" or "reclaim".
 
 **S2 as built (SL10): the Android group**
 
@@ -212,7 +254,7 @@ Tone: short, concrete, no marketing; same style as the app ("Your sources are no
 
 - If measuring real sizes takes more than about 10 seconds, show rows first and refine sizes as they arrive (as the uninstaller does).
 - Should the "Inactive for more than" limit be remembered between sessions? Default: no, like the size limit of "Large files".
-- Layout of Docker (S4) and of the Android system images group (S2b) is to finish after Test B and after the Must scope.
+- Layout of the Android system images group (S2b) is to finish after the Must scope. Docker (S4) is designed below (SL13).
 - Behaviour in the narrow menu bar panel: long device names are truncated on one line (to check in `ui`).
 
 # Part 2: UI
@@ -300,7 +342,7 @@ Every screen of Part 1 uses only these. There is no custom component. The extens
 
 ## Verification of this part
 
-- Every screen S1 to S3 uses only the components and tokens above (S4 Docker and S2b images are not designed yet).
+- Every screen S1 to S3 uses only the components and tokens above (S2b images removal is not designed yet; S4 Docker is designed in SL13).
 - Contrast is recorded for each text and background pairing in both themes (approximate, against reference backgrounds).
 - No custom component, so nothing to justify beyond the two small variants.
 
