@@ -74,3 +74,51 @@ enum DockerScanner {
         return DockerScan(status: .ok, usage: usage, untagged: untagged)
     }
 }
+
+// MARK: - Nettoyage (deux commandes, après la confirmation)
+
+/// Les deux seuls nettoyages (D1, D2).
+enum DockerPrune: Equatable {
+    /// `docker builder prune -a -f`
+    case buildCache
+    /// `docker image prune -f` (jamais `-a` : les images avec étiquette ne sont pas touchées)
+    case untaggedImages
+
+    var command: DockerCommand {
+        switch self {
+        case .buildCache: .pruneBuildCache
+        case .untaggedImages: .pruneUntaggedImages
+        }
+    }
+}
+
+/// Résultat d'UN nettoyage (aucune lecture de la sortie d'erreur).
+enum DockerPruneOutcome: Equatable {
+    /// Code 0, fin ordinaire, sortie entière. `reportedBytes` : le chiffre que Docker annonce (`nil` s'il n'est pas lisible).
+    case pruned(reportedBytes: UInt64?)
+    /// Tout le reste : code non nul, signal, sortie tronquée, lancement impossible, refus.
+    case failed
+    /// Le délai est dépassé (le lanceur a tué le processus).
+    case timedOut
+    /// Pas de chemin absolu vers `docker` : rien n'est lancé.
+    case toolNotFound
+}
+
+extension DockerScanner {
+    /// Lance UN nettoyage, de façon synchrone (jamais sur l'acteur principal). À n'appeler qu'APRÈS la confirmation de l'utilisateur
+    /// (R8) : c'est le modèle qui la demande. Rien d'autre n'est lancé : ni lecture avant, ni lecture après.
+    /// - Parameters:
+    ///   - runner: sans valeur par défaut (ADR 0009).
+    ///   - dockerPath: chemin ABSOLU trouvé par `ToolLocator.dockerPath` ; `nil` : rien n'est lancé.
+    static func prune(_ prune: DockerPrune, runner: CommandRunner, dockerPath: String?) -> DockerPruneOutcome {
+        guard let dockerPath, dockerPath.hasPrefix("/") else { return .toolNotFound }
+        switch execute(prune.command, runner: runner, dockerPath: dockerPath) {
+        case .timedOut: return .timedOut
+        case .failedToLaunch, .refused: return .failed
+        case .completed(let output):
+            // Seul « code 0, fin ordinaire, sortie entière » vaut succès.
+            guard output.exitCode == 0, output.termination == .exited, !output.truncated else { return .failed }
+            return .pruned(reportedBytes: DockerReport.parsePruneTotal(output.stdout))
+        }
+    }
+}
