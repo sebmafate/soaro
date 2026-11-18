@@ -108,6 +108,21 @@ import Testing
         } } } }
     }
 
+
+    @Test func theFirstLookupWaitsForAPendingDetectionOnlyOnTheFlagPathAndOnlyUpToTheCap() {
+        func w(_ had: Bool, _ pending: Bool, _ tab: Bool, _ force: Bool, _ since: Date?, _ now: Date) -> Bool {
+            PublicIPLookupPolicy.mustWaitForFirstFingerprint(hadBaseline: had, vpnDetectionPending: pending, tabOpen: tab, force: force, waitingSince: since, now: now)
+        }
+        #expect(PublicIPLookupPolicy.firstLookupWaitCap == 10)
+        #expect(w(false, true, false, false, nil, t0), "la première attente commence")
+        #expect(w(false, true, false, false, t0.addingTimeInterval(-9.9), t0))
+        #expect(!w(false, true, false, false, t0.addingTimeInterval(-10), t0), "le plafond est atteint : on cherche")
+        #expect(!w(true, true, false, false, nil, t0), "une base existe déjà")
+        #expect(!w(false, false, false, false, nil, t0), "aucune détection en cours : rien à attendre")
+        #expect(!w(false, true, true, false, nil, t0), "l'onglet Réseau cherche tout de suite")
+        #expect(!w(false, true, false, true, nil, t0), "un appel forcé aussi")
+    }
+
     // MARK: Changement détecté
 
     @Test func aChangeIsDetectedOnceTheFingerprintHasSettledOrAtOnceForTheTabAndTheFirstLookup() {
@@ -387,15 +402,19 @@ import Testing
         let scheduler = FakeScheduler()
         var sourcesMade = 0
         var vpnCalls = Box(0)
+        /// Ce que la détection du VPN rend, et un verrou pour la bloquer (une détection qui ne revient pas).
+        let vpnStatus = Box(VPNStatus(mode: .off, name: nil, interface: nil))
+        let vpnGate = Box<DispatchSemaphore?>(nil)
         var state: AppState!
 
         init(demo: Bool = false) {
             let settings = settings, item = item, fetcher = fetcher, clock = clock, signals = signals, log = log, vpnCalls = vpnCalls
+            let vpnStatus = vpnStatus, vpnGate = vpnGate
             let watching = NetworkWatching(
                 makeSource: { [unowned self] in self.sourcesMade += 1; return self.source },
                 scheduler: scheduler,
                 readSignals: { signals.value },
-                detectVPN: { _ in vpnCalls.value += 1; return VPNStatus(mode: .off, name: nil, interface: nil) },
+                detectVPN: { _ in vpnCalls.value += 1; vpnGate.value?.wait(); return vpnStatus.value },
                 clock: { clock.value },
                 log: { line in log.value.append(line) })
             state = AppState(history: nil, demo: demo,
@@ -658,6 +677,154 @@ import Testing
     @Test func theTabOpenPathStillComparesTheFingerprintAtOnce() {
         // L'onglet Réseau garde sa règle : tout de suite (la preuve complète est la grille de PublicIPLookupPolicyTests).
         #expect(PublicIPLookupPolicy.fingerprintChanged("b", "a", false, false, true))
+    }
+
+
+    // MARK: Le démarrage : une seule recherche, la base est complétée sans recherche (SL25, défaut trouvé sur le journal réel du Mac de l'auteur)
+
+    private let vpnOn = VPNStatus(mode: .full, name: "WireGuard", interface: "utun4")
+
+    /// Le défaut : la première recherche partait avant la fin de la détection du VPN (`vpn` encore nil) ; la mesure suivante voyait une autre
+    /// empreinte, la prenait pour un vrai changement (recherche « network-change » 6 s après) puis armait une confirmation 10 s plus tard.
+    @Test func aLaunchWithAnUnchangedNetworkGivesExactlyOneLookupAndNoConfirmation() async {
+        let rig = Rig()
+        rig.vpnStatus.value = vpnOn                                  // le Mac de l'auteur : un VPN est actif au démarrage
+        rig.fetcher.enqueue(["FR", "FR", "FR", "FR"])
+        // Mesure 1 : le premier relevé, rien de lu (pas de signaux), la détection du VPN part.
+        rig.signals.value = .empty
+        rig.clock.value = t0
+        rig.state.refreshPublicIPWhileFlagShown(now: t0)
+        #expect(rig.state.publicIPState == .idle, "la première recherche attend la fin de la détection du VPN")
+        await rig.state.vpnRefreshTask?.value
+        await rig.state.publicIPLookupTask?.value
+        // Mesure 2 : les signaux arrivent ; mesure 3 : tout est là.
+        rig.signals.value = wifi()
+        await rig.tick(at: t0.addingTimeInterval(3))
+        await rig.tick(at: t0.addingTimeInterval(6))
+        for s in stride(from: 9.0, through: 299, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.lookups == 1, "exactement une requête dans les 300 premières secondes")
+        #expect(rig.reasons == ["first"])
+        #expect(rig.state.publicIPMatchesNetwork, "la réponse de la première recherche vaut pour l'empreinte complète")
+    }
+
+    @Test func theFirstLookupWaitsForTheVPNDetectionThenRecordsTheCompleteFingerprint() async {
+        let rig = Rig()
+        rig.vpnStatus.value = vpnOn
+        rig.fetcher.enqueue(["FR", "FR"])
+        rig.signals.value = wifi()
+        rig.clock.value = t0
+        rig.state.refreshPublicIPWhileFlagShown(now: t0)
+        #expect(rig.state.publicIPState == .idle, "pas encore : la détection n'est pas revenue")
+        await rig.state.vpnRefreshTask?.value
+        await rig.state.publicIPLookupTask?.value
+        #expect(rig.lookups == 1)
+        #expect(rig.state.vpn?.isActive == true, "l'empreinte de la recherche portait déjà le VPN")
+        #expect(rig.state.publicIPMatchesNetwork)
+        for s in stride(from: 3.0, through: 120, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.lookups == 1)
+    }
+
+    @Test func aBaselineTakenIncompleteBecomesTheCompleteOneWithoutALookupOrAConfirmation() async {
+        // Une recherche partie sans détection en cours (appel direct, comme l'onglet Réseau ou un test) : l'empreinte est incomplète (vpn nil).
+        let rig = Rig()
+        rig.vpnStatus.value = vpnOn
+        rig.fetcher.enqueue(["FR", "FR", "FR"])
+        rig.signals.value = wifi()
+        rig.state.refreshPublicIP(now: t0)
+        await rig.state.publicIPLookupTask?.value
+        #expect(rig.lookups == 1)
+        #expect(!rig.state.publicIPMatchesNetwork || rig.state.vpn == nil)
+        for s in stride(from: 3.0, through: 299, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.lookups == 1, "passer d'incomplet à complet n'est pas un changement")
+        #expect(rig.reasons == ["first"])
+        #expect(rig.state.publicIPMatchesNetwork, "la réponse est rattachée à l'empreinte complète : le drapeau reste affiché")
+        #expect(rig.log.value.contains { $0.hasPrefix("baseline:") }, "le journal montre l'étape")
+    }
+
+    @Test func aRealChangeAfterTheLaunchBaselineGivesOneLookupAndExactlyOneConfirmation() async {
+        let changes: [(String, NetworkSignals)] = [
+            ("signature du routeur", wifi(mac: "dd:ee:ff:33:44:55")),
+            ("DNS", { var s = wifi(); s.dnsServers = ["198.51.100.1"]; return s }()),
+            ("un tunnel apparaît", { var s = wifi(); s.tunnels = [.init(name: "utun7", address: "198.51.100.9")]; return s }()),
+        ]
+        for (label, changed) in changes {
+            let rig = Rig()
+            rig.vpnStatus.value = vpnOn
+            rig.fetcher.enqueue(["FR", "DE", "DE", "DE"])
+            rig.signals.value = wifi()
+            await rig.tick(at: t0)
+            for s in stride(from: 3.0, through: 60, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+            #expect(rig.lookups == 1, "\(label) : une seule recherche avant le changement")
+            rig.signals.value = changed
+            await rig.event(at: t0.addingTimeInterval(70))
+            for s in stride(from: 73.0, through: 120, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+            #expect(rig.reasons == ["first", "network-change", "confirmation"], "\(label)")
+        }
+    }
+
+    @Test func aWakeAfterTheLaunchGivesALookupAndAConfirmation() async {
+        let rig = Rig()
+        rig.vpnStatus.value = vpnOn
+        rig.fetcher.enqueue(["FR", "FR", "FR"])
+        rig.signals.value = wifi()
+        await rig.tick(at: t0)
+        await rig.event(.wake, at: t0.addingTimeInterval(100))
+        await rig.tick(at: t0.addingTimeInterval(111))
+        for s in stride(from: 114.0, through: 200, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.reasons == ["first", "wake", "confirmation"])
+    }
+
+    @Test func aDetectionThatNeverReturnsDoesNotMakeTheFirstLookupWaitForeverNorLoop() async {
+        let rig = Rig()
+        let gate = DispatchSemaphore(value: 0)
+        rig.vpnGate.value = gate
+        rig.fetcher.enqueue([])                                  // aucune réponse : la recherche échoue
+        rig.signals.value = wifi()
+        rig.clock.value = t0
+        rig.state.refreshPublicIPWhileFlagShown(now: t0)
+        for s in [3.0, 6, 9, 9.9] {
+            rig.clock.value = t0.addingTimeInterval(s)
+            rig.state.refreshPublicIPWhileFlagShown(now: t0.addingTimeInterval(s))
+        }
+        await Task.yield()
+        #expect(rig.lookups == 0, "avant le plafond de 10 s, la première recherche attend")
+        rig.clock.value = t0.addingTimeInterval(10)
+        rig.state.refreshPublicIPWhileFlagShown(now: t0.addingTimeInterval(10))
+        await rig.state.publicIPLookupTask?.value
+        #expect(rig.lookups == 1, "au plafond, on cherche avec ce qu'on a")
+        // La recherche a échoué : la pause de 60 s s'applique, et on ne boucle pas.
+        for s in stride(from: 13.0, through: 69, by: 3) {
+            rig.clock.value = t0.addingTimeInterval(s)
+            rig.state.refreshPublicIPWhileFlagShown(now: t0.addingTimeInterval(s))
+            await rig.state.publicIPLookupTask?.value
+        }
+        #expect(rig.lookups == 1, "pas de nouvelle tentative dans les 60 s qui suivent l'échec")
+        gate.signal()                                            // la détection finit par revenir : rien ne s'emballe
+        for _ in 0..<10 { gate.signal() }
+        await rig.state.vpnRefreshTask?.value
+    }
+
+    @Test func anOfflineMacLooksUpAtMostOncePerMinuteAndNeverWaitsForever() async {
+        let rig = Rig()
+        rig.signals.value = .empty
+        rig.fetcher.enqueue([])
+        for s in stride(from: 0.0, through: 305, by: 3) { await rig.tick(at: t0.addingTimeInterval(s)) }
+        #expect(rig.lookups >= 1, "il cherche quand même")
+        #expect(rig.lookups <= 6, "au plus une recherche par minute : \(rig.lookups)")
+    }
+
+    @Test func theTabAndTheForcedLookupNeverWaitForTheDetection() async {
+        let rig = Rig()
+        rig.vpnGate.value = DispatchSemaphore(value: 0)
+        rig.fetcher.enqueue(["FR"])
+        rig.signals.value = wifi()
+        rig.clock.value = t0
+        rig.state.refreshPublicIPWhileFlagShown(now: t0)               // une détection est en cours et bloquée
+        #expect(rig.state.publicIPState == .idle)
+        rig.state.refreshPublicIP(force: true, now: t0.addingTimeInterval(1))
+        #expect(rig.state.publicIPState == .loading, "l'interrupteur des réglages et « Actualiser » cherchent tout de suite")
+        await rig.state.publicIPLookupTask?.value
+        rig.vpnGate.value?.signal()
     }
 
     // MARK: Journal

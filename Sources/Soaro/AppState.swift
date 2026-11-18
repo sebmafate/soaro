@@ -206,6 +206,12 @@ final class AppState: ObservableObject {
     private var publicIPFingerprint = ""
     /// Empreinte de la connexion au moment de la recherche dont vient `publicIP` : si elle a changé depuis, la réponse n'est plus celle d'ici.
     private var publicIPInfoFingerprint = ""
+    /// SL25 : l'empreinte de la dernière recherche était-elle complète (détection du VPN rendue, signaux lus) ? Sinon, la première empreinte complète
+    /// la remplace sans recherche : passer d'incomplet à complet n'est pas un changement.
+    private var publicIPBaselineComplete = false
+    /// SL25 : détections du VPN en cours, et début de l'attente de la première recherche (voir `firstLookupWaitCap`).
+    private var vpnDetectionsInFlight = 0
+    private var firstLookupWaitStart: Date?
     private var lastPublicIPFailure: Date?
     /// SL25 : l'empreinte doit rester la même quelques secondes avant de compter comme un changement (rafales d'événements).
     private var settler = FingerprintSettler()
@@ -409,11 +415,13 @@ final class AppState: ObservableObject {
         lastVPNRefresh = watching.clock()
         let names = processes.map(\.name)
         let detect = watching.detectVPN
+        vpnDetectionsInFlight += 1
         vpnRefreshTask = Task { [weak self] in
             let status = await Task.detached(priority: .utility) { detect(names) }.value
             guard let self else { return }
+            self.vpnDetectionsInFlight -= 1
             self.vpn = status
-            if acceptingSettled { self.settler.accept(self.fingerprintNow()) }
+            if acceptingSettled { self.settler.accept(self.fingerprintNow().text) }
             self.refreshPublicIP(now: self.watching.clock())       // un VPN qui se connecte ou se coupe change l'IP : on la relit
         }
     }
@@ -426,7 +434,8 @@ final class AppState: ObservableObject {
     /// La décision tient entière dans `PublicIPLookupPolicy.shouldLookUp` (pure, temps injecté).
     func refreshPublicIP(force: Bool = false, now: Date = Date()) {
         updateNetworkMonitor()
-        let fingerprint = fingerprintNow()
+        let (fingerprint, complete) = fingerprintNow()
+        adoptCompleteBaseline(fingerprint, complete: complete)
         let hadFingerprint = !publicIPFingerprint.isEmpty
         let settled = settler.observe(fingerprint, now: now)
         let changed = PublicIPLookupPolicy.fingerprintChanged(fingerprint, publicIPFingerprint, settled, forcedChange, activeTabs.contains(.network))
@@ -437,6 +446,14 @@ final class AppState: ObservableObject {
             lastChangeTriggeredLookup: lastChangeTriggeredLookup, now: now)
         guard PublicIPLookupPolicy.shouldLookUp(inputs) else { return }
 
+        // La toute première recherche du drapeau attend la fin de la détection du VPN (plafonnée), pour partir avec l'empreinte complète.
+        if PublicIPLookupPolicy.mustWaitForFirstFingerprint(
+            hadBaseline: hadFingerprint, vpnDetectionPending: vpn == nil && vpnDetectionsInFlight > 0, tabOpen: inputs.networkTabOpen,
+            force: force, waitingSince: firstLookupWaitStart, now: now) {
+            if firstLookupWaitStart == nil { firstLookupWaitStart = now; watching.log("baseline: waiting for the VPN detection") }
+            return
+        }
+        firstLookupWaitStart = nil
         let reason = PublicIPLookupPolicy.reason(inputs, wake: forcedChange, hadFingerprint: hadFingerprint)
         watching.log("lookup: \(reason.rawValue)")
         // Une recherche déclenchée par un changement attend sa confirmation ; toute autre efface l'attente (une seule confirmation, jamais deux).
@@ -444,6 +461,7 @@ final class AppState: ObservableObject {
         forcedChange = false
         lastPublicIPAttempt = now
         publicIPFingerprint = fingerprint
+        publicIPBaselineComplete = complete
         publicIPState = .loading
         publicIPGeneration += 1
         let generation = publicIPGeneration
@@ -455,7 +473,8 @@ final class AppState: ObservableObject {
                 // Réglage coupé (ou oubli) pendant la recherche : la réponse est jetée, rien n'est gardé, même en mémoire.
                 guard generation == self.publicIPGeneration, self.publicIPSetting() else { return }
                 self.publicIP = info
-                self.publicIPInfoFingerprint = fingerprint
+                // Si l'empreinte complète a remplacé la base pendant la recherche, la réponse lui est rattachée.
+                self.publicIPInfoFingerprint = (!complete && self.publicIPBaselineComplete) ? self.publicIPFingerprint : fingerprint
                 self.lastPublicIPFailure = nil
                 self.publicIPState = .idle
             } catch {
@@ -511,13 +530,25 @@ final class AppState: ObservableObject {
     }
 
     /// L'empreinte de la connexion maintenant : adresse locale, VPN, et (SL25) les signaux locaux. En démo, aucun signal n'est lu.
-    private func fingerprintNow() -> String {
+    /// Elle est **complète** quand la détection du VPN a rendu au moins une fois et que des signaux ont été lus ; sinon c'est une première
+    /// ébauche (au démarrage, `vpn` est encore nil quand la première recherche est décidée), et le passage à la complète n'est pas un changement.
+    private func fingerprintNow() -> (text: String, complete: Bool) {
         let signals = (DemoMode.isEnabled || demo) ? NetworkSignals.empty : watching.readSignals()
-        return PublicIPLookupPolicy.fingerprint(localIP: snapshot?.network?.localIP, vpn: vpn, signals: signals)
+        let text = PublicIPLookupPolicy.fingerprint(localIP: snapshot?.network?.localIP, vpn: vpn, signals: signals)
+        return (text, vpn != nil && !signals.isEmpty)
+    }
+
+    /// Une base prise incomplète devient la complète, sans recherche : la réponse reçue vient de la vraie route, seule son étiquette change.
+    private func adoptCompleteBaseline(_ fingerprint: String, complete: Bool) {
+        guard complete, !publicIPBaselineComplete, !publicIPFingerprint.isEmpty else { return }
+        if publicIP != nil, publicIPInfoFingerprint == publicIPFingerprint { publicIPInfoFingerprint = fingerprint }
+        publicIPFingerprint = fingerprint
+        publicIPBaselineComplete = true
+        watching.log("baseline: complete fingerprint adopted, no lookup")
     }
 
     /// La réponse connue vient-elle de la connexion actuelle ? (Sinon le drapeau ne s'affiche pas, en attendant la nouvelle.)
-    var publicIPMatchesNetwork: Bool { publicIP != nil && publicIPInfoFingerprint == fingerprintNow() }
+    var publicIPMatchesNetwork: Bool { publicIP != nil && publicIPInfoFingerprint == fingerprintNow().text }
 
     /// Appelé quand l'utilisateur coupe l'option : on n'en garde aucune trace, même en mémoire.
     func forgetPublicIP() {
@@ -527,6 +558,8 @@ final class AppState: ObservableObject {
         publicIPState = .idle
         publicIPFingerprint = ""
         publicIPInfoFingerprint = ""
+        publicIPBaselineComplete = false
+        firstLookupWaitStart = nil
         lastPublicIPFailure = nil
         settler = FingerprintSettler()
         updateNetworkMonitor()                   // le réglage est coupé : le moniteur s'arrête tout de suite et ses attentes sont oubliées
