@@ -62,7 +62,7 @@ private struct WindowDragStrip: View {
             WindowDragRepresentable()
                 .frame(height: geometry.safeAreaInsets.top)
                 .frame(maxHeight: .infinity, alignment: .top)
-                .ignoresSafeArea()
+                .ignoresSafeArea(.container, edges: .top)       // bord haut seulement, comme `TitleBarBlur`
         }
         .accessibilityHidden(true)
     }

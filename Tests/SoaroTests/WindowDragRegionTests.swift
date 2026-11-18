@@ -132,6 +132,52 @@ import Testing
         }
     }
 
+    // MARK: Le flou de l'en-tête de la colonne de détail
+
+    private func allViews(_ root: NSView) -> [NSView] { [root] + root.subviews.flatMap(allViews) }
+
+    /// Le flou « dans la fenêtre » de `TitleBarBlur` (matériau d'en-tête).
+    private func headerBlur(_ window: NSWindow) throws -> NSVisualEffectView {
+        let root = try #require(window.contentView?.superview)
+        let blurs = allViews(root).compactMap { $0 as? NSVisualEffectView }.filter { $0.material == .headerView && $0.blendingMode == .withinWindow }
+        return try #require(blurs.first, "TitleBarBlur absent")
+    }
+
+    @Test(arguments: [false, true])
+    func theHeaderBlurCoversTheWholeTitleStripOfTheDetailColumn(dark: Bool) async throws {
+        guard NSScreen.main != nil else { return }
+        let window = try await makeWindow(dark: dark)
+        defer { window.orderOut(nil) }
+        let root = try #require(window.contentView?.superview)
+        let blur = try headerBlur(window)
+        let rect = blur.convert(blur.bounds, to: root)
+        let stripHeight = window.frame.height - window.contentLayoutRect.height     // barre de titre + barre d'outils
+        #expect(stripHeight > 0)
+        // En haut, sur toute la hauteur de la bande, sans trou, jusqu'au bord droit (côté barre de défilement).
+        #expect(abs(rect.maxY - root.bounds.height) < 0.5, "colle au haut de la fenêtre : \(rect)")
+        #expect(abs(rect.height - stripHeight) < 0.5, "hauteur \(rect.height), attendue \(stripHeight)")
+        #expect(abs(rect.maxX - root.bounds.width) < 0.5, "bord droit : \(rect)")
+        // À gauche, elle commence au bord de la barre latérale : elle ne passe pas dessous (le verre de la barre latérale
+        // y montrerait une bande d'une autre teinte) et ne laisse pas de trou à côté d'elle.
+        let sidebar = try #require(allViews(root).first { String(describing: type(of: $0)).contains("ItemViewWrapper") && $0.frame.width < root.bounds.width / 2 })
+        let sidebarEdge = sidebar.convert(sidebar.bounds, to: root).maxX
+        #expect(abs(rect.minX - sidebarEdge) < 0.5, "bord gauche \(rect.minX), bord de la barre latérale \(sidebarEdge)")
+    }
+
+    @Test(arguments: [false, true])
+    func theScrollContentStillExtendsUnderTheTitleStrip(dark: Bool) async throws {
+        guard NSScreen.main != nil else { return }
+        let window = try await makeWindow(dark: dark)
+        defer { window.orderOut(nil) }
+        let root = try #require(window.contentView?.superview)
+        let scrollViews = allViews(root).compactMap { $0 as? NSScrollView }.filter { $0.frame.width > root.bounds.width / 2 }
+        let scroll = try #require(scrollViews.first, "défilement du détail introuvable")
+        let rect = scroll.convert(scroll.bounds, to: root)
+        // Le contenu défile jusque sous la barre de titre (pas de bande vide ni de coupure franche) ; l'inset garde la première ligne lisible.
+        #expect(abs(rect.maxY - root.bounds.height) < 0.5, "le défilement part du haut de la fenêtre : \(rect)")
+        #expect(scroll.contentInsets.top > 0)
+    }
+
     // MARK: Le code
 
     @Test func theWholeWindowIsNotMovableByItsBackground() throws {

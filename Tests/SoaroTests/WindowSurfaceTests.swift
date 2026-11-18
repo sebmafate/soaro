@@ -64,6 +64,26 @@ import Testing
         }
     }
 
+    // MARK: Le fond opaque s'arrête sous la barre de titre
+
+    @Test func theOpaqueFillStopsAtTheTitleBar() throws {
+        // Sous la barre de titre et la barre d'outils, on voit le fond translucide de la fenêtre, cohérent avec la barre latérale :
+        // le fond opaque ne couvre que le contenu. Le texte reste lisible grâce à `TitleBarBlur` (flou « dans la fenêtre »).
+        let text = try source("Sources/Soaro/Views/GlassStyle.swift")
+        let start = try #require(text.range(of: "func windowMainAreaBackground()"))
+        let end = try #require(text.range(of: "/// Le message passager", range: start.upperBound..<text.endIndex))
+        let body = text[start.lowerBound..<end.lowerBound]
+        #expect(!body.contains("ignoresSafeArea"), "le fond de la zone principale ne doit pas monter sous la barre de titre")
+        #expect(body.contains("WindowSurface.mainAreaColor"))
+    }
+
+    @Test func theHeaderBlurStillCoversTheTitleStripOfTheDetailColumn() throws {
+        let text = try source("Sources/Soaro/Views/MainWindow.swift")
+        #expect(text.contains(".overlay(alignment: .top) { TitleBarBlur() }"))
+        #expect(text.contains("view.material = .headerView"))
+        #expect(text.contains("view.blendingMode = .withinWindow"))
+    }
+
     // MARK: Le panneau ne change pas
 
     @Test func theMenuBarPanelKeepsFlatCardsByDefault() {
