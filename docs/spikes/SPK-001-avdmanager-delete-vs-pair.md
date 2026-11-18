@@ -2,11 +2,11 @@
 
 | | |
 | --- | --- |
-| Status | running |
+| Status | done |
 | Date | 2026-11-18 |
 | Time box | 1 hour (agent run on the author's Mac; stop and record at the limit) |
 | Serves | R17, ADR 0009 (route by supported means), `ARCHITECTURE.md` risk 5, SL11 (direct route built), SL12b (open decision: direct deletion or `sdkmanager`) |
-| Verdict | (to fill when done) |
+| Verdict | **confirmed**: same result, `avdmanager delete avd` removes nothing more than the pair |
 
 ## Question
 
@@ -38,15 +38,41 @@ A throwaway shell script outside the repository (the scratchpad of the session),
 
 ## Result
 
-(to fill)
+Run on 2026-11-18 between 08:33 and 08:40 on the author's Mac, about 7 minutes of work plus 5 listings of about 50 s each. Throwaway script in the session scratchpad (not committed). Listings: 467 paths in the baseline `B0` (0 text references to the name).
+
+| Step | Observed |
+| --- | --- |
+| Create (`avdmanager create avd -n Soaro_Test_AVD -k system-images;android-34;default;arm64-v8a -d pixel`) | `Soaro_Test_AVD.ini` (134 bytes) and `Soaro_Test_AVD.avd` created, 4 entries at first |
+| Boot headless, port 5582 | `sys.boot_completed` after about 25 s (run 1) and 20 s (run 2); clean stop with `adb emu kill` in 6 s; quickboot snapshot `default_boot` saved |
+| State before removal, both runs | **Identical**: 506 paths, 6 text references; the `.avd` folder holds 36 paths (images and qcow2 overlays, `config.ini`, `hardware-qemu.ini`, `emulator-user.ini`, locks, `snapshots/default_boot/*`, `modem_simulator/*`) |
+| Only path outside the pair created by the boot | `~/.android/modem-nv-ram-5582`: named after the emulator port, not after the AVD, shared by every AVD started on that port; neither route removes it |
+| Text references to the name (outside the pair): | none besides the 6 inside the `.avd` folder and the `.ini` file |
+| **Route 1, `avdmanager delete avd -n Soaro_Test_AVD`** | "AVD 'Soaro_Test_AVD' deleted."; 38 paths gone (the whole `.avd` folder, 36 paths, and the `.ini`); state after = baseline + `modem-nv-ram-5582`; 0 text references |
+| **Route 2, `rm -rf` the `.avd` folder then `rm` the `.ini`** (the SL11 order) | state after = baseline + `modem-nv-ram-5582`; 0 text references |
+| Compare the two states after removal | **Identical** file lists and identical (empty) reference lists |
+
+Checks that the author's data was left alone: the six AVDs (`Pixel_9a`, `ap26`, `ap30`, `ap31`, `ap33`, `ap34`) are all still listed by `avdmanager list avd` afterwards and `ap34`, running on port 5554 throughout, was never stopped. After the spike, the spike's own `modem-nv-ram-5582` file was removed by hand (it was not in the baseline).
+
+Surprises and side findings:
+
+- A real emulator was already running on the author's Mac (`ap34`). Its process line, user name replaced by `test`: `/Users/test/Library/Android/sdk/emulator/qemu/darwin-aarch64/qemu-system-aarch64 -avd ap34 -port 5554 -no-snapshot -no-audio -no-boot-anim`. This is the real format the detection of risk 6 reads (`-avd <name>`); the spike did not test the detection itself.
+- The emulator boots from the command line in about 25 s on this Mac, which makes this kind of check cheap to repeat.
 
 ## Verdict
 
-(to fill)
+**Confirmed.** For a disposable AVD created with the command line and booted once (quickboot snapshot included), `avdmanager delete avd` removes exactly what the pair route removes: the `.avd` folder and the `.ini`. Nothing else is deleted or edited by name, and the two final states are identical. Risk 5 is closed for this case.
+
+What remains unknown (limits of the spike):
+
+- The comparison lists names and searches content for the AVD's name; a file that `avdmanager` edits **without naming the AVD** (for example a registry or cache of the tool) would not show. No such file was seen to appear or disappear, but modification dates and contents of unrelated files were not compared.
+- The AVD was created and booted from the command line, not from Android Studio, which might leave its own caches; Android Studio was not running and its folders showed no change.
+- An AVD located outside `~/.android/avd` (a `path=` elsewhere) was not tested; SL11 refuses those anyway.
+- Soaro's own removal code was not run (the pair route was done with `rm`): the SL11 checks of the author cover it, and whether the part of step 2 about Soaro's toast and `df -k ~` was done is the author's to say.
+- This is about AVDs only. It says nothing about the removal route of **system images** in SL12b (direct deletion or `sdkmanager`), which is a separate decision.
 
 ## Consequences
 
-- ADR: (to fill)
-- Architecture: risk 5 in `ARCHITECTURE.md` (to fill)
-- Spec or kill criteria: (to fill)
-- Plan: SL12b open decision, route (to fill)
+- ADR: none changes. ADR 0009's choice for AVD removal (plain deletion of the pair, the same result as the tool's own route) is confirmed by evidence.
+- Architecture: risk 5 in `ARCHITECTURE.md` moves from open to closed (2026-11-18), with a change-log row.
+- Spec or kill criteria: none touched (R17 holds).
+- Plan: SL12b loses its first gate (the SL11 checks and the risk 5 result); its decisions remain (route for system images, pre-selection, wrong "not used"). `STATUS.md` next action updated.
