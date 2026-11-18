@@ -23,6 +23,9 @@ on:
       - '.github/CODEOWNERS'
       - '.github/FUNDING.yml'
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: macos-26

@@ -79,9 +79,18 @@ rm -P ~/Desktop/soaro-developer-id.p12 /tmp/soaro-sparkle-key
 
 Keep the backup of the Sparkle key in your password manager (see [updates.md](updates.md#the-eddsa-keys)).
 
-### 6. Optional hardening
+### 6. Hardening
 
-Create a GitHub **Environment** named `release` (Settings, Environments), add a required reviewer, move the secrets into it, and add `environment: release` to the job. Every release then waits for your click. Fork pull requests never receive the secrets either way.
+**Done in the workflow (2026-11-18, after the first security review):**
+
+- **Only reviewed code gets the secrets.** The first step after the checkout, `Only build reviewed code`, fails the run before any secret is read when the tagged commit is not an ancestor of `origin/main`, and refuses a manual run that is not started from `main`.
+- **The write token is not left in the checkout.** `actions/checkout` runs with `persist-credentials: false`; the workflow is read-only by default and only this job has `contents: write`, which the last step (`gh release create`, with `GH_TOKEN`) uses. `ci.yml` is read-only too.
+- Not done on purpose: splitting the build and the publish into two jobs (the publish job could not be tested without publishing) and pinning the GitHub actions by commit (`@v4` is kept).
+
+**Still to do in GitHub, by the owner (settings, not code):** the two steps below. Without them a person or a stolen token with write access can still push a tag from `main`.
+
+1. **A protected Environment.** Create a GitHub **Environment** named `release` (Settings, Environments), add a required reviewer, move the secrets into it, and add `environment: release` to the job. Every release then waits for your click. Fork pull requests never receive the secrets either way.
+2. **A tag ruleset.** In Settings, Rules, Rulesets, add a **tag** ruleset for `v*`: restrict creations, updates and deletions to the repository admin (bypass list), and require signed commits. Then create release tags with `git tag -s vX.Y.Z` (today the tags are lightweight and unsigned). This is a repository setting that only the owner can change; nothing in the code applies it.
 
 ## Trial run (nothing is published)
 
@@ -135,6 +144,7 @@ A manual run never creates a release and never touches the website. A failure in
 
 | Symptom | Cause and fix |
 | --- | --- |
+| `Only build reviewed code` fails | The tag points to a commit that is not on `main` (merge the pull request first, then tag the merge commit), or a manual run was started from another branch (use `main`) |
 | Step 2: tag does not match `VERSION` | Fix `VERSION`, then move the tag: `git tag -d v1.1.0 && git push github :refs/tags/v1.1.0`, commit, tag again |
 | Step 3: no section `[1.1.0]` | Rename `Unreleased` in `CHANGELOG.md` (the heading must contain `[1.1.0]`) |
 | Step 5: no identity found | `MACOS_CERTIFICATE` was exported without its private key, or is not base64 of the `.p12`. Export it again |
