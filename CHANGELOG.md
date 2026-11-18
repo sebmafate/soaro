@@ -15,6 +15,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Window (experiment, to be confirmed): the main area now has an opaque background so the content is easier to read, while the sidebar stays translucent; the cards in the window use a soft flat fill instead of glass. The menu bar panel is unchanged.
 - In Settings, the colour thresholds (processor and GPU load, disk, battery) are set on one track with three draggable handles instead of three steppers, and in finer steps: 1 point instead of 5, with the thresholds allowed to sit 1 point apart. The coloured bands follow the handles as you drag, each handle shows its value on a label joined to it by a thin line, and a small mark shows the current value of that measure. Your saved thresholds are kept. Each handle can also be moved with the arrow keys (Shift for 5, Home and End for the limits) and with VoiceOver (increment and decrement). (SL17)
 
+### Changed
+
+- The battery in the menu bar is now an icon like the macOS one, followed by the percentage on the same line (the “BAT” label is gone): the fill follows the real level, a lightning bolt shows while the Mac is charging, and the fill turns orange, red or scarlet with your thresholds, like the percentage. The Battery card and the Battery tab show the same icon.
+
 ## [1.1.0] - 2026-11-18
 
 ### Added

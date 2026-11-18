@@ -104,10 +104,15 @@ enum MenuBarItem: Equatable {
     case pair(top: String, bottom: String)
     /// Drapeau du pays de l'IP publique (SL19), à droite du bloc réseau. Ne porte que le code : l'adresse IP n'arrive jamais ici.
     case flag(countryCode: String)
+    /// Batterie (SL21) : l'icône suivie du pourcentage, sur une seule ligne, sans libellé « BAT ».
+    /// `percent` est le pourcentage entier affiché (0…100) : la même valeur dessine le remplissage et écrit le texte.
+    case battery(percent: Int, charging: Bool, level: PressureLevel = .normal)
 
     var level: PressureLevel {
-        if case .stacked(_, _, let level) = self { return level }
-        return .normal
+        switch self {
+        case .stacked(_, _, let level), .battery(_, _, let level): level
+        case .pair, .flag: .normal
+        }
     }
 
     /// Mesures choisies dans les réglages, dans un ordre fixe.
@@ -126,10 +131,18 @@ enum MenuBarItem: Equatable {
             }
         }
         if battery, let b = s.battery {
-            items.append(.stacked(label: b.isCharging ? "BAT ⚡︎" : "BAT", value: Format.percent(b.percent / 100), level: .battery(b, thresholds: t.battery)))
+            items.append(.battery(percent: wholePercent(b.percent), charging: b.isCharging, level: .battery(b, thresholds: t.battery)))
         }
         return items
     }
+
+    /// Pourcentage entier, entre 0 et 100 : ce que montrent le texte et le remplissage de l'icône.
+    static func wholePercent(_ percent: Double) -> Int {
+        percent.isNaN ? 0 : Int(min(100, max(0, percent)).rounded())
+    }
+
+    /// Texte du pourcentage de la batterie.
+    static func batteryValue(_ percent: Int) -> String { Format.percent(Double(percent) / 100) }
 
     /// Une image « modèle » est monochrome : un drapeau en couleur doit donc passer par une image qui porte ses couleurs.
     var isFlag: Bool {
@@ -143,6 +156,7 @@ enum MenuBarItem: Equatable {
         for item in items {
             switch item {
             case .stacked(let label, let value, _): parts.append("\(label) \(value)")
+            case .battery(let percent, let charging, _): parts.append("\(charging ? "BAT ⚡︎" : "BAT") \(batteryValue(percent))")
             case .pair(let top, let bottom): parts.append("\(bottom) \(top)")
             case .flag(let code):
                 guard let flag = MenuBarFlag.emoji(forCountryCode: code) else { continue }
@@ -162,21 +176,24 @@ enum MenuBarRenderer {
         var compact: Bool
         var items: [MenuBarItem]
         var darkBar: Bool
+        var increasedContrast: Bool
     }
     private static var cache: (key: Key, image: NSImage)?
 
     /// Recalculée seulement si une valeur affichée change.
-    static func image(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool? = nil) -> NSImage? {
+    static func image(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool? = nil, increasedContrast: Bool? = nil) -> NSImage? {
         let darkBar = darkBar ?? isMenuBarDark
+        // Le trait de l'icône de batterie s'épaissit avec « Augmenter le contraste » : `ImageRenderer` ne voit pas ce réglage, on le lit ici.
+        let contrast = increasedContrast ?? NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         // Tant que tout est normal, image « modèle » : macOS la teinte lui-même (rendu le plus fidèle).
         // Dès qu'une valeur doit être colorée, l'image porte ses propres couleurs, dont le blanc/noir du reste.
         // Un drapeau (SL19) y oblige aussi : une image modèle est monochrome (seul son alpha compte), il deviendrait une silhouette.
         let colored = items.contains { $0.level > .normal || $0.isFlag }
-        let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar)
+        let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar, increasedContrast: contrast)
         if let cache, cache.key == key { return cache.image }
 
         let base: Color = colored ? (darkBar ? .white : .black) : .black
-        let renderer = ImageRenderer(content: MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base))
+        let renderer = ImageRenderer(content: MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast))
         renderer.scale = NSScreen.main?.backingScaleFactor ?? 2
         guard let image = renderer.nsImage else { return nil }
         image.isTemplate = !colored
@@ -295,6 +312,19 @@ struct MenuBarWidgetsView: View {
     let compact: Bool
     let items: [MenuBarItem]
     var baseColor: Color = .black
+    var increasedContrast = false
+
+    /// Icône de batterie du libellé : corps de 20 x 9,5 pt, plus le bout (SL21).
+    static let batteryBody = BatteryGlyphGeometry.menuBarBody
+    /// Espace entre l'icône et le pourcentage.
+    static let batterySpacing: CGFloat = 3
+    /// Largeur mini du pourcentage : 40 pt, ce qu'il faut à « 100 % » (avec l'espace insécable des langues qui en mettent une) en
+    /// 12 pt demi-gras à chiffres de même chasse (mesuré : 39 pt ; « 100% » sans espace : 36 pt).
+    static let batteryValueMinWidth: CGFloat = 40
+    /// Largeur mini de tout l'élément (icône + espace + pourcentage), en style compact : « 9% » et « 100% » ne décalent pas les voisins.
+    static var batteryMinWidth: CGFloat {
+        BatteryGlyphGeometry(body: batteryBody).totalSize.width + batterySpacing + batteryValueMinWidth
+    }
 
     var body: some View {
         HStack(spacing: compact ? 9 : 6) {
@@ -314,6 +344,8 @@ struct MenuBarWidgetsView: View {
                             valueText(value, level: level, size: 13)
                         }
                     }
+                case .battery(let percent, let charging, let level):
+                    batteryItem(percent: percent, charging: charging, level: level)
                 case .flag(let code):
                     if let flag = MenuBarFlag.emoji(forCountryCode: code) {
                         // Émoji en couleur : il ignore la couleur du texte. Aucune largeur ni hauteur imposée aux autres blocs.
@@ -336,6 +368,20 @@ struct MenuBarWidgetsView: View {
         .foregroundStyle(baseColor)
         .frame(height: 22)
         .fixedSize()
+    }
+
+    /// L'icône à gauche du pourcentage, sur une ligne centrée dans les 22 pt. Le texte suit les mêmes règles de couleur qu'avant.
+    @ViewBuilder private func batteryItem(percent: Int, charging: Bool, level: PressureLevel) -> some View {
+        let icon = BatteryGlyph(percent: Double(percent), charging: charging, level: level, base: baseColor, body: Self.batteryBody, increasedContrast: increasedContrast)
+        let value = valueText(MenuBarItem.batteryValue(percent), level: level, size: compact ? 12 : 13)
+        if compact {
+            HStack(spacing: Self.batterySpacing) {
+                icon
+                value.frame(minWidth: Self.batteryValueMinWidth, alignment: .leading)
+            }
+        } else {
+            HStack(spacing: Self.batterySpacing) { icon; value }
+        }
     }
 
     /// Orange puis rouge colorent le texte. Le niveau critique passe en pastille écarlate : sur une barre de menus,
@@ -402,6 +448,13 @@ enum MenuBarTooltip {
             lines.append(String(localized: "Colored values:"))
             lines.append(contentsOf: colored.map { "• \($0)" })
         }
+        // La charge de la batterie (l'icône dessine un éclair, l'infobulle le dit avec des mots).
+        if let charging = items.compactMap({ item -> String? in
+            if case .battery(let percent, true, _) = item { "\(String(localized: "Battery")): \(MenuBarItem.batteryValue(percent)) · \(String(localized: "Charging"))" } else { nil }
+        }).first {
+            lines.append("")
+            lines.append(charging)
+        }
         // Le pays de l'IP publique (jamais l'adresse elle-même) quand le drapeau est affiché.
         if let code = items.compactMap({ item -> String? in if case .flag(let code) = item { code } else { nil } }).first {
             lines.append("")
@@ -418,14 +471,17 @@ enum MenuBarTooltip {
     /// Une phrase par valeur colorée, avec la vraie raison (pas seulement le pourcentage).
     static func explanations(for items: [MenuBarItem], snapshot s: SystemSnapshot) -> [String] {
         items.compactMap { item in
-            guard case .stacked(let label, let value, let level) = item, level > .normal else { return nil }
-            let suffix = String(localized: "(level: \(level.label))")
+            guard item.level > .normal else { return nil }
+            let suffix = String(localized: "(level: \(item.level.label))")
+            if case .battery(let percent, _, _) = item {
+                return String(localized: "Battery at \(MenuBarItem.batteryValue(percent)), not plugged in \(suffix)")
+            }
+            guard case .stacked(let label, let value, _) = item else { return nil }
             switch label.prefix(3) {
             case "CPU": return String(localized: "Processor at \(value) \(suffix)")
             case "GPU": return String(localized: "Graphics processor at \(value) \(suffix)")
             case "RAM": return String(localized: "Memory: \(s.memory.pressure.label.lowercased()) pressure, swap \(Format.bytes(s.memory.swapUsed)) \(suffix)")
             case "SSD": return String(localized: "Disk \(value) full, \(Format.fileBytes(s.disk.available)) free \(suffix)")
-            case "BAT": return String(localized: "Battery at \(value), not plugged in \(suffix)")
             default: return "\(label) \(value) \(suffix)"
             }
         }
