@@ -14,7 +14,7 @@ Soaro is a small, native macOS menu bar app (Swift, Apple silicon, macOS 14+) th
 | `docs/architecture.md` | File-by-file reference, CLI modes, macOS permissions, previous names | Detailed reference; `ARCHITECTURE.md` is the design view |
 | `docs/adr/` | One decision per file | Never edit an accepted ADR; supersede it |
 | `TESTING.md` | Test levels, baseline, definition of done | Follow it for every change |
-| `PLAN.md` | Slices (SL1 to SL14, SP1) of the developer cleanup, in execution order; days spent against the 14-day time box | Written 2026-11-15. SL1 to SL13 (with SL10b, SL15, SL16 and the spike SP1) are done and merged (2026-11-16 to 2026-11-18); SL12b is blocked on the author; SL14 (release 1.1.0) is prepared and waits for the tag |
+| `PLAN.md` | Slices (SL1 to SL14, SP1) of the developer cleanup, in execution order; days spent against the 14-day time box | Written 2026-11-15. SL1 to SL13 (with SL10b, SL15, SL16 and the spike SP1) are done and merged (2026-11-16 to 2026-11-18); SL12b is blocked on the author; SL14 (release 1.1.0) is done: published on 2026-11-18 |
 | `docs/spikes/` | One spike per file (SPK-001 Android `avdmanager`, SPK-002 Docker Test B): question, criteria written before running, result, verdict | Spikes are throwaway experiments; never edit a finished one, supersede it |
 | `STATUS.md` | Current phase, next action | Keep current after each change |
 | `CHANGELOG.md` | User-facing changes (Keep a Changelog) | One entry per release; the release notes are read from it |
