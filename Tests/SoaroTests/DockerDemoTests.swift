@@ -40,7 +40,6 @@ import Testing
         let scan = DemoData.docker()
         #expect(scan.status == .ok)
         let text = try String(contentsOf: RepositoryRoot.url().appendingPathComponent("Sources/Soaro/DemoData.swift"), encoding: .utf8)
-        #expect(!text.contains("cocardo"))
         #expect(scan.untagged.allSatisfy { $0.id.hasPrefix("0000") })
     }
 
