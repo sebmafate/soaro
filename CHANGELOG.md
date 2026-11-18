@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- A button in the toolbar of the window (the sidebar icon, with a tooltip and a VoiceOver label “Toggle Sidebar”) collapses and reopens the sidebar. The sidebar is open each time the window opens (SL20).
+
 ## [1.1.0] - 2026-11-18
 
 ### Added

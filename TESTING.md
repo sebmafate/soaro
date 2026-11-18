@@ -60,6 +60,7 @@ Levels left out, and why: property-based (no function whose input space needs it
 | App uninstaller, login items | core | Unit | `AppUninstallerTests`, `StartupItemsTests` | yes |
 | "Open at login" switch (Settings), inert in demo mode | core | Unit, manual | `LaunchAtLoginDemoTests` (SL15): in demo mode no registration, no unregistration and no status read; outside demo mode the real action is called once. Manual: with `SOARO_DEMO=1`, System Settings > General > Login Items shows no change | unit part yes; manual pending the author |
 | Menu bar label, thresholds, tooltips | core | Unit | `MenuBarItemTests`, `PressureLevelTests`, `AdjustableThresholdTests`, `MenuBarTooltipTests` | yes |
+| Sidebar toggle in the window toolbar (SL20) | secondary | Unit, real window offscreen, source, manual | `SidebarToggleTests` (toggle computation, Reduce Motion, no keyboard shortcut, nine languages), `SidebarToggleWindowTests` (one toggle and the pin button in the toolbar, tooltip and label, a sent click collapses and reopens, the pin button works while collapsed); the real mouse, the animation and VoiceOver are manual | yes, except the real click, the animation and VoiceOver |
 | Window and panel visibility | secondary | Unit | `VisibilityTests` | yes |
 | Formatting and locales | secondary | Unit | `RateFormatTests`, `MachineInfoTests` | yes |
 | Migration from old names | secondary | Unit | `LegacyMigrationTests` | yes |

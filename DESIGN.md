@@ -322,6 +322,10 @@ Rules (decided 2026-11-15): essential information is text-primary; supporting te
 
 Every screen of Part 1 uses only these. There is no custom component. The extensions (unavailable row, busy bar, the header with its "Select all" checkbox) are small variants of existing components; `SelectAllCheckbox` is a plain button with the same glyph family and the same 24 x 24 pt target as the row check.
 
+### Window toolbar (SL20)
+
+The standalone window has two toolbar items, both in the detail column: the **sidebar toggle** (`sidebar.left`, `.navigation` placement, so it sits at the start of the toolbar, at the edge of the detail column; tooltip and VoiceOver label "Toggle Sidebar") and the **pin** ("Always on top", at the end). The system adds no sidebar button of its own to this hand-made window (checked), so there is exactly one. The toggle collapses the sidebar to the detail column and reopens it; collapsed, it moves to just right of the traffic lights and stays in the toolbar. The sidebar is open each time the window opens (nothing is remembered). The animation is the system default, or none when Reduce Motion is on. There is no keyboard shortcut (the R8 guard forbids one in views, and the app has no menu bar menu to hold the standard Control-Command-S). With the sidebar collapsed there is no navigation in the detail column: the title shows the current section, and reopening the sidebar is how to change section.
+
 ## Accessibility rules
 
 - **Target size:** at least 24 x 24 pt for every control (WCAG 2.2, criterion 2.5.8). Checked on 2026-11-15: the Apple HIG gives no minimum for macOS controls (its general 44 x 44 pt rule is for touch), so WCAG 2.2 is the project's rule. The selection check, about 22 pt today, grows to 24 pt in the shared `SelectionRow`.
@@ -376,3 +380,4 @@ Every screen of Part 1 uses only these. There is no custom component. The extens
 | 2026-11-17 | SL12a: S2b as built, read-only (section order, row text, the three usage lines, the footer, the failed state, no checkbox and no Select all, no Delete bar on an images-only screen, demo, six new keys). Removal and the download-again warning stay in SL12b. Factual notes, no decision changed |
 | 2026-11-17 | SL12a review round: in demo, who uses each demo image is recomputed after a demo deletion; the `--scan` note wording changed (no UI text change). Factual notes, no decision changed |
 | 2026-11-17 | SL10b: S2 as built, the Android pre-selection is on (inactive for more than the limit, never a running device, never an unknown date); the last-used date is the newest of four emulator files (not `userdata-qemu.img` alone: withdrawn after a real AVD showed the raw file 56 days old and the overlay 3); the banner counts Android again; the demo AVD inactive for 70 days is pre-selected. No UI string changed. No decision changed (the author settled the signal) | SL10b brief |
+| 2026-11-18 | SL20: the window toolbar section (sidebar toggle and pin, no keyboard shortcut, nothing remembered). Factual addition, no decision changed |
