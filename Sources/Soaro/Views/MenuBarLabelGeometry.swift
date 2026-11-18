@@ -16,6 +16,15 @@ enum PixelGrid {
         return max(2, 2 * Int((exact / 2).rounded(.toNearestOrAwayFromZero)))
     }
 
+    /// Le nombre de pixels le plus proche DE LA PARITÉ DEMANDÉE (0 : pair, 1 : impair), jamais moins que 2 (pair) ou 1 (impair) (SL24). Une forme centrée
+    /// dans un corps de N pixels tombe sur des pixels entiers seulement si sa taille a la parité de N : les corps de la carte (13 pt) et de l'onglet
+    /// (15 pt) font un nombre impair de pixels en 1x. Pour la parité 0, c'est `evenPx`.
+    static func px(_ points: CGFloat, scale: Int, parity: Int) -> Int {
+        let p = parity & 1
+        let n = 2 * Int(((points * CGFloat(scale) - CGFloat(p)) / 2).rounded(.toNearestOrAwayFromZero)) + p
+        return max(n, p == 0 ? 2 : 1)
+    }
+
     /// Le même nombre, ramené sur la grille : des points qui valent un nombre entier de pixels.
     static func snap(_ points: CGFloat, scale: Int) -> CGFloat {
         CGFloat(px(points, scale: scale)) / CGFloat(scale)
@@ -37,13 +46,31 @@ struct PixelRect: Equatable {
     func inset(_ d: Int) -> PixelRect { PixelRect(x: x + d, y: y + d, width: width - 2 * d, height: height - 2 * d) }
 }
 
-/// L'icône de batterie du libellé, en pixels entiers pour une échelle (SL21, SL23). Le corps fait 20 x 10 pt à toutes les échelles
-/// (10 x 20 pixels en 1x : 9,5 pt avant SL23, qui ne tombait sur aucun pixel entier) ; la carte et l'onglet gardent `BatteryGlyphGeometry`.
+/// L'icône de batterie en pixels entiers pour une échelle (SL21, SL23, SL24). UNE géométrie pour le libellé de la barre de menus (corps de
+/// 20 x 10 pt), la carte de l'aperçu (28 x 13 pt) et l'en-tête de l'onglet Batterie (32 x 15 pt) : tout est calculé à partir du corps en points
+/// et de l'échelle, chaque coordonnée est un entier de pixels. Les règles (trait, jeu, repère, halo) sont celles de `BatteryGlyphGeometry` en points.
 /// Repère : l'origine est le coin haut gauche du corps ; le repère (éclair, prise) peut dépasser en haut et en bas de `verticalOverflow`.
 struct BatteryPixelGeometry: Equatable {
+    /// Le corps de la barre de menus, en points, et son bout (1,6 pt : 2 px en 1x, 3 px en 2x).
     static let bodyPoints = CGSize(width: 20, height: 10)
+    static let menuBarNubPoints: CGFloat = 1.6
     /// Épaisseur du contour en points : 1,2 (1 px en 1x, 2 px en 2x), et 1,5 avec « Augmenter le contraste » (2 px en 1x).
     static func linePoints(increasedContrast: Bool) -> CGFloat { increasedContrast ? 1.5 : 1.2 }
+
+    /// Le bout de la carte et de l'onglet : 17 % de la hauteur du corps comme avant SL24, arrondi au point entier (2 pt pour la carte, 3 pt pour l'onglet)
+    /// pour que l'image ait la même taille en points à toutes les échelles.
+    static func nubPoints(forBody body: CGSize) -> CGFloat { max(2, (body.height * 0.17).rounded()) }
+
+    /// Marge, en points entiers, au-dessus et au-dessous du corps dans l'image : de quoi laisser dépasser le repère à toutes les échelles.
+    static func overflowPoints(bodyPoints body: CGSize) -> CGFloat { ((BatteryGlyphGeometry.markScale - 1) * body.height / 2).rounded(.up) }
+
+    /// L'origine du corps dans l'image, en points.
+    static func bodyOriginPoints(bodyPoints body: CGSize) -> CGPoint { CGPoint(x: 0, y: overflowPoints(bodyPoints: body)) }
+
+    /// La taille en points de l'image qui porte l'icône : le corps, le bout (arrondi au point au-dessus) et la marge du repère en haut et en bas.
+    static func imageSizePoints(bodyPoints body: CGSize, nubPoints nub: CGFloat) -> CGSize {
+        CGSize(width: body.width + nub.rounded(.up), height: body.height + 2 * overflowPoints(bodyPoints: body))
+    }
 
     let scale: Int
     let body: PixelRect
@@ -54,20 +81,31 @@ struct BatteryPixelGeometry: Equatable {
     let markHeight: Int
     let haloWidth: Int
 
+    /// La barre de menus : corps de 20 x 10 pt.
     init(scale: Int, increasedContrast: Bool = false) {
+        self.init(bodyPoints: Self.bodyPoints, nubPoints: Self.menuBarNubPoints, scale: scale, increasedContrast: increasedContrast)
+    }
+
+    /// `bodyPoints` : le corps sans le bout, en points ENTIERS ; `nubPoints` : la largeur du bout.
+    init(bodyPoints: CGSize, nubPoints: CGFloat, scale: Int, increasedContrast: Bool = false) {
         let s = max(1, scale)
         self.scale = s
-        body = PixelRect(x: 0, y: 0, width: Int(Self.bodyPoints.width) * s, height: Int(Self.bodyPoints.height) * s)
+        body = PixelRect(x: 0, y: 0, width: PixelGrid.px(bodyPoints.width, scale: s), height: PixelGrid.px(bodyPoints.height, scale: s))
         lineWidth = max(1, PixelGrid.px(Self.linePoints(increasedContrast: increasedContrast), scale: s))
         gap = max(1, PixelGrid.px(BatteryGlyphGeometry.gap, scale: s))
-        cornerRadius = CGFloat(PixelGrid.px(Self.bodyPoints.height * 0.3, scale: s))
-        // Le bout : 1,6 pt de large, 4,2 pt de haut (hauteur paire, pour se centrer sur des pixels entiers dans le corps).
-        let nubHeight = PixelGrid.evenPx(Self.bodyPoints.height * 0.42, scale: s)
-        let nubWidth = max(1, PixelGrid.px(1.6, scale: s))
+        cornerRadius = CGFloat(PixelGrid.px(bodyPoints.height * 0.3, scale: s))
+        // Le bout : 42 % de la hauteur du corps, de la parité du corps (pour se centrer sur des pixels entiers : un corps de 13 pt fait 13 px en 1x).
+        let heightParity = body.height % 2, widthParity = body.width % 2
+        let nubHeight = PixelGrid.px(bodyPoints.height * 0.42, scale: s, parity: heightParity)
+        let nubWidth = max(1, PixelGrid.px(nubPoints, scale: s))
         nub = PixelRect(x: body.width, y: (body.height - nubHeight) / 2, width: nubWidth, height: nubHeight)
-        markHeight = PixelGrid.evenPx(Self.bodyPoints.height * BatteryGlyphGeometry.markScale, scale: s)
+        markHeight = PixelGrid.px(bodyPoints.height * BatteryGlyphGeometry.markScale, scale: s, parity: heightParity)
         haloWidth = max(1, PixelGrid.px(BatteryGlyphGeometry.haloWidth, scale: s))
+        markWidthParity = widthParity
     }
+
+    /// Parité de la largeur du corps : les repères la prennent pour rester centrés sur des pixels entiers.
+    private let markWidthParity: Int
 
     var total: CGSize { CGSize(width: body.width + nub.width, height: body.height) }
     /// Le repère dépasse du corps de cette hauteur, en haut comme en bas.
@@ -88,15 +126,15 @@ struct BatteryPixelGeometry: Equatable {
         PixelRect(x: inner.x, y: inner.y, width: fillWidth(percent: percent), height: inner.height)
     }
 
-    /// L'éclair : sa boîte, 0,55 de sa hauteur de large (largeur paire), centrée sur le corps.
+    /// L'éclair : sa boîte, 0,55 de sa hauteur de large (largeur de la parité du corps), centrée sur le corps.
     var boltRect: PixelRect {
-        let w = PixelGrid.evenPx(CGFloat(markHeight) / CGFloat(scale) * BatteryGlyphGeometry.boltAspect, scale: scale)
+        let w = PixelGrid.px(CGFloat(markHeight) / CGFloat(scale) * BatteryGlyphGeometry.boltAspect, scale: scale, parity: markWidthParity)
         return PixelRect(x: (body.width - w) / 2, y: (body.height - markHeight) / 2, width: w, height: markHeight)
     }
 
-    /// La prise : 0,72 de sa hauteur de large (largeur paire), centrée sur le corps.
+    /// La prise : 0,72 de sa hauteur de large (largeur de la parité du corps), centrée sur le corps.
     var plugRect: PixelRect {
-        let w = PixelGrid.evenPx(CGFloat(markHeight) / CGFloat(scale) * BatteryGlyphGeometry.plugAspect, scale: scale)
+        let w = PixelGrid.px(CGFloat(markHeight) / CGFloat(scale) * BatteryGlyphGeometry.plugAspect, scale: scale, parity: markWidthParity)
         return PixelRect(x: (body.width - w) / 2, y: (body.height - markHeight) / 2, width: w, height: markHeight)
     }
 
