@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- The memory bar in the Performance tab is now split into coloured segments by kind of use (apps, system, compressed, and the reclaimable cache as an outlined part); each row below has a matching coloured dot, and a dot before the percentage shows when memory pressure is above normal. (SL26)
+
 ## [1.1.0] - 2026-11-18
 
 ### Added
