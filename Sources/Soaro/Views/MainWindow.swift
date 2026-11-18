@@ -154,6 +154,7 @@ struct MainWindowView: View {
         } detail: {
             clearContainer(detail)
                 .scrollContentBackground(.hidden)
+                .windowMainAreaBackground()       // expérience 1.2.0 : zone principale opaque (interrupteur : `WindowSurface`)
                 .navigationTitle(selection?.title ?? "Soaro")
                 .overlay(alignment: .top) { TitleBarBlur() }
                 .overlay(alignment: .bottom) { toast }
@@ -167,7 +168,7 @@ struct MainWindowView: View {
                     }
                 }
         }
-        .environment(\.glassSurface, true)
+        .environment(\.glassSurface, WindowSurface.cardsAreGlass)
         .background(WindowGlassBackground().ignoresSafeArea())
         .onChange(of: pinned, initial: true) { _, new in MainWindowController.shared.applyPinned(new) }
         .background(WindowVisibilityReader { visible in
@@ -239,6 +240,7 @@ struct MainWindowView: View {
             Text(toast)
                 .font(.callout)
                 .padding(.horizontal, 14).padding(.vertical, 8)
+                .windowToastBase()
                 .cardBackground()
                 .padding(.bottom, 14)
                 .toastTransition(reduceMotion: reduceMotion)
