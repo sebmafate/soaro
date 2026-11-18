@@ -13,10 +13,13 @@ enum SettingsKey {
     static let publicIP = "publicIPEnabled"
     static let menuBarDisk = "menuBarDisk"
     static let menuBarCompact = "menuBarCompact"
+    /// L'ordre des mesures dans la barre de menus (SL22) : « cpu,gpu,memory,disk,network,battery », voir `MenuBarOrder`.
+    static let menuBarOrder = "menuBarOrder"
 
     static let defaults: [String: Any] = [
         notifications: true, menuBarCPU: true, menuBarMemory: false, menuBarGPU: false,
         menuBarBattery: false, menuBarNetwork: false, latency: false, publicIP: false, menuBarDisk: false, menuBarCompact: true,
+        menuBarOrder: MenuBarOrder.defaultSerialized,
     ]
 }
 

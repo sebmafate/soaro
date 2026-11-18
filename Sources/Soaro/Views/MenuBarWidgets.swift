@@ -115,25 +115,54 @@ enum MenuBarItem: Equatable {
         }
     }
 
-    /// Mesures choisies dans les réglages, dans un ordre fixe.
+    /// Mesures choisies dans les réglages, dans l'ordre voulu (SL22 ; sans `order`, l'ordre fixe de toujours).
+    /// Une mesure cachée ou non disponible est sautée. Le drapeau suit toujours le bloc réseau, où qu'il soit.
     static func items(for s: SystemSnapshot, cpu: Bool, gpu: Bool, memory: Bool, disk: Bool, network: Bool, battery: Bool,
-                      thresholds t: PressureThresholds = .default, publicIPCountryCode: String? = nil) -> [MenuBarItem] {
+                      thresholds t: PressureThresholds = .default, publicIPCountryCode: String? = nil,
+                      order: MenuBarOrder = .default) -> [MenuBarItem] {
         var items: [MenuBarItem] = []
-        if cpu { items.append(.stacked(label: "CPU", value: Format.percent(s.cpu.total), level: .load(s.cpu.total, thresholds: t.load))) }
-        if gpu, let g = s.gpu { items.append(.stacked(label: "GPU", value: Format.percent(g.utilization), level: .load(g.utilization, thresholds: t.load))) }
-        if memory { items.append(.stacked(label: "RAM", value: Format.percent(s.memory.usedFraction), level: .memory(s.memory))) }
-        if disk { items.append(.stacked(label: "SSD", value: Format.percent(s.disk.usedFraction), level: .disk(s.disk.usedFraction, thresholds: t.disk))) }
-        if network, let n = s.network {
-            items.append(.pair(top: "↑ " + Format.menuBarRate(n.upRate), bottom: "↓ " + Format.menuBarRate(n.downRate)))
-            // Seulement avec le bloc réseau, et seulement si la police d'émojis a un drapeau pour ce code.
-            if let code = publicIPCountryCode?.uppercased(), MenuBarFlag.emoji(forCountryCode: code) != nil {
-                items.append(.flag(countryCode: code))
+        for measure in order.measures {
+            switch measure {
+            case .cpu:
+                if cpu { items.append(.stacked(label: "CPU", value: Format.percent(s.cpu.total), level: .load(s.cpu.total, thresholds: t.load))) }
+            case .gpu:
+                if gpu, let g = s.gpu { items.append(.stacked(label: "GPU", value: Format.percent(g.utilization), level: .load(g.utilization, thresholds: t.load))) }
+            case .memory:
+                if memory { items.append(.stacked(label: "RAM", value: Format.percent(s.memory.usedFraction), level: .memory(s.memory))) }
+            case .disk:
+                if disk { items.append(.stacked(label: "SSD", value: Format.percent(s.disk.usedFraction), level: .disk(s.disk.usedFraction, thresholds: t.disk))) }
+            case .network:
+                if network, let n = s.network {
+                    items.append(.pair(top: "↑ " + Format.menuBarRate(n.upRate), bottom: "↓ " + Format.menuBarRate(n.downRate)))
+                    // Seulement avec le bloc réseau, et seulement si la police d'émojis a un drapeau pour ce code.
+                    if let code = publicIPCountryCode?.uppercased(), MenuBarFlag.emoji(forCountryCode: code) != nil {
+                        items.append(.flag(countryCode: code))
+                    }
+                }
+            case .battery:
+                if battery, let b = s.battery {
+                    items.append(.battery(percent: wholePercent(b.percent), power: b.powerState, level: .battery(b, thresholds: t.battery)))
+                }
             }
         }
-        if battery, let b = s.battery {
-            items.append(.battery(percent: wholePercent(b.percent), power: b.powerState, level: .battery(b, thresholds: t.battery)))
-        }
         return items
+    }
+
+    /// La mesure que montre cet élément (`nil` pour le drapeau, qui n'est pas une mesure).
+    var measure: MenuBarMeasure? {
+        switch self {
+        case .stacked(let label, _, _):
+            switch label {
+            case "CPU": .cpu
+            case "GPU": .gpu
+            case "RAM": .memory
+            case "SSD": .disk
+            default: nil
+            }
+        case .pair: .network
+        case .battery: .battery
+        case .flag: nil
+        }
     }
 
     /// Pourcentage entier, entre 0 et 100 : ce que montrent le texte et le remplissage de l'icône.

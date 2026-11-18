@@ -66,6 +66,8 @@ struct MenuBarLabel: View {
     @AppStorage(SettingsKey.menuBarBattery) private var showBattery = false
     @AppStorage(SettingsKey.menuBarNetwork) private var showNetwork = false
     @AppStorage(SettingsKey.menuBarCompact) private var compact = true
+    /// L'ordre des mesures (SL22) : relit la préférence comme les interrupteurs ; une valeur abîmée donne l'ordre de toujours.
+    @AppStorage(SettingsKey.menuBarOrder) private var orderSetting = MenuBarOrder.defaultSerialized
     /// Le réglage facultatif qui existe déjà : le drapeau ne lit que son résultat, il ne demande rien.
     @AppStorage(SettingsKey.publicIP) private var publicIPLookup = false
 
@@ -74,7 +76,8 @@ struct MenuBarLabel: View {
         let flagCode = MenuBarFlag.countryCode(lookupEnabled: publicIPLookup, demo: DemoMode.isEnabled, info: state.publicIP,
                                                matchesNetwork: state.publicIPMatchesNetwork, now: Date())
         return MenuBarItem.items(for: s, cpu: showCPU, gpu: showGPU, memory: showMemory, disk: showDisk, network: showNetwork, battery: showBattery,
-                                  thresholds: .load(), publicIPCountryCode: flagCode)
+                                  thresholds: .load(), publicIPCountryCode: flagCode,
+                                  order: MenuBarOrder(parsing: orderSetting))
     }
 
     var body: some View {
