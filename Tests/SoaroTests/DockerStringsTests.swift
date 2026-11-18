@@ -5,7 +5,7 @@ import Testing
 /// SL13 T8 (R12) : les textes de l'outil Docker sont dans le catalogue, dans les neuf langues (l'anglais est la clé), avec les mêmes marqueurs
 /// de format. Les nouvelles traductions sont écrites avec l'aide d'une IA : à relire par l'auteur.
 @Suite struct DockerStringsTests {
-    /// Les clés NOUVELLES de SL13 (« Clean », « Scan again », « Nothing selected », « Selected: %lld · %@ » et « Measuring… » existent déjà).
+    /// Les clés NOUVELLES de SL13 et SL16 (« Clean », « Scan again », « Nothing selected », « Selected: %lld · %@ » et « Measuring… » existent déjà).
     static let newKeys = [
         "Docker",
         "Build cache and untagged images",
@@ -41,6 +41,9 @@ import Testing
         "Docker reported %@. The space returned to this Mac could not be measured.",
         "The space returned to this Mac could not be measured.",
         "Cleanups that failed: %lld",
+        // SL16
+        "Soaro only cleans Docker on this Mac. The selected Docker engine or builder is not local.",
+        "Docker engine: %@ (%@)",
     ]
 
     static func catalogStrings() throws -> [String: Any] {

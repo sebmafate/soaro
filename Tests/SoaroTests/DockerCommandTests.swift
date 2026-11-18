@@ -51,16 +51,39 @@ import Testing
         #expect(ToolLocator.firstExecutable(in: ["docker"]) == nil)
     }
 
-    // MARK: Liste blanche (trois familles, quatre commandes)
+    // MARK: Liste blanche (quatre familles, six commandes)
 
-    @Test func theAllowlistIsExactlyTheFourCommands() {
+    @Test func theAllowlistIsExactlyTheSixCommands() {
         #expect(DockerCommand.allCases.map(\.arguments) == [
             ["system", "df", "--format", "{{json .}}"],
             ["images", "-f", "dangling=true", "--format", "{{json .}}"],
             ["builder", "prune", "-a", "-f"],
             ["image", "prune", "-f"],
+            // SL16 : les deux lectures qui disent OÙ le nettoyage tournera.
+            ["context", "inspect"],
+            ["buildx", "inspect"],
         ])
-        #expect(DockerCommand.allCases.count == 4)
+        #expect(DockerCommand.allCases.count == 6)
+    }
+
+    @Test func theTwoMeasuredPrunesAreUnchanged() {
+        // SPK-002 a mesuré exactement ces deux commandes : SL16 n'y touche pas.
+        #expect(DockerCommand.pruneBuildCache.arguments == ["builder", "prune", "-a", "-f"])
+        #expect(DockerCommand.pruneUntaggedImages.arguments == ["image", "prune", "-f"])
+    }
+
+    @Test func theEngineReadsAreReadOnlyShortAndBounded() {
+        for command in [DockerCommand.currentContext, .currentBuilder] {
+            #expect(!command.isDestructive)
+            #expect(command.timeLimit == 30)
+            #expect(command.outputLimit == 1024 * 1024)
+        }
+        #expect(DockerCommand.allCases.filter(\.isDestructive) == [.pruneBuildCache, .pruneUntaggedImages])
+    }
+
+    /// SL16 : l'environnement donné à `docker` ne contient jamais ce qui désigne un autre moteur ou un autre constructeur.
+    @Test func theEnvironmentNamesRemovedFromEveryDockerCallAreTheFiveThatSelectAnEngineOrABuilder() {
+        #expect(DockerCommand.removedEnvironment == ["DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY", "BUILDX_BUILDER"])
     }
 
     @Test func onlyThePrunesAreDestructive() {
@@ -70,7 +93,7 @@ import Testing
         #expect(DockerCommand.pruneUntaggedImages.isDestructive)
     }
 
-    @Test func isAllowedAcceptsTheFourAndNothingElse() {
+    @Test func isAllowedAcceptsTheSixAndNothingElse() {
         for command in DockerCommand.allCases { #expect(DockerCommand.isAllowed(command.arguments)) }
         let refused: [[String]] = [
             [],
@@ -88,6 +111,15 @@ import Testing
             ["system", "df"],
             ["rm", "x"], ["rmi", "x"], ["run", "x"], ["ps"], ["network", "prune", "-f"],
             ["run", "--privileged", "docker/desktop-reclaim-space"],
+            // SL16 : lire est permis dans EXACTEMENT ces deux formes ; changer le contexte ou le constructeur ne l'est jamais.
+            ["context"], ["context", "ls"], ["context", "show"], ["context", "inspect", "desktop-linux"], ["context", "inspect", "default"],
+            ["context", "use", "desktop-linux"], ["context", "use", "default"], ["context", "create", "x"], ["context", "rm", "x"],
+            ["context", "update", "x"], ["context", "export", "x"], ["context", "import", "x"],
+            ["buildx"], ["buildx", "ls"], ["buildx", "ls", "--format", "json"], ["buildx", "inspect", "--bootstrap"], ["buildx", "inspect", "other"],
+            ["buildx", "use", "default"], ["buildx", "create"], ["buildx", "create", "--use"], ["buildx", "rm", "x"], ["buildx", "prune"],
+            ["buildx", "prune", "-a", "-f"], ["buildx", "build", "."], ["buildx", "stop"], ["buildx", "du"],
+            ["--context", "x", "system", "df", "--format", "{{json .}}"], ["-H", "tcp://x", "system", "df", "--format", "{{json .}}"],
+            ["--host", "ssh://x", "builder", "prune", "-a", "-f"], ["--builder", "x", "builder", "prune", "-a", "-f"],
         ]
         for arguments in refused { #expect(!DockerCommand.isAllowed(arguments), "\(arguments)") }
     }

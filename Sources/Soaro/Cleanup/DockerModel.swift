@@ -21,6 +21,8 @@ final class DockerModel: ObservableObject {
         case notAnswering
         /// Outil impossible à lancer, ou sortie illisible : un seul message neutre.
         case couldNotRead
+        /// SL16 : le moteur ou le constructeur courant n'est pas local (ou illisible) : « Soaro only cleans Docker on this Mac… ». Ni ligne, ni bouton.
+        case notLocal
     }
 
     enum Phase: Equatable {
@@ -35,6 +37,8 @@ final class DockerModel: ObservableObject {
     @Published private(set) var phase: Phase = .notScanned
     @Published private(set) var overview: DockerOverview?
     @Published private(set) var selected: Set<DockerPrune> = []
+    /// Le moteur local sur lequel la liste a été lue (SL16) : nommé dans la confirmation et relu avant chaque nettoyage. `nil` hors de la liste.
+    private(set) var engine: DockerEngine?
     /// Le texte du dernier résultat (le même que le toast, qui ne reste que 4 s), jusqu'au prochain lot ou jusqu'à Retour. Retour l'efface
     /// quand aucun lot ne tourne ; pendant un lot il le laisse venir (le toast et la ligne arrivent quand même).
     @Published private(set) var lastResult: String?
@@ -133,6 +137,7 @@ final class DockerModel: ObservableObject {
         case .failed(.notRunning): DockerPresentation.notRunningMessage
         case .failed(.notAnswering): DockerPresentation.notAnsweringMessage
         case .failed(.couldNotRead): DockerPresentation.couldNotReadMessage
+        case .failed(.notLocal): DockerPresentation.notLocalMessage
         case .notScanned, .listed: nil
         }
     }
@@ -207,16 +212,19 @@ final class DockerModel: ObservableObject {
         case .ok:
             let overview = DockerOverview.make(scan)
             self.overview = overview
+            engine = scan.engine
             selected = Set(overview.cleanables.map(\.prune))
             phase = .listed
         case .engineNotRunning: phase = .failed(.notRunning)
         case .timedOut: phase = .failed(.notAnswering)
         case .toolNotFound, .outputNotReadable: phase = .failed(.couldNotRead)
+        case .notLocal: phase = .failed(.notLocal)
         }
     }
 
     private func reset() {
         overview = nil
+        engine = nil
         selected = []
     }
 
@@ -225,10 +233,10 @@ final class DockerModel: ObservableObject {
     /// Bouton « Clean » : demande la confirmation (ce qui est retiré, sa taille, la compilation plus lente, Annuler par défaut), puis lance
     /// les nettoyages cochés, le cache de build d'abord. Sans effet quand `canClean` est faux. Annuler : aucun appel, la sélection reste, pas de toast.
     func cleanSelected() {
-        guard canClean else { return }
+        guard canClean, let engine else { return }
         let targets = selectedCleanables
         guard confirm(DockerPresentation.confirmationTitle(count: targets.count),
-                      DockerPresentation.confirmationMessage(targets: targets),
+                      DockerPresentation.confirmationMessage(targets: targets, engine: engine, home: home),
                       String(localized: "Clean"), true) else { return }
 
         // Mode démo : la même confirmation, puis les lignes cochées quittent la liste tout de suite, avec un toast inventé. Ni lanceur, ni
@@ -261,7 +269,7 @@ final class DockerModel: ObservableObject {
         let cleanTargets = targets.map { DockerCleanupTarget(prune: $0.prune, announcedBytes: $0.size) }
         cleanTask = Task { [weak self] in
             let result = await Task.detached(priority: .userInitiated) { () -> DockerCleanupResult in
-                await DockerCleanupFlow.run(targets: cleanTargets, runner: runner, dockerPath: locate(), freeSpace: freeSpace,
+                await DockerCleanupFlow.run(targets: cleanTargets, runner: runner, dockerPath: locate(), expectedEngine: engine, freeSpace: freeSpace,
                                             beforeWait: { await MainActor.run { gate.markMeasuring() } }, wait: wait)
             }.value
             let text = result.toast()

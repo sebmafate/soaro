@@ -10,6 +10,10 @@ import Testing
     static let untaggedArgs = DockerCommand.untaggedImages.arguments
 
     let runner = FakeCommandRunner()
+    /// SL16 : le moteur est lu avant l'usage.
+    static let check: [[String]] = [DockerCommand.currentContext.arguments, DockerCommand.currentBuilder.arguments]
+
+    init() { runner.scriptLocalEngine() }
 
     func script(usage: CommandOutcome, untagged: CommandOutcome? = nil) {
         runner.script(usage, executable: Self.docker, arguments: Self.usageArgs)
@@ -27,16 +31,18 @@ import Testing
 
     // MARK: Cas nominal
 
-    @Test func listingRunsTheTwoReadOnlyCommandsInOrderWithTheirLimits() {
+    @Test func listingRunsTheEngineReadsThenTheTwoReadOnlyCommandsInOrderWithTheirLimits() {
         script(usage: .finished(stdout: DockerReportTests.realUsage),
                untagged: .finished(stdout: DockerReportTests.untagged(id: "aaaaaaaaaaaa", size: "397MB", containers: "0")))
         let scan = DockerScanner.list(runner: runner, dockerPath: Self.docker)
         #expect(scan.status == .ok)
         #expect(scan.usage?.buildCache?.size == 22_460_000_000)
         #expect(scan.untagged == [DockerUntaggedImage(id: "aaaaaaaaaaaa", size: 397_000_000, containerCount: 0)])
-        #expect(runner.calls == [
-            .init(executable: Self.docker, arguments: Self.usageArgs, timeLimit: 30, outputLimit: 1024 * 1024),
-            .init(executable: Self.docker, arguments: Self.untaggedArgs, timeLimit: 30, outputLimit: 1024 * 1024),
+        let env = DockerCommand.removedEnvironment
+        #expect(runner.calls.map(\.arguments) == Self.check + [Self.usageArgs, Self.untaggedArgs])
+        #expect(Array(runner.calls.suffix(2)) == [
+            .init(executable: Self.docker, arguments: Self.usageArgs, timeLimit: 30, outputLimit: 1024 * 1024, removedEnvironment: env),
+            .init(executable: Self.docker, arguments: Self.untaggedArgs, timeLimit: 30, outputLimit: 1024 * 1024, removedEnvironment: env),
         ])
         allCallsAreAllowlistedAndReadOnly()
     }
@@ -59,7 +65,7 @@ import Testing
     @Test func aDockerThatCannotBeLaunchedIsToolNotFoundAndNothingElseRuns() {
         script(usage: .failedToLaunch)
         #expect(DockerScanner.list(runner: runner, dockerPath: Self.docker).status == .toolNotFound)
-        #expect(runner.calls.count == 1)
+        #expect(runner.calls.count == 3, "le moteur est lu, puis `docker system df` ne se lance pas : rien d'autre")
     }
 
     @Test func aRelativePathIsNeverHandedToTheRunner() {
@@ -75,7 +81,7 @@ import Testing
         script(usage: .finished(exit: 1, stderr: "Cannot connect to the Docker daemon at unix:///Users/test-user/.docker/run/docker.sock. Is the docker daemon running?"))
         let scan = DockerScanner.list(runner: runner, dockerPath: Self.docker)
         #expect(scan == DockerScan(status: .engineNotRunning))
-        #expect(runner.calls.map(\.arguments) == [Self.usageArgs], "la seconde lecture n'a pas lieu")
+        #expect(runner.calls.map(\.arguments) == Self.check + [Self.usageArgs], "la seconde lecture n'a pas lieu")
         allCallsAreAllowlistedAndReadOnly()
     }
 
@@ -88,9 +94,10 @@ import Testing
     @Test func aTimeoutIsTimedOutOnEitherCommand() {
         script(usage: .timedOut)
         #expect(DockerScanner.list(runner: runner, dockerPath: Self.docker) == DockerScan(status: .timedOut))
-        #expect(runner.calls.count == 1)
+        #expect(runner.calls.count == 3)
 
         let second = FakeCommandRunner()
+        second.scriptLocalEngine()
         second.script(.finished(stdout: DockerReportTests.realUsage), executable: Self.docker, arguments: Self.usageArgs)
         second.script(.timedOut, executable: Self.docker, arguments: Self.untaggedArgs)
         #expect(DockerScanner.list(runner: second, dockerPath: Self.docker) == DockerScan(status: .timedOut))
@@ -100,6 +107,7 @@ import Testing
         script(usage: .finished(exit: 9, termination: .signaled))
         #expect(DockerScanner.list(runner: runner, dockerPath: Self.docker).status == .engineNotRunning)
         let refusing = FakeCommandRunner()
+        refusing.scriptLocalEngine()
         refusing.script(.refused(.shell), executable: Self.docker, arguments: Self.usageArgs)
         #expect(DockerScanner.list(runner: refusing, dockerPath: Self.docker).status == .engineNotRunning)
     }
@@ -116,6 +124,7 @@ import Testing
         #expect(DockerScanner.list(runner: runner, dockerPath: Self.docker) == DockerScan(status: .outputNotReadable))
 
         let second = FakeCommandRunner()
+        second.scriptLocalEngine()
         second.script(.finished(stdout: DockerReportTests.realUsage), executable: Self.docker, arguments: Self.usageArgs)
         second.script(.finished(stdout: "Server: not what you expect"), executable: Self.docker, arguments: Self.untaggedArgs)
         #expect(DockerScanner.list(runner: second, dockerPath: Self.docker) == DockerScan(status: .outputNotReadable))

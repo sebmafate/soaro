@@ -145,6 +145,41 @@ import Testing
         #expect(Date().timeIntervalSince(start) < 4)
     }
 
+    // MARK: Environnement (SL16)
+
+    /// Le texte de `printenv`, une variable par ligne.
+    private func environmentLines(_ runner: RealCommandRunner, removing: [String]) -> [String]? {
+        guard case .completed(let out) = runner.run(executable: "/usr/bin/printenv", arguments: [], timeLimit: 10, outputLimit: 1 << 20,
+                                                    removingEnvironment: removing) else { return nil }
+        return text(out.stdout).split(separator: "\n", omittingEmptySubsequences: true).map(String.init)
+    }
+
+    /// Sans liste, le programme hérite de TOUT l'environnement (comportement des autres appelants) ; avec une liste, seuls ces noms disparaissent.
+    /// `PATH` et `HOME` existent dans tout environnement de test : on n'en crée aucune (pas de `setenv` dans un test parallèle).
+    @Test func removedNamesAreAbsentFromTheChildAndEverythingElseIsInherited() throws {
+        let parent = ProcessInfo.processInfo.environment
+        try #require(parent["PATH"] != nil && parent["HOME"] != nil, "PATH et HOME doivent exister pour ce test")
+        let home = try #require(parent["HOME"])
+        let runner = makeRunner()
+
+        let inherited = try #require(environmentLines(runner, removing: []))
+        #expect(inherited.contains { $0.hasPrefix("PATH=") } && inherited.contains { $0.hasPrefix("HOME=") }, "rien n'est retiré par défaut")
+
+        let reduced = try #require(environmentLines(runner, removing: ["PATH", "A_NAME_THAT_IS_NOT_SET"]))
+        #expect(!reduced.contains { $0.hasPrefix("PATH=") }, "PATH est retiré")
+        #expect(reduced.contains("HOME=\(home)"), "HOME et le reste sont conservés, avec leur valeur")
+        #expect(reduced.count == inherited.count - 1)
+    }
+
+    @Test func theFourArgumentFormKeepsTheWholeEnvironment() throws {
+        let runner = makeRunner()
+        guard case .completed(let out) = runner.run(executable: "/usr/bin/printenv", arguments: ["HOME"], timeLimit: 10, outputLimit: 4096) else {
+            Issue.record("printenv n'a pas terminé"); return
+        }
+        #expect(out.exitCode == 0)
+        #expect(!out.stdout.isEmpty)
+    }
+
     // MARK: Lancement impossible
 
     @Test func missingPathDirectoryAndNonExecutableFailToLaunchWithoutCrashing() throws {

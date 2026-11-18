@@ -64,6 +64,8 @@ enum DockerPresentation {
     static var notRunningMessage: String { String(localized: "Docker is not running. Start it, then scan again.") }
     static var notAnsweringMessage: String { String(localized: "Docker did not answer. Try again in a moment.") }
     static var couldNotReadMessage: String { String(localized: "Could not read Docker’s disk usage.") }
+    /// SL16 : le moteur ou le constructeur courant de Docker n'est pas local (ou on n'a pas pu le lire). Rien n'est listé ni nettoyé.
+    static var notLocalMessage: String { String(localized: "Soaro only cleans Docker on this Mac. The selected Docker engine or builder is not local.") }
     static var listingMessage: String { String(localized: "Looking at Docker…") }
     static var cleaningMessage: String { String(localized: "Cleaning…") }
     static var measuringMessage: String { String(localized: "Measuring…") }
@@ -74,9 +76,25 @@ enum DockerPresentation {
         String(localized: "Clean the selected Docker items? (\(count))", locale: locale)
     }
 
-    /// Ce qui est retiré, avec sa taille ; que la prochaine compilation sera plus lente quand le cache de build est coché ; ce qui n'est
-    /// jamais touché. Les noms des lignes sont les mêmes que sur l'écran.
-    static func confirmationMessage(targets: [DockerCleanable], locale: Locale = .current) -> String {
+    /// SL16 : « Docker engine: desktop-linux (~/.docker/run/docker.sock) » : où le nettoyage va tourner.
+    static func engineLine(_ engine: DockerEngine, home: URL, locale: Locale = .current) -> String {
+        String(localized: "Docker engine: \(engine.contextName) (\(displayPath(engine.socketPath, home: home)))", locale: locale)
+    }
+
+    /// Le chemin, avec le dossier personnel écrit « ~ » quand le chemin est dans ce dossier (nom de dossier entier : « /Users/test2 » n'est pas
+    /// sous « /Users/test »). Rien n'est abrégé pour la racine.
+    static func displayPath(_ path: String, home: URL) -> String {
+        var base = home.path
+        while base.count > 1, base.hasSuffix("/") { base.removeLast() }
+        guard base.count > 1 else { return path }
+        if path == base { return "~" }
+        if path.hasPrefix(base + "/") { return "~" + path.dropFirst(base.count) }
+        return path
+    }
+
+    /// Ce qui est retiré, avec sa taille ; le moteur sur lequel cela tourne (SL16) ; que la prochaine compilation sera plus lente quand le cache
+    /// de build est coché ; ce qui n'est jamais touché. Les noms des lignes sont les mêmes que sur l'écran.
+    static func confirmationMessage(targets: [DockerCleanable], engine: DockerEngine, home: URL, locale: Locale = .current) -> String {
         let allKnown = targets.allSatisfy { $0.size != nil }
         let known = DockerSize.saturatingSum(targets.map { $0.size ?? 0 })
         let intro = allKnown
@@ -88,7 +106,7 @@ enum DockerPresentation {
             closing.append(String(localized: "The next build will be slower, because the cache is rebuilt.", locale: locale))
         }
         closing.append(String(localized: "Containers, volumes and images with a tag are not touched.", locale: locale))
-        return "\(intro)\n\n\(bullets)\n\n\(closing.joined(separator: " "))"
+        return "\(intro)\n\n\(bullets)\n\n\(engineLine(engine, home: home, locale: locale))\n\n\(closing.joined(separator: " "))"
     }
 
     // MARK: VoiceOver

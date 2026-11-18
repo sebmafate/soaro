@@ -53,7 +53,7 @@ import Testing
     @Test func theConfirmationOfHugeSizesIsValidText() {
         let targets = [DockerCleanable(prune: .buildCache, size: Self.hugeBytes, count: nil),
                        DockerCleanable(prune: .untaggedImages, size: UInt64.max, count: 2)]
-        let message = DockerPresentation.confirmationMessage(targets: targets, locale: Locale(identifier: "en"))
+        let message = DockerPresentation.confirmationMessage(targets: targets, engine: DockerEngineScanTests.engine, home: URL(fileURLWithPath: "/Users/test"), locale: Locale(identifier: "en"))
         #expect(message.hasPrefix("About "))
         #expect(message.contains("• Build cache · ") && message.contains("• Untagged images · "))
         #expect(message.contains("The next build will be slower"))
@@ -63,6 +63,7 @@ import Testing
 
     @Test func aModelOnHugeSizesListsSelectsAndAsksWithoutCrashing() async {
         let runner = FakeCommandRunner()
+        runner.scriptLocalEngine()
         runner.script(.finished(stdout: Self.hugeUsage), executable: Self.docker, arguments: DockerCommand.usage.arguments)
         runner.script(.finished(stdout: Self.hugeUntagged.joined(separator: "\n")), executable: Self.docker, arguments: DockerCommand.untaggedImages.arguments)
         let confirm = RecordingConfirm(answer: false)
@@ -78,13 +79,15 @@ import Testing
 
     @Test func hugePruneTotalsAddUpToAValidFigureAndToast() async {
         let runner = FakeCommandRunner()
+        runner.scriptLocalEngine()
         runner.script(.finished(stdout: "Total:\t\(Self.huge)\n"), executable: Self.docker, arguments: DockerCommand.pruneBuildCache.arguments)
         runner.script(.finished(stdout: "Total reclaimed space: \(Self.huge)\n"), executable: Self.docker, arguments: DockerCommand.pruneUntaggedImages.arguments)
         let free = ScriptedFreeSpace([100, UInt64.max])
         let result = await DockerCleanupFlow.run(
             targets: [DockerCleanupTarget(prune: .buildCache, announcedBytes: Self.hugeBytes),
                       DockerCleanupTarget(prune: .untaggedImages, announcedBytes: Self.hugeBytes)],
-            runner: runner, dockerPath: Self.docker, freeSpace: { free.read() }, beforeWait: {}, wait: { _ in })
+            runner: runner, dockerPath: Self.docker, expectedEngine: DockerEngineScanTests.engine,
+            freeSpace: { free.read() }, beforeWait: {}, wait: { _ in })
         #expect(result.dockerBytes == UInt64.max)
         #expect(result.returnedBytes == UInt64.max - 100)
         #expect(!result.toast(locale: Locale(identifier: "en")).isEmpty)

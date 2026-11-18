@@ -24185,6 +24185,110 @@
           }
         }
       }
+    },
+    "Soaro only cleans Docker on this Mac. The selected Docker engine or builder is not local.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro bereinigt Docker nur auf diesem Mac. Die ausgewählte Docker-Engine oder der ausgewählte Builder ist nicht lokal."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro solo limpia Docker en este Mac. El motor o el builder de Docker seleccionado no es local."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro ne nettoie Docker que sur ce Mac. Le moteur ou le builder Docker sélectionné n'est pas local."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro pulisce Docker solo su questo Mac. Il motore o il builder Docker selezionato non è locale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro はこの Mac 上の Docker だけをクリーンアップします。選択中の Docker エンジンまたはビルダーはローカルではありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro는 이 Mac의 Docker만 정리해요. 선택된 Docker 엔진 또는 빌더가 로컬이 아니에요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Soaro só limpa o Docker neste Mac. O motor ou o builder do Docker selecionado não é local."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soaro 只会清理这台 Mac 上的 Docker。所选的 Docker 引擎或构建器不是本地的。"
+          }
+        }
+      }
+    },
+    "Docker engine: %@ (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker-Engine: %@ (%@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor de Docker: %@ (%@)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moteur Docker : %@ (%@)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motore Docker: %@ (%@)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker エンジン：%@（%@）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker 엔진: %@ (%@)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motor do Docker: %@ (%@)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Docker 引擎：%@（%@）"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
