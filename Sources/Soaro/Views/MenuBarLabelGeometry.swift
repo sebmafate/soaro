@@ -127,6 +127,7 @@ struct BrandPixelGeometry: Equatable {
     static let boxPoints = CGSize(width: 16, height: 12)
     /// Le bas de la boîte, mesuré depuis le haut du libellé de 22 pt : la boîte de 12 pt est centrée, elle va de 5 à 17.
     static let bottomPoints: CGFloat = 17
+    static let strokePoints: CGFloat = 1.6
     static let badgeGapPoints: CGFloat = 1
     static let circleBoxPoints: CGFloat = 5
     static let triangleBoxPoints: CGFloat = 11
@@ -139,7 +140,8 @@ struct BrandPixelGeometry: Equatable {
     init(scale: Int) {
         let s = max(1, scale)
         self.scale = s
-        strokeWidth = max(1, PixelGrid.px(1.6, scale: s))
+        // 1,6 pt : 1 px en 1x (2 px empâtaient les vagues en un bloc, vu à l'œil), 3 px en 2x, 5 px en 3x.
+        strokeWidth = s == 1 ? 1 : max(1, PixelGrid.px(Self.strokePoints, scale: s))
         // Le trait de largeur impaire se centre sur le milieu d'un pixel, celui de largeur paire sur la frontière entre deux pixels.
         let bottom = CGFloat(PixelGrid.px(Self.bottomPoints, scale: s)) + (strokeWidth % 2 == 1 ? 0.5 : 0)
         let height = CGFloat(Int(Self.boxPoints.height) * s)

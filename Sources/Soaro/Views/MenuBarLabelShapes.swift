@@ -113,13 +113,14 @@ enum LabelShapes {
         context.addPath(triangle)
         context.drawPath(using: .fillStroke)
         // Le point d'exclamation : une barre et un point, de largeur de même parité que le triangle pour rester centrés sur des pixels entiers.
-        var bar = max(1, Int((w / 7).rounded()))
+        var bar = max(1, Int((w / 9).rounded()))
         if (bar % 2) != (rect.width % 2) { bar += 1 }
         let barX = CGFloat(rect.x) + (w - CGFloat(bar)) / 2
         context.setBlendMode(.destinationOut)
         context.setFillColor(CGColor(gray: 0, alpha: 1))
         context.fill(CGRect(x: barX, y: y + (h * 0.30).rounded(), width: CGFloat(bar), height: (h * 0.32).rounded()))
-        context.fill(CGRect(x: barX, y: y + (h * 0.72).rounded(), width: CGFloat(bar), height: CGFloat(bar)))
+        let dotY = min(y + (h * 0.72).rounded(), y + h - r - CGFloat(bar))      // le point ne touche jamais la base du triangle
+        context.fill(CGRect(x: barX, y: dotY, width: CGFloat(bar), height: CGFloat(bar)))
         context.restoreGState()
     }
 

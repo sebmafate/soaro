@@ -132,7 +132,7 @@ import Testing
 
 @Suite struct BrandPixelGeometryTests {
     @Test func theStrokeIsAWholeNumberOfPixels() {
-        #expect(BrandPixelGeometry(scale: 1).strokeWidth == 2)
+        #expect(BrandPixelGeometry(scale: 1).strokeWidth == 1, "2 px en 1x empâtent les vagues (vu à l'œil) : 1 px")
         #expect(BrandPixelGeometry(scale: 2).strokeWidth == 3)
         #expect(BrandPixelGeometry(scale: 3).strokeWidth == 5)
     }

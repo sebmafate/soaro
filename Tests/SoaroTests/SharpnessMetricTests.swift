@@ -79,3 +79,19 @@ import Testing
         }
     }
 }
+
+@Suite struct SolidInkShareTests {
+    @Test func aWholePixelBarIsAllSolidAndAHalfPixelBarIsNot() throws {
+        func ink(y: CGFloat) throws -> GlyphInk {
+            let context = try #require(CGContext(data: nil, width: 20, height: 10, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.setFillColor(CGColor(gray: 0, alpha: 1))
+            context.fill(CGRect(x: 2, y: y, width: 12, height: 2))
+            return try GlyphInk(cg: try #require(context.makeImage()), scale: 1)
+        }
+        #expect(SharpnessMetric.solidInkShare(try ink(y: 3), xs: 0..<20, ys: 0..<10) == 1)
+        let half = SharpnessMetric.solidInkShare(try ink(y: 3.5), xs: 0..<20, ys: 0..<10)
+        #expect(abs(half - 0.5) < 0.01, "une rangée pleine sur deux de poids : \(half)")
+        #expect(SharpnessMetric.solidInkShare(try ink(y: 3), region: CGRect(x: 0, y: 0, width: 20, height: 10)) == 1)
+    }
+}

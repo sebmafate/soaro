@@ -226,12 +226,16 @@ enum MenuBarRenderer {
         let key = Key(severity: severity, compact: compact, items: items, darkBar: colored && darkBar, increasedContrast: contrast)
         if let cache, cache.key == key { return cache.image }
 
-        let base: Color = colored ? (darkBar ? .white : .black) : .black
-        let content = MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast)
-        guard let image = scaledImage(content: content) else { return nil }
+        let image = scaledImage(severity: severity, compact: compact, items: items, darkBar: darkBar, colored: colored, increasedContrast: contrast)
         image.isTemplate = !colored
         cache = (key, image)
         return image
+    }
+
+    /// L'image du libellé pour l'aperçu des Réglages (SL22, SL23) : le MÊME dessin que le vrai libellé, mais toujours « non modèle » et à la couleur
+    /// de la bande (blanc sur bande sombre, noir sur bande claire) : une image modèle n'est teintée que par macOS, dans la vraie barre.
+    static func previewImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkStrip: Bool, increasedContrast: Bool) -> NSImage {
+        scaledImage(severity: severity, compact: compact, items: items, darkBar: darkStrip, colored: true, increasedContrast: increasedContrast)
     }
 
     /// Le nombre de pixels par point d'un contexte de dessin (1, 2, 3…), arrondi à l'entier le plus proche : la grille de pixels de l'écran.
@@ -241,43 +245,16 @@ enum MenuBarRenderer {
         return scale.isFinite && scale >= 1 ? Int(scale.rounded()) : 1
     }
 
-    /// Les images déjà dessinées, une par échelle (un libellé s'affiche rarement à plus de deux échelles).
-    private final class PerScale: @unchecked Sendable {
-        private let lock = NSLock()
-        private var images: [Int: CGImage] = [:]
-        private let content: MenuBarWidgetsView
-        init(content: MenuBarWidgetsView) { self.content = content }
-
-        @MainActor private func render(_ scale: Int) -> CGImage? {
-            let renderer = ImageRenderer(content: content)
-            renderer.scale = CGFloat(scale)
-            return renderer.cgImage
-        }
-
-        func image(scale: Int) -> CGImage? {
-            lock.lock(); defer { lock.unlock() }
-            if let cached = images[scale] { return cached }
-            // Le dessin d'une `NSImage` peut être demandé hors du fil principal ; `ImageRenderer` n'existe que sur lui.
-            let made: CGImage? = Thread.isMainThread
-                ? MainActor.assumeIsolated { render(scale) }
-                : DispatchQueue.main.sync { MainActor.assumeIsolated { render(scale) } }
-            images[scale] = made
-            return made
-        }
-    }
-
-    private static func scaledImage(content: MenuBarWidgetsView) -> NSImage? {
-        let box = PerScale(content: content)
-        guard let reference = box.image(scale: 2) else { return nil }
-        let size = NSSize(width: CGFloat(reference.width) / 2, height: CGFloat(reference.height) / 2)
-        return NSImage(size: size, flipped: true) { rect in
-            guard let context = NSGraphicsContext.current?.cgContext, let cg = box.image(scale: pixelScale(of: context)) else { return false }
-            context.saveGState()
-            context.interpolationQuality = .none
-            context.translateBy(x: 0, y: rect.height)          // contexte « flipped » : l'image se dessine à l'endroit
-            context.scaleBy(x: 1, y: -1)
-            context.draw(cg, in: CGRect(origin: .zero, size: rect.size))
-            context.restoreGState()
+    /// L'image dynamique : sa taille en points ne dépend pas de l'échelle, son dessin se refait à chaque échelle demandée (AppKit rappelle le
+    /// dessin quand la fenêtre change d'écran). Le dessin ne touche qu'à des valeurs copiées ici : il peut être appelé hors du fil principal.
+    private static func scaledImage(severity: Severity?, compact: Bool, items: [MenuBarItem], darkBar: Bool, colored: Bool, increasedContrast: Bool) -> NSImage {
+        let layout = MenuBarLabelLayout(items: items, compact: compact, severity: severity)
+        let base = CGColor(gray: colored && darkBar ? 1 : 0, alpha: 1)
+        let palette = LabelPalette.make(darkBar: darkBar, base: base)
+        let size = NSSize(width: layout.widthPoints, height: MenuBarLabelLayout.height)
+        return NSImage(size: size, flipped: true) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            MenuBarLabelDrawer.draw(items: items, layout: layout, palette: palette, increasedContrast: increasedContrast, scale: pixelScale(of: context), in: context)
             return true
         }
     }
@@ -414,116 +391,6 @@ struct BrandGlyph: Shape {
         path.move(to: p(200, 694))
         path.addLine(to: p(824, 694))
         return path
-    }
-}
-
-struct MenuBarWidgetsView: View {
-    let severity: Severity?
-    let compact: Bool
-    let items: [MenuBarItem]
-    var baseColor: Color = .black
-    var increasedContrast = false
-
-    /// Icône de batterie du libellé : corps de 20 x 9,5 pt, plus le bout (SL21).
-    static let batteryBody = BatteryGlyphGeometry.menuBarBody
-    /// Espace entre l'icône et le pourcentage.
-    static let batterySpacing: CGFloat = 3
-    /// Largeur mini du pourcentage : 40 pt, ce qu'il faut à « 100 % » (avec l'espace insécable des langues qui en mettent une) en
-    /// 12 pt demi-gras à chiffres de même chasse (mesuré : 39 pt ; « 100% » sans espace : 36 pt).
-    static let batteryValueMinWidth: CGFloat = 40
-    /// Largeur mini de tout l'élément (icône + espace + pourcentage), en style compact : « 9% » et « 100% » ne décalent pas les voisins.
-    static var batteryMinWidth: CGFloat {
-        BatteryGlyphGeometry(body: batteryBody).totalSize.width + batterySpacing + batteryValueMinWidth
-    }
-
-    var body: some View {
-        HStack(spacing: compact ? 9 : 6) {
-            brand
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                switch item {
-                case .stacked(let label, let value, let level):
-                    if compact {
-                        VStack(spacing: -1) {
-                            Text(label).font(.system(size: 7.5, weight: .medium))
-                            valueText(value, level: level, size: 12)
-                        }
-                        .frame(minWidth: 31)          // largeur mini : « 9% » et « 100% » ne décalent pas les voisins
-                    } else {
-                        HStack(spacing: 3) {
-                            Text(label).font(.system(size: 13))
-                            valueText(value, level: level, size: 13)
-                        }
-                    }
-                case .battery(let percent, let power, let level):
-                    batteryItem(percent: percent, power: power, level: level)
-                case .flag(let code):
-                    if let flag = MenuBarFlag.emoji(forCountryCode: code) {
-                        // Émoji en couleur : il ignore la couleur du texte. Aucune largeur ni hauteur imposée aux autres blocs.
-                        Text(flag).font(.system(size: MenuBarFlag.fontSize))
-                    }
-                case .pair(let top, let bottom):
-                    if compact {
-                        VStack(alignment: .trailing, spacing: 0) {
-                            Text(top)
-                            Text(bottom)
-                        }
-                        .font(.system(size: 9, weight: .medium)).monospacedDigit()
-                        .frame(minWidth: 54, alignment: .trailing)     // largeur de « ↓ 999 KB/s » : le bloc réseau ne bouge plus
-                    } else {
-                        Text("\(bottom) \(top)").font(.system(size: 13)).monospacedDigit()
-                    }
-                }
-            }
-        }
-        .foregroundStyle(baseColor)
-        .frame(height: 22)
-        .fixedSize()
-    }
-
-    /// L'icône à gauche du pourcentage, sur une ligne centrée dans les 22 pt. Le texte suit les mêmes règles de couleur qu'avant.
-    @ViewBuilder private func batteryItem(percent: Int, power: BatteryPowerState, level: PressureLevel) -> some View {
-        let icon = BatteryGlyph(percent: Double(percent), power: power, level: level, base: baseColor, body: Self.batteryBody, increasedContrast: increasedContrast)
-        let value = valueText(MenuBarItem.batteryValue(percent), level: level, size: compact ? 12 : 13)
-        if compact {
-            HStack(spacing: Self.batterySpacing) {
-                icon
-                value.frame(minWidth: Self.batteryValueMinWidth, alignment: .leading)
-            }
-        } else {
-            HStack(spacing: Self.batterySpacing) { icon; value }
-        }
-    }
-
-    /// Orange puis rouge colorent le texte. Le niveau critique passe en pastille écarlate : sur une barre de menus,
-    /// rouge et écarlate en simple texte seraient indiscernables (et la couleur seule ne suffit pas aux daltoniens).
-    @ViewBuilder private func valueText(_ value: String, level: PressureLevel, size: CGFloat) -> some View {
-        let text = Text(value).font(.system(size: size, weight: compact ? .semibold : .regular)).monospacedDigit()
-        if level == .critical {
-            text.foregroundStyle(.white)
-                .padding(.horizontal, 3)
-                .background(PressureLevel.scarlet, in: RoundedRectangle(cornerRadius: 3.5))
-        } else if let color = level.color {
-            text.foregroundStyle(color)
-        } else {
-            text
-        }
-    }
-
-    /// L'icône de l'app est toujours là ; une alerte s'ajoute en petit badge au lieu de la remplacer.
-    private var brand: some View {
-        HStack(alignment: .top, spacing: 1.5) {
-            BrandGlyph()
-                .stroke(style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
-                .frame(width: 16, height: 12)
-            switch severity {
-            case .critical:
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 8, weight: .bold))
-            case .warning:
-                Circle().frame(width: 4.5, height: 4.5)
-            default:
-                EmptyView()
-            }
-        }
     }
 }
 

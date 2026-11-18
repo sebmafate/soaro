@@ -7,10 +7,10 @@ private struct StripContentWidthKey: PreferenceKey {
 }
 
 /// Une fausse barre de menus (SL22) : un rectangle arrondi qui imite le fond de la barre, avec dessus le MÊME dessin que le vrai
-/// libellé (`MenuBarWidgetsView`) : le glyphe d'Soaro d'abord, puis les mesures choisies dans l'ordre choisi.
+/// libellé (`MenuBarRenderer`, SL23 : la même image dynamique, dessinée avec Core Text) : le glyphe d'Soaro d'abord, puis les mesures choisies dans l'ordre choisi.
 ///
 /// Le vrai libellé est une image « modèle » que macOS teinte lui-même ; un aperçu ne peut pas l'utiliser, il dessine donc la vue
-/// directement, avec la couleur de base de la bande : blanc sur une bande sombre, noir sur une bande claire (comme le fait
+/// avec la couleur de base de la bande : blanc sur une bande sombre, noir sur une bande claire (comme le fait
 /// `MenuBarRenderer` quand l'image porte ses couleurs). La bande suit le thème de l'app, pas le fond d'écran comme la vraie barre.
 /// Trop large pour la bande (six mesures sur une ligne), le contenu est rétréci pour que tout reste visible.
 struct MenuBarPreviewStrip: View {
@@ -48,7 +48,8 @@ struct MenuBarPreviewStrip: View {
             let available = proxy.size.width - 2 * Self.horizontalPadding
             let scale = contentWidth > available && available > 0 ? available / contentWidth : 1
             HStack(spacing: 10) {
-                MenuBarWidgetsView(severity: severity, compact: compact, items: items, baseColor: base, increasedContrast: contrast == .increased)
+                // Le MÊME dessin que le vrai libellé (`MenuBarRenderer`, Core Text, pixels entiers), à la couleur de la bande, à l'échelle de l'écran de la fenêtre.
+                Image(nsImage: MenuBarRenderer.previewImage(severity: severity, compact: compact, items: items, darkStrip: dark, increasedContrast: contrast == .increased))
                 if Self.showsEmptyText(items: items) {
                     Text(Self.emptyText)
                         .font(.caption)

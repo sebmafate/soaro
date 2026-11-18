@@ -77,6 +77,23 @@ enum SharpnessMetric {
         return textEdgeHardness(ink, xs: p.xs, ys: p.ys)
     }
 
+    /// Part de l'encre (somme de l'alpha) portée par des pixels pleins (alpha d'au moins 0,9) : plus elle est haute, plus les traits sont nets.
+    /// Sert à comparer deux dessins du MÊME texte (la courbe d'une lettre garde toujours des pixels intermédiaires).
+    static func solidInkShare(_ ink: GlyphInk, xs: Range<Int>, ys: Range<Int>) -> Double {
+        var solid = 0.0, total = 0.0
+        for y in ys { for x in xs {
+            let a = ink.alpha(x, y)
+            total += a
+            if a >= 0.9 { solid += a }
+        } }
+        return total == 0 ? 0 : solid / total
+    }
+
+    static func solidInkShare(_ ink: GlyphInk, region: CGRect) -> Double {
+        let p = pixels(of: region, scale: ink.scale, in: ink)
+        return solidInkShare(ink, xs: p.xs, ys: p.ys)
+    }
+
     /// Rectangle englobant, en points, des pixels qui répondent au critère (couleur de la pastille écarlate, par exemple).
     static func bounds(of ink: GlyphInk, where match: ((r: Double, g: Double, b: Double, a: Double)) -> Bool) -> CGRect? {
         var minX = Int.max, minY = Int.max, maxX = -1, maxY = -1
