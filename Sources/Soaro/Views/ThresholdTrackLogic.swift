@@ -13,22 +13,21 @@ enum ThresholdTrackMetrics {
     /// Diamètre dessiné de la poignée (fond blanc, anneau coloré).
     static let handleSize: CGFloat = 20
     static let trackHeight: CGFloat = 10
-    /// Largeur fixe de l'étiquette d'une valeur (« 100 % » tient dedans) et espace minimal entre deux étiquettes.
-    static let labelWidth: Double = 34
+    /// Largeur fixe de l'étiquette d'une valeur (« 100 % » tient dedans) et espace minimal entre deux étiquettes voisines.
+    static let labelWidth: Double = 40
     static let labelSpacing: Double = 4
     static let labelHeight: CGFloat = 16
-    /// Marge à gauche et à droite de la piste : la poignée (12 pt de rayon de zone) et l'étiquette (17 pt, plus son décalage)
-    /// dépassent de la piste aux valeurs extrêmes.
+    /// Marge à gauche et à droite de la piste : la zone de la poignée (12 pt de rayon) dépasse de la piste aux valeurs extrêmes, et
+    /// l'étiquette (20 pt de demi-largeur) aussi. Les étiquettes sont de toute façon gardées dans la vue (`labelCentres`).
     static let inset: CGFloat = 22
     /// Largeur la plus étroite où l'écran apparaît : le panneau de la barre de menus (430 pt), moins les marges du formulaire
     /// groupé, mesurée par le rendu hors écran (SL17) : la piste y mesure 325 pt, plus 2 x 22 pt de marges. La fenêtre est plus large.
     static let narrowestContentWidth: Double = 369
 
-    // Hauteurs (points) de la piste : rangée haute des étiquettes relevées, rangée basse, axe des poignées, hauteur totale (légende « now » comprise).
-    static let raisedLabelTop: CGFloat = 0
-    static let labelTop: CGFloat = 24
-    static let centreY: CGFloat = 54
-    static let totalHeight: CGFloat = 80
+    // Hauteurs (points) : une seule rangée d'étiquettes en haut, les traits de rappel, l'axe des poignées, puis le repère « now » et sa légende.
+    static let labelTop: CGFloat = 0
+    static let centreY: CGFloat = 44
+    static let totalHeight: CGFloat = 72
 
     /// Points d'écran par point de pourcentage, pour une piste dessinée dans `width` pt (marges comprises). 0 si la largeur ne laisse rien.
     static func pointsPerUnit(forWidth width: Double) -> Double {
@@ -79,8 +78,17 @@ struct ThresholdLiveValues: Equatable {
 /// Le modèle `LevelThresholds` et sa persistance ne changent pas : la piste ne produit que des états que les anciens
 /// Steppers pouvaient produire (pas de 5, écart minimal de 5).
 enum ThresholdTrackLogic {
-    static let step = 5
-    static let minimumGap = 5
+    /// LE pas (en points de pourcentage) et LA distance minimale entre deux seuils. 1 et 1 depuis la décision de l'auteur du
+    /// 2026-11-18 (à l'origine 5 et 5, comme les Steppers) : changer ces deux lignes suffit pour revenir à 5, toutes les bornes en dérivent.
+    static let step = 1
+    static let minimumGap = 1
+    /// Pas des flèches avec Maj, en points (avec un pas de 1 : 5 ; avec un pas de 5 : 10, soit deux pas).
+    static var coarseStep: Int { step == 1 ? 5 : step * 2 }
+    /// Valeur la plus basse d'un seuil : un pas (1 ; 5 avec un pas de 5, comme les Steppers).
+    static var lowestValue: Int { step }
+    /// Valeur la plus haute : 100 pour une valeur qui monte (« jamais » écarlate à 100 existait déjà) ; pour la batterie un pas
+    /// de moins (99 ; 95 avec un pas de 5), car « sous 100 % » serait orange en permanence.
+    static func highestValue(ascending: Bool) -> Int { ascending ? 100 : 100 - step }
 
     // MARK: Valeurs
 
@@ -102,32 +110,35 @@ enum ThresholdTrackLogic {
         return copy
     }
 
-    /// Ordre et écart minimal respectés (c'est le cas de tout état que la piste produit).
+    /// Ordre, écart minimal et limites respectés (c'est le cas de tout état que la piste produit).
     static func isValid(_ t: LevelThresholds, ascending: Bool) -> Bool {
         let (low, middle, high) = ascending ? (t.medium, t.high, t.critical) : (t.critical, t.high, t.medium)
-        return low >= step && middle - low >= minimumGap && high - middle >= minimumGap && high <= (ascending ? 100 : 95)
+        return low >= lowestValue && middle - low >= minimumGap && high - middle >= minimumGap && high <= highestValue(ascending: ascending)
     }
 
     // MARK: Bornes
 
-    /// Plage permise à une poignée, donnée par ses voisines : exactement les anciennes plages des Steppers.
-    /// Croissant (charge, disque) : orange 5…(rouge−5), rouge (orange+5)…(écarlate−5), écarlate (rouge+5)…100.
-    /// Décroissant (batterie) : orange (rouge+5)…95, rouge (écarlate+5)…(orange−5), écarlate 5…(rouge−5).
-    /// Un état abîmé (voisines à moins de 10 points) donnerait une plage vide, et l'ancien `ClosedRange` plantait :
+    /// Plage permise à une poignée, donnée par ses voisines et séparée d'elles par `minimumGap`. Les limites extérieures sont `lowestValue`
+    /// et `highestValue` : elles contiennent celles des anciens Steppers (5 et 100 ; batterie 5 et 95), donc tout état que les Steppers
+    /// produisaient reste valide.
+    /// Croissant (charge, disque) : orange bas…(rouge−écart), rouge (orange+écart)…(écarlate−écart), écarlate (rouge+écart)…haut.
+    /// Décroissant (batterie) : orange (rouge+écart)…haut, rouge (écarlate+écart)…(orange−écart), écarlate bas…(rouge−écart).
+    /// Un état abîmé (voisines collées) pourrait donner une plage vide, et l'ancien `ClosedRange` plantait :
     /// ici la plage se réduit à son bas, jamais vide.
     static func bounds(for handle: ThresholdHandle, in t: LevelThresholds, ascending: Bool) -> ClosedRange<Int> {
         let lower: Int, upper: Int
+        let top = highestValue(ascending: ascending)
         if ascending {
             switch handle {
-            case .orange: lower = step; upper = t.high - minimumGap
+            case .orange: lower = lowestValue; upper = t.high - minimumGap
             case .red: lower = t.medium + minimumGap; upper = t.critical - minimumGap
-            case .scarlet: lower = t.high + minimumGap; upper = 100
+            case .scarlet: lower = t.high + minimumGap; upper = top
             }
         } else {
             switch handle {
-            case .orange: lower = t.high + minimumGap; upper = 95
+            case .orange: lower = t.high + minimumGap; upper = top
             case .red: lower = t.critical + minimumGap; upper = t.medium - minimumGap
-            case .scarlet: lower = step; upper = t.high - minimumGap
+            case .scarlet: lower = lowestValue; upper = t.high - minimumGap
             }
         }
         return lower...max(lower, upper)
@@ -135,7 +146,7 @@ enum ThresholdTrackLogic {
 
     // MARK: Aimantation et glisser
 
-    /// Valeur la plus proche (multiple de 5) d'une position brute en %, ramenée dans les bornes : les poignées ne se croisent jamais.
+    /// Valeur la plus proche (multiple de `step`) d'une position brute en %, ramenée dans les bornes : les poignées ne se croisent jamais.
     static func snapped(_ raw: Double, for handle: ThresholdHandle, in t: LevelThresholds, ascending: Bool) -> Int {
         let range = bounds(for: handle, in: t, ascending: ascending)
         guard raw.isFinite else { return min(max(value(of: handle, in: t), range.lowerBound), range.upperBound) }
@@ -155,7 +166,7 @@ enum ThresholdTrackLogic {
     // MARK: Clavier et VoiceOver
 
     enum Command: Equatable {
-        /// Nombre de pas de 5, positif ou négatif.
+        /// Nombre de pas (`step`), positif ou négatif.
         case step(Int)
         case lowest, highest
     }
@@ -164,11 +175,12 @@ enum ThresholdTrackLogic {
         case left, right, up, down, home, end
     }
 
-    /// Flèches : un pas de 5 (Maj : 10) ; Début et Fin : les bornes. La droite et le haut augmentent la valeur, y compris pour la batterie.
+    /// Flèches : un pas (Maj : `coarseStep` points) ; Début et Fin : les bornes. La droite et le haut augmentent la valeur, y compris pour la batterie.
     static func command(for key: Key, shift: Bool) -> Command {
-        switch key {
-        case .right, .up: .step(shift ? 2 : 1)
-        case .left, .down: .step(shift ? -2 : -1)
+        let amount = shift ? coarseStep / step : 1
+        return switch key {
+        case .right, .up: .step(amount)
+        case .left, .down: .step(-amount)
         case .home: .lowest
         case .end: .highest
         }
@@ -210,38 +222,100 @@ enum ThresholdTrackLogic {
         min(1, max(0, percent / 100))
     }
 
-    // MARK: Étiquettes
+    // MARK: Quelle poignée saisir
 
-    struct LabelPlacement: Equatable {
-        /// Étiquette relevée sur une seconde rangée, reliée à sa poignée par une tige fine.
-        var raised: Bool
-        /// Décalage horizontal de l'étiquette par rapport à sa poignée, en points (0 sauf près d'une tige).
-        var shift: Double
+    enum Pick: Equatable {
+        /// Le pointeur n'est sur aucune poignée.
+        case none
+        case handle(ThresholdHandle)
+        /// Deux poignées à égale distance du pointeur (de gauche à droite) : la direction du geste décide (`resolve`).
+        case undecided([ThresholdHandle])
     }
 
-    /// Place les trois étiquettes pour que rien ne se chevauche. L'étiquette du MILIEU (rouge, dans les deux sens) est relevée quand
-    /// elle est trop près d'une voisine pour tenir à côté d'elle : écart en points d'écran inférieur à la largeur d'une étiquette
-    /// plus son espace. À 4 pt par point (piste d'environ 400 pt) cela fait un écart inférieur à 9 points, soit 5 ; une piste
-    /// plus étroite lève aussi l'étiquette pour un écart de 10. Les étiquettes voisines s'écartent alors de la tige (de quelques points).
-    static func labelPlacements(for t: LevelThresholds, pointsPerUnit: Double,
-                                labelWidth: Double = ThresholdTrackMetrics.labelWidth,
-                                spacing: Double = ThresholdTrackMetrics.labelSpacing) -> [ThresholdHandle: LabelPlacement] {
-        let needed = labelWidth + spacing
-        let orange = Double(t.medium) * pointsPerUnit
-        let red = Double(t.high) * pointsPerUnit
-        let scarlet = Double(t.critical) * pointsPerUnit
-        let nearest = min(abs(red - orange), abs(scarlet - red))
-        guard nearest < needed else {
-            return [.orange: LabelPlacement(raised: false, shift: 0), .red: LabelPlacement(raised: false, shift: 0),
-                    .scarlet: LabelPlacement(raised: false, shift: 0)]
+    /// Les poignées se recouvrent quand les seuils sont proches (3 pt d'écart pour 1 point sur la piste du panneau) : le geste ne
+    /// prend donc pas « celle qui est dessus » mais la PLUS PROCHE du pointeur, en distance horizontale, parmi celles dont la zone
+    /// (24 x 24 pt) contient le pointeur. À égalité exacte, `.undecided` : on attend la direction du geste.
+    static func pickHandle(pointerX: Double, pointerY: Double, thresholds t: LevelThresholds, pointsPerUnit: Double, ascending: Bool) -> Pick {
+        let radius = Double(ThresholdTrackMetrics.hitSize) / 2
+        guard abs(pointerY - Double(ThresholdTrackMetrics.centreY)) <= radius else { return .none }
+        let candidates = ThresholdHandle.allCases.map { handle -> (handle: ThresholdHandle, x: Double, distance: Double) in
+            let x = Double(ThresholdTrackMetrics.inset) + Double(value(of: handle, in: t)) * pointsPerUnit
+            return (handle, x, abs(pointerX - x))
+        }.filter { $0.distance <= radius }
+        guard let nearest = candidates.map(\.distance).min() else { return .none }
+        let tied = candidates.filter { $0.distance - nearest < 0.01 }.sorted { $0.x < $1.x }
+        return tied.count == 1 ? .handle(tied[0].handle) : .undecided(tied.map(\.handle))
+    }
+
+    /// Départage des poignées à égalité selon le sens du geste (`direction` : -1 vers la gauche, +1 vers la droite) : parmi celles qui
+    /// peuvent encore bouger dans ce sens (borne non atteinte), la plus avancée dans ce sens ; si aucune ne peut, la première de la liste.
+    /// `candidates` est donné de gauche à droite.
+    static func resolve(_ candidates: [ThresholdHandle], direction: Int, in t: LevelThresholds, ascending: Bool) -> ThresholdHandle {
+        func canMove(_ handle: ThresholdHandle) -> Bool {
+            let range = bounds(for: handle, in: t, ascending: ascending)
+            return range.contains(value(of: handle, in: t) + (direction >= 0 ? step : -step))
         }
-        // La tige est à `red` : chaque étiquette voisine s'arrête à la moitié de sa largeur, plus 3 pt, de la tige.
-        let clearance = labelWidth / 2 + 3
-        func shift(_ x: Double) -> Double {
-            x <= red ? min(0, (red - clearance) - x) : max(0, (red + clearance) - x)
+        let movable = candidates.filter(canMove)
+        if direction >= 0 { return movable.last ?? candidates[0] }
+        return movable.first ?? candidates[0]
+    }
+
+    // MARK: Étiquettes
+
+    /// Où dessiner l'étiquette d'une poignée : son centre (x, en points) et celui de la poignée, que le trait de rappel relie.
+    struct LabelPlacement: Equatable {
+        var labelCentre: Double
+        var handleX: Double
+    }
+
+    /// Une seule rangée d'étiquettes au-dessus de la piste, dans l'ordre des poignées de gauche à droite. Chaque étiquette est centrée
+    /// sur sa poignée quand il y a de la place ; sinon elles s'écartent au minimum (largeur + espace entre deux centres), en gardant
+    /// leur ordre, sans sortir de [0, `width`]. C'est la régression isotone (pool-adjacent-violators) des positions souhaitées, une
+    /// fois retiré le décalage de rang : elle minimise la somme des carrés des déplacements sous ces contraintes, et laisse en place
+    /// les étiquettes qui n'ont pas à bouger. Le pire cas (trois seuils à 1 point d'écart) place l'étiquette du milieu sur sa poignée et
+    /// les deux autres à `largeur + espace` de part et d'autre ; au bord elles se serrent contre le bord. Les traits de rappel
+    /// (étiquette -> poignée) ne se croisent pas, car les deux suites de positions sont dans le même ordre.
+    /// - Returns: les centres des étiquettes, dans l'ordre de `handleXs` (qui n'a pas à être trié).
+    static func labelCentres(forHandleXs handleXs: [Double], width: Double,
+                             labelWidth: Double = ThresholdTrackMetrics.labelWidth,
+                             spacing: Double = ThresholdTrackMetrics.labelSpacing) -> [Double] {
+        let count = handleXs.count
+        guard count > 0 else { return [] }
+        let distance = labelWidth + spacing
+        let order = handleXs.indices.sorted { handleXs[$0] < handleXs[$1] }
+        // Positions souhaitées, rang retiré : le problème devient « suite croissante la plus proche ».
+        let shifted = order.enumerated().map { handleXs[$0.element] - Double($0.offset) * distance }
+        // Pool-adjacent-violators.
+        var blocks: [(sum: Double, size: Int)] = []
+        for value in shifted {
+            blocks.append((value, 1))
+            while blocks.count > 1, blocks[blocks.count - 2].sum / Double(blocks[blocks.count - 2].size) > blocks[blocks.count - 1].sum / Double(blocks[blocks.count - 1].size) {
+                let last = blocks.removeLast()
+                blocks[blocks.count - 1].sum += last.sum
+                blocks[blocks.count - 1].size += last.size
+            }
         }
-        return [.orange: LabelPlacement(raised: false, shift: shift(orange)), .red: LabelPlacement(raised: true, shift: 0),
-                .scarlet: LabelPlacement(raised: false, shift: shift(scarlet))]
+        var fitted: [Double] = []
+        for block in blocks { fitted += Array(repeating: block.sum / Double(block.size), count: block.size) }
+        // Dans la vue : le premier centre au moins à une demi-largeur du bord gauche, le dernier à une demi-largeur du bord droit.
+        let lowest = labelWidth / 2
+        let highest = max(lowest, width - labelWidth / 2 - Double(count - 1) * distance)
+        var centres = [Double](repeating: 0, count: count)
+        for (rank, index) in order.enumerated() {
+            centres[index] = min(max(fitted[rank], lowest), highest) + Double(rank) * distance
+        }
+        return centres
+    }
+
+    /// Les étiquettes des trois poignées d'un groupe (une piste de `width` pt, `pointsPerUnit` points par point de pourcentage).
+    static func labelPlacements(for t: LevelThresholds, pointsPerUnit: Double, width: Double) -> [ThresholdHandle: LabelPlacement] {
+        let xs = ThresholdHandle.allCases.map { Double(ThresholdTrackMetrics.inset) + Double(value(of: $0, in: t)) * pointsPerUnit }
+        let centres = labelCentres(forHandleXs: xs, width: width)
+        var result: [ThresholdHandle: LabelPlacement] = [:]
+        for (index, handle) in ThresholdHandle.allCases.enumerated() {
+            result[handle] = LabelPlacement(labelCentre: centres[index], handleX: xs[index])
+        }
+        return result
     }
 
     // MARK: Textes
