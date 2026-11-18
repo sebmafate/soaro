@@ -141,7 +141,7 @@ All **[H]**, from `docs/architecture.md` and the sources.
 | [0007](docs/adr/0007-privacy-by-default.md) | Nothing leaves the Mac by default | accepted (reconstructed) |
 | [0008](docs/adr/0008-release-built-on-github-actions-xcode-26.md) | Release built by GitHub Actions on Xcode 26 | accepted (reconstructed) |
 | [0009](docs/adr/0009-cleanup-actions-by-supported-route-under-one-contract.md) | Cleanup actions that are not plain deletion: the supported route per target, under one contract (completes 0006) | accepted |
-| [0010](docs/adr/0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | proposed (pending Test B) |
+| [0010](docs/adr/0010-docker-targeted-prune-measured-by-host-space.md) | Docker: a targeted prune through the docker command, measured by the space returned to the Mac | accepted 2026-11-18 (Test B passed, SPK-002) |
 
 Smaller choices (notes, no ADR), developer cleanup, decided 2026-11-15:
 
@@ -207,10 +207,10 @@ Components with no requirement of their own: `CommandRunner` (serves R4, R6, R17
 | # | Risk or unknown | Spike or mitigation | Status |
 | --- | --- | --- | --- |
 | 1 | HID and SMC readings break on a new macOS | Failed read hides the section (ADR 0005); test the app on each macOS beta | open |
-| 2 | Docker, OrbStack and simulator cleanup is more dangerous than file caches (shared volumes, running containers) | Contract of ADR 0009 for simulators and Android; Docker waits for Test B (ADR 0010) | simulators and Android: decided; Docker: open until Test B |
+| 2 | Docker, OrbStack and simulator cleanup is more dangerous than file caches (shared volumes, running containers) | Contract of ADR 0009 for simulators and Android; Docker waits for Test B (ADR 0010) | simulators and Android: decided; Docker: decided 2026-11-18 (Test B passed, ADR 0010 accepted; the safety rules of the ADR stay) |
 | 5 | An Android AVD removed as its `.ini` and `.avd` pair may leave something that `avdmanager delete` would have removed | Create a disposable AVD, remove it both ways, compare what is left (first Android task) | **closed 2026-11-18** (SPK-001, `docs/spikes/SPK-001-avdmanager-delete-vs-pair.md`): on a disposable AVD created and booted from the command line, `avdmanager delete avd` removes exactly the `.avd` folder and the `.ini`, and the state after is identical to the pair route; limits are listed in the spike |
 | 6 | A running emulator is detected from the process list (`-avd <name>`), untested with a real emulator | Test with a real running emulator and a fixture | fixture tested in SL10 (a hand-written, anonymised line, `AndroidRunningDetectionTests`); the real running emulator is pending the author (disposable AVD only) |
-| 7 | Docker Desktop may not give disk space back to the Mac after a prune | Test B (at least half of the announced space comes back, else drop Docker) | open |
+| 7 | Docker Desktop may not give disk space back to the Mac after a prune | Test B (at least half of the announced space comes back, else drop Docker) | **closed 2026-11-18** (SPK-002: 89.7 % of 22.46 GB back after 10 minutes, `docker builder prune -a -f`, no volume touched; one Mac, one Docker Desktop version) |
 | 8 | An Xcode, Android or Docker update changes the output of the tools, and a cleaner silently disappears | Defensive reading (R6, ADR 0005); one test per cleaner on a recorded real output | open |
 | 3 | Sparkle's window may stay behind other windows for an app without Dock icon | Test during the 1.0.0 to 1.0.1 update | open (`docs/updates.md`) |
 | 4 | Strict concurrency never enabled | Try Swift 6 mode in a branch and count the errors | open |
@@ -239,3 +239,4 @@ Components with no requirement of their own: `CommandRunner` (serves R4, R6, R17
 | 2026-11-17 | SL12a: Android system images, read-only (`AndroidSystemImageScanner`, `AndroidSystemImagePresentation`, `AndroidSystemImageReport`, `AndroidDevice.imageSysdir`, an images group in `SimulatorsModel` independent of Delete, a third section in `SimulatorsScreen`); facts recorded; no removal code, guarded by a source test. SL12b (removal) is blocked on the author. No decision changed, ADR 0009 not edited | 0009 |
 | 2026-11-17 | SL12a review round: aliases no longer make images "cannot tell" (`unreadableRegistrationCount`), every name of a linked image folder is kept, `ANDROID_SDK_HOME` and `ANDROID_PREFS_ROOT` added as unverified triggers, the source test described as a word-list tripwire. No decision changed | 0009 |
 | 2026-11-18 | Risk 5 closed by SPK-001 (disposable AVD, `avdmanager delete avd` against the pair route, identical final states). No change to ADR 0009 or to the code. |
+| 2026-11-18 | Test B (SPK-002): ADR 0010 accepted, risk 7 closed, SL13 may start. No code change. |
