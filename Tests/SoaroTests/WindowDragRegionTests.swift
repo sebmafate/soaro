@@ -81,9 +81,17 @@ import Testing
         guard NSScreen.main != nil else { return }      // pas de serveur de fenêtres : rien à tester
         let window = try await makeWindow(dark: dark)
         defer { window.orderOut(nil) }
+        let root = try #require(window.contentView?.superview)
+        // Ce qui compte : un clic en haut de la barre latérale DÉPLACE la fenêtre. Le `mouseDown` monte la chaîne des répondeurs
+        // depuis la vue touchée ; le déplacement vient de notre `WindowDragView` ou d'une vue de barre de titre du système, vue touchée
+        // ou ancêtre. On n'exige plus que ce soit exactement `WindowDragView` : sur macOS 26 une vue privée (« scroll pocket »,
+        // Liquid Glass) peut être touchée à la place, et c'est un problème seulement si le déplacement n'y arrive plus.
+        // `mouseDownCanMoveWindow` n'est pas un critère : la fenêtre n'est pas `isMovableByWindowBackground` (testé plus bas).
+        #expect(!window.isMovableByWindowBackground)
         for dy in [CGFloat(4), 14, 26, 40] {
             let view = try hit(window, x: 120, fromTop: dy)
-            #expect(view is WindowDragView, "barre latérale, à \(dy) pt du haut : \(type(of: view))")
+            let source = WindowProbe.dragSource(of: view)
+            #expect(source != nil, "barre latérale, à \(dy) pt du haut : rien ne déplace la fenêtre. \(WindowProbe.hitReport(view, in: root))")
         }
     }
 
