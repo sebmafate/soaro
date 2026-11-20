@@ -8,8 +8,8 @@
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="author" content="Sébastien Ferrand">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f9fb">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d151c">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f7f9">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b141b">
   <link rel="canonical" href="https://soaro.app/">
   <link rel="alternate" hreflang="en" href="https://soaro.app/">
   <link rel="alternate" hreflang="fr" href="https://soaro.app/fr/">
@@ -73,6 +73,7 @@
       "name": "Soaro",
       "url": "https://soaro.app/",
       "description": "Soaro is a free, open source Mac app. It watches CPU, GPU, memory, disk, network and battery from the menu bar and helps keep your Mac clean. No tracking.",
+      "softwareVersion": "1.1.0",
       "applicationCategory": "UtilitiesApplication",
       "operatingSystem": "macOS 14 or later",
       "softwareRequirements": "Apple silicon Mac",
@@ -90,9 +91,9 @@
       "image": "https://soaro.app/icon-512.png",
       "screenshot": [
         "https://soaro.app/og-en.png",
-        "https://soaro.app/screenshots/en-performance.webp",
-        "https://soaro.app/screenshots/en-battery.webp",
-        "https://soaro.app/screenshots/en-network.webp"
+        "https://soaro.app/screenshots/en-performance-light.webp",
+        "https://soaro.app/screenshots/en-battery-light.webp",
+        "https://soaro.app/screenshots/en-network-light.webp"
       ],
       "featureList": [
         "Real-time CPU, GPU, memory, disk, network and battery monitoring",
@@ -101,6 +102,7 @@
         "VPN detection and network traffic per app",
         "30-day history",
         "Cleanup of caches, large files, inactive dev projects and apps",
+        "Cleanup of Xcode simulators, Android emulators and the Docker build cache",
         "Recommendations and settings tips, never changing a setting",
         "Nine languages, no tracking"
       ],
@@ -134,230 +136,183 @@
     <a class="brand" href="./"><img src="icon.svg" alt="" width="28" height="28">Soaro</a>
     <nav aria-label="Main">
       <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#cleanup">Cleanup</a>
       <a class="hide-sm" href="#privacy">Privacy</a>
       <a class="hide-sm" href="#limits">Limits</a>
-      <a href="#download">Download</a>
-      <a class="coffee hide-sm" href="https://buymeacoffee.com/sebmafate">Buy me a coffee</a>
       <div class="langsel" role="group" aria-label="Language">
-        <a href="fr/" hreflang="fr" lang="fr" title="Français"><img src="flags/fr.svg" alt="Français" width="26" height="26"></a>
-        <a href="./" hreflang="en" lang="en" aria-current="page" title="English"><img src="flags/gb.svg" alt="English" width="26" height="26"></a>
+        <a href="fr/" hreflang="fr" lang="fr" title="Français">FR</a>
+        <a href="./" hreflang="en" lang="en" aria-current="page" title="English">EN</a>
       </div>
+      <a class="btn primary small" href="#download">Download</a>
     </nav>
   </div>
 </header>
 
 <main id="main">
-  <div class="wrap hero">
-    <img class="logo" src="icon.svg" alt="Soaro icon" width="88" height="88">
-    <h1>A lighter Mac.</h1>
-    <p class="lead">Soaro lives in your menu bar. It watches CPU, GPU, memory, disk, network and battery, and tells you what to do when something goes wrong.</p>
-    <div class="actions">
-      <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Download for macOS</a>
-      <a class="btn" href="https://github.com/sebmafate/soaro">View on GitHub</a>
-      <a class="btn" href="https://buymeacoffee.com/sebmafate">Buy me a coffee</a>
+  <div class="hero">
+    <div class="wrap">
+      <div class="menubar" role="img" aria-label="Illustration of the menu bar with Soaro: CPU 34% in the normal color, GPU 72% in orange, memory 83% in red, disk 97% in scarlet, battery 67%, then the network speed"><img class="mb-app" src="icon.svg" alt="" width="18" height="18"><span class="mb-item lv1"><span class="mb-l">CPU</span><span class="mb-v">34%</span></span><span class="mb-item lv2"><span class="mb-l">GPU</span><span class="mb-v">72%</span></span><span class="mb-item lv3"><span class="mb-l">RAM</span><span class="mb-v">83%</span></span><span class="mb-item lv4"><span class="mb-l">SSD</span><span class="mb-v">97%</span></span><span class="mb-item lv1 mb-wide"><span class="mb-l">BAT</span><span class="mb-v">67%</span></span><span class="mb-item lv1 mb-wide"><span class="mb-l">↑ 310 KB/s</span><span class="mb-v">↓ 2.4 MB/s</span></span><span class="mb-clock mb-wide">Fri Nov 20  9:41</span></div>
+      <p class="caption">The menu bar, drawn here as an illustration. A value turns orange, red, then scarlet as it gets worse.</p>
+      <div class="hero-grid">
+        <div class="hero-text">
+          <a class="pill" href="https://github.com/sebmafate/soaro/blob/main/CHANGELOG.md"><strong>Version 1.1.0</strong> Cleanup for simulators, Android emulators, Docker and NuGet</a>
+          <h1>A lighter Mac.</h1>
+          <p class="lead">Soaro lives in your menu bar. It watches CPU, GPU, memory, disk, network and battery, and tells you what to do when something goes wrong.</p>
+          <div class="actions">
+            <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Download for macOS</a>
+            <a class="btn" href="https://github.com/sebmafate/soaro">View on GitHub</a>
+          </div>
+          <p class="meta">Free and open source (GPL-3.0) · macOS 14 or later · Apple silicon</p>
+        </div>
+        <div class="hero-shot"><picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-overview-dark-946.webp 946w, screenshots/en-overview-dark.webp 1892w" sizes="(min-width: 900px) 760px, calc(100vw - 48px)"><img class="shot" src="screenshots/en-overview-light-946.webp" srcset="screenshots/en-overview-light-946.webp 946w, screenshots/en-overview-light.webp 1892w" sizes="(min-width: 900px) 760px, calc(100vw - 48px)" width="946" height="782" decoding="async" fetchpriority="high" alt="The Soaro window, showing six gauges for CPU, memory, GPU, disk, network and battery, followed by recommendations"></picture></div>
+      </div>
     </div>
-    <p class="meta">Free and open source (GPL-3.0) · macOS 14 or later · Apple silicon</p>
-    <img class="shot" src="screenshots/en-overview-946.webp" srcset="screenshots/en-overview-946.webp 946w, screenshots/en-overview.webp 1892w" sizes="(min-width: 900px) 860px, calc(100vw - 40px)" decoding="async" width="946" height="782" alt="The Soaro window, showing six gauges for CPU, memory, GPU, disk, network and battery, followed by recommendations" fetchpriority="high">
+    <svg class="wave" viewBox="0 0 1200 60" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M0.0 30.0 L5.0 34.0 L10.0 37.7 L15.0 41.0 L20.0 43.9 L25.0 46.3 L30.0 48.0 L35.0 49.1 L40.0 49.5 L45.0 49.3 L50.0 48.4 L55.0 47.0 L60.0 45.0 L65.0 42.6 L70.0 39.8 L75.0 36.8 L80.0 33.6 L85.0 30.5 L90.0 27.3 L95.0 24.4 L100.0 21.7 L105.0 19.4 L110.0 17.5 L115.0 16.0 L120.0 15.1 L125.0 14.7 L130.0 14.8 L135.0 15.4 L140.0 16.5 L145.0 18.0 L150.0 19.8 L155.0 22.0 L160.0 24.3 L165.0 26.8 L170.0 29.3 L175.0 31.7 L180.0 34.1 L185.0 36.2 L190.0 38.1 L195.0 39.6 L200.0 40.8 L205.0 41.6 L210.0 42.0 L215.0 42.0 L220.0 41.5 L225.0 40.7 L230.0 39.6 L235.0 38.2 L240.0 36.6 L245.0 34.7 L250.0 32.8 L255.0 30.8 L260.0 28.9 L265.0 27.1 L270.0 25.4 L275.0 23.9 L280.0 22.6 L285.0 21.6 L290.0 21.0 L295.0 20.6 L300.0 20.6 L305.0 20.9 L310.0 21.5 L315.0 22.3 L320.0 23.4 L325.0 24.7 L330.0 26.1 L335.0 27.6 L340.0 29.1 L345.0 30.6 L350.0 32.1 L355.0 33.5 L360.0 34.7 L365.0 35.7 L370.0 36.5 L375.0 37.0 L380.0 37.3 L385.0 37.4 L390.0 37.2 L395.0 36.8 L400.0 36.1 L405.0 35.3 L410.0 34.3 L415.0 33.2 L420.0 32.1 L425.0 30.9 L430.0 29.7 L435.0 28.5 L440.0 27.4 L445.0 26.5 L450.0 25.7 L455.0 25.0 L460.0 24.5 L465.0 24.3 L470.0 24.2 L475.0 24.3 L480.0 24.6 L485.0 25.1 L490.0 25.7 L495.0 26.5 L500.0 27.3 L505.0 28.2 L510.0 29.2 L515.0 30.1 L520.0 31.0 L525.0 31.9 L530.0 32.7 L535.0 33.3 L540.0 33.9 L545.0 34.2 L550.0 34.5 L555.0 34.6 L560.0 34.5 L565.0 34.3 L570.0 33.9 L575.0 33.4 L580.0 32.8 L585.0 32.2 L590.0 31.5 L595.0 30.7 L600.0 30.0 L605.0 29.3 L610.0 28.6 L615.0 28.0 L620.0 27.5 L625.0 27.0 L630.0 26.7 L635.0 26.5 L640.0 26.4 L645.0 26.5 L650.0 26.6 L655.0 26.9 L660.0 27.3 L665.0 27.7 L670.0 28.2 L675.0 28.8 L680.0 29.3 L685.0 29.9 L690.0 30.5 L695.0 31.0 L700.0 31.5 L705.0 31.9 L710.0 32.3 L715.0 32.5 L720.0 32.7 L725.0 32.8 L730.0 32.8 L735.0 32.7 L740.0 32.5 L745.0 32.2 L750.0 31.9 L755.0 31.5 L760.0 31.0 L765.0 30.6 L770.0 30.1 L775.0 29.7 L780.0 29.3 L785.0 28.9 L790.0 28.5 L795.0 28.2 L800.0 28.0 L805.0 27.9 L810.0 27.8 L815.0 27.8 L820.0 27.9 L825.0 28.0 L830.0 28.2 L835.0 28.5 L840.0 28.8 L845.0 29.1 L850.0 29.5 L855.0 29.8 L860.0 30.2 L865.0 30.5 L870.0 30.8 L875.0 31.1 L880.0 31.4 L885.0 31.5 L890.0 31.6 L895.0 31.7 L900.0 31.7 L905.0 31.7 L910.0 31.6 L915.0 31.4 L920.0 31.2 L925.0 31.0 L930.0 30.7 L935.0 30.4 L940.0 30.2 L945.0 29.9 L950.0 29.6 L955.0 29.4 L960.0 29.1 L965.0 29.0 L970.0 28.8 L975.0 28.7 L980.0 28.7 L985.0 28.7 L990.0 28.7 L995.0 28.8 L1000.0 28.9 L1005.0 29.0 L1010.0 29.2 L1015.0 29.4 L1020.0 29.6 L1025.0 29.8 L1030.0 30.1 L1035.0 30.3 L1040.0 30.5 L1045.0 30.6 L1050.0 30.8 L1055.0 30.9 L1060.0 31.0 L1065.0 31.0 L1070.0 31.1 L1075.0 31.0 L1080.0 31.0 L1085.0 30.9 L1090.0 30.8 L1095.0 30.6 L1100.0 30.5 L1105.0 30.3 L1110.0 30.1 L1115.0 30.0 L1120.0 29.8 L1125.0 29.7 L1130.0 29.5 L1135.0 29.4 L1140.0 29.3 L1145.0 29.2 L1150.0 29.2 L1155.0 29.2 L1160.0 29.2 L1165.0 29.2 L1170.0 29.3 L1175.0 29.4 L1180.0 29.5 L1185.0 29.6 L1190.0 29.7 L1195.0 29.9 L1200.0 30.0"/></svg>
   </div>
 
   <section id="features">
     <div class="wrap">
       <h2>What you see</h2>
       <p class="intro">Open the panel from the menu bar for a quick look, or keep the full window on your desktop. Everything is measured on your Mac, in real time.</p>
-
-      <div class="feature">
-        <div class="text">
-          <h3>In the menu bar</h3>
-          <p>Choose what you want to see, next to the clock.</p>
-          <ul>
-            <li>A value turns <strong>orange</strong>, <strong>red</strong>, then <strong>scarlet</strong> as it gets worse</li>
-            <li>You choose the thresholds</li>
-            <li>Hover over the icon to see why something is colored</li>
-          </ul>
-        </div>
-        <img class="shot" src="screenshots/en-settings-946.webp" srcset="screenshots/en-settings-946.webp 946w, screenshots/en-settings.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Settings with the choice of values shown in the menu bar and the color thresholds">
-      </div>
-
-      <div class="feature">
-        <div class="text">
-          <h3>Performance</h3>
-          <p>The details that Activity Monitor hides in several windows.</p>
-          <ul>
-            <li>Load <strong>per core</strong>, with efficiency and performance cores apart</li>
-            <li>Memory pressure, swap and compressed memory</li>
-            <li>Disk speed and SMART status</li>
-            <li>Temperatures, fans and power draw</li>
-          </ul>
-        </div>
-        <img class="shot" src="screenshots/en-performance-946.webp" srcset="screenshots/en-performance-946.webp 946w, screenshots/en-performance.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Performance tab with one bar per CPU core and memory details">
-      </div>
-
-      <div class="feature">
-        <div class="text">
-          <h3>Battery</h3>
-          <p>Is your battery still good? Which app drains it?</p>
-          <ul>
-            <li><strong>Health</strong> and <strong>cycle count</strong></li>
-            <li>Charging power and Mac power draw, in watts</li>
-            <li><strong>Energy impact per app</strong></li>
-          </ul>
-        </div>
-        <img class="shot" src="screenshots/en-battery-946.webp" srcset="screenshots/en-battery-946.webp 946w, screenshots/en-battery.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Battery tab with charge level, health and energy impact by app">
-      </div>
-
-      <div class="feature">
-        <div class="text">
-          <h3>Network</h3>
-          <p>Speed, volume, and who is using your connection.</p>
-          <ul>
-            <li><strong>Traffic per app</strong></li>
-            <li><strong>VPN detection</strong>, done locally</li>
-            <li>Wi-Fi quality and latency</li>
-            <li>Public IP and country, if you turn it on</li>
-          </ul>
-        </div>
-        <img class="shot" src="screenshots/en-network-946.webp" srcset="screenshots/en-network-946.webp 946w, screenshots/en-network.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Network tab with download and upload speed, VPN status and traffic per app">
-      </div>
-
-      <div class="feature">
-        <div class="text">
-          <h3>History</h3>
-          <p>Something was slow last night? Look at the last hour, day, week or month. The history stays on your Mac, for 30 days.</p>
-        </div>
-        <img class="shot" src="screenshots/en-history-946.webp" srcset="screenshots/en-history-946.webp 946w, screenshots/en-history.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="History tab with a CPU chart over 24 hours">
-      </div>
-
-      <div class="feature">
-        <div class="text">
-          <h3>Cleanup</h3>
-          <p>Four tools, made for people who build things.</p>
-          <ul>
-            <li><strong>Large files</strong></li>
-            <li><strong>Inactive projects</strong>: <code>node_modules</code>, <code>.build</code>, <code>target</code>, <code>Pods</code></li>
-            <li><strong>App uninstaller</strong>, with leftovers</li>
-            <li><strong>Login items</strong></li>
-          </ul>
-        </div>
-        <img class="shot" src="screenshots/en-cleanup-946.webp" srcset="screenshots/en-cleanup-946.webp 946w, screenshots/en-cleanup.webp 1892w" sizes="(min-width: 820px) 580px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Cleanup tab with caches and the four cleanup tools">
-      </div>
-
-      <div class="tools">
-        <figure><img class="shot" src="screenshots/en-cleanup-largeFiles-946.webp" srcset="screenshots/en-cleanup-largeFiles-946.webp 946w, screenshots/en-cleanup-largeFiles.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Large files tool"><figcaption>Large files</figcaption></figure>
-        <figure><img class="shot" src="screenshots/en-cleanup-devProjects-946.webp" srcset="screenshots/en-cleanup-devProjects-946.webp 946w, screenshots/en-cleanup-devProjects.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="Inactive projects tool"><figcaption>Inactive projects</figcaption></figure>
-        <figure><img class="shot" src="screenshots/en-cleanup-uninstaller-946.webp" srcset="screenshots/en-cleanup-uninstaller-946.webp 946w, screenshots/en-cleanup-uninstaller.webp 1892w" sizes="(min-width: 820px) 330px, calc(100vw - 40px)" decoding="async" width="946" height="782" loading="lazy" alt="App uninstaller"><figcaption>App uninstaller</figcaption></figure>
+      <div class="bento">
+      <article class="tile wide">
+        <div class="tile-text"><h3>In the menu bar</h3><p>Choose what you want to see, next to the clock. A value turns <strong class="lv2">orange</strong>, <strong class="lv3">red</strong>, then <strong class="lv4">scarlet</strong> as it gets worse. You choose the thresholds, and hovering over the icon tells you why something is colored.</p></div>
+        <picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-settings-dark-946.webp 946w, screenshots/en-settings-dark.webp 1892w" sizes="(min-width: 760px) 640px, calc(100vw - 100px)"><img class="shot" src="screenshots/en-settings-light-946.webp" srcset="screenshots/en-settings-light-946.webp 946w, screenshots/en-settings-light.webp 1892w" sizes="(min-width: 760px) 640px, calc(100vw - 100px)" width="946" height="782" decoding="async" loading="lazy" alt="Settings with the choice of values shown in the menu bar and the color thresholds"></picture>
+      </article>
+      <article class="tile">
+        <div class="tile-text"><h3>Performance</h3><p>Load per core, with efficiency and performance cores apart. Memory pressure, swap and compressed memory. Disk speed and SMART status. Temperatures, fans and power draw.</p></div>
+        <picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-performance-dark-946.webp 946w, screenshots/en-performance-dark.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)"><img class="shot" src="screenshots/en-performance-light-946.webp" srcset="screenshots/en-performance-light-946.webp 946w, screenshots/en-performance-light.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)" width="946" height="782" decoding="async" loading="lazy" alt="Performance tab with one bar per CPU core and memory details"></picture>
+      </article>
+      <article class="tile">
+        <div class="tile-text"><h3>Battery</h3><p>Is your battery still good? Which app drains it? Health and cycle count, charging power in watts, and the energy impact of each app.</p></div>
+        <picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-battery-dark-946.webp 946w, screenshots/en-battery-dark.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)"><img class="shot" src="screenshots/en-battery-light-946.webp" srcset="screenshots/en-battery-light-946.webp 946w, screenshots/en-battery-light.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)" width="946" height="782" decoding="async" loading="lazy" alt="Battery tab with charge level, health and energy impact by app"></picture>
+      </article>
+      <article class="tile">
+        <div class="tile-text"><h3>Network</h3><p>Speed, volume, and who is using your connection: traffic per app, VPN detection done locally, Wi-Fi quality and latency. Public IP and country, if you turn it on.</p></div>
+        <picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-network-dark-946.webp 946w, screenshots/en-network-dark.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)"><img class="shot" src="screenshots/en-network-light-946.webp" srcset="screenshots/en-network-light-946.webp 946w, screenshots/en-network-light.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)" width="946" height="782" decoding="async" loading="lazy" alt="Network tab with download and upload speed, VPN status and traffic per app"></picture>
+      </article>
+      <article class="tile">
+        <div class="tile-text"><h3>History</h3><p>Something was slow last night? Look at the last hour, day, week or month. The history stays on your Mac, for 30 days.</p></div>
+        <picture><source media="(prefers-color-scheme: dark)" srcset="screenshots/en-history-dark-946.webp 946w, screenshots/en-history-dark.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)"><img class="shot" src="screenshots/en-history-light-946.webp" srcset="screenshots/en-history-light-946.webp 946w, screenshots/en-history-light.webp 1892w" sizes="(min-width: 760px) 520px, calc(100vw - 100px)" width="946" height="782" decoding="async" loading="lazy" alt="History tab with a CPU chart over 24 hours"></picture>
+      </article>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <section id="cleanup" class="deep">
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <p class="eyebrow">New in 1.1.0</p>
+          <h2>Cleanup, made for people who build things</h2>
+          <p class="intro">Soaro finds what your tools leave behind, shows the real size, and removes only what you check.</p>
+          <dl class="tools-list">
+        <div><dt>Simulators and emulators</dt><dd>Xcode simulators and Android virtual devices. Those unused for more than 60 days are pre-selected. A running device is never removed.</dd></div>
+        <div><dt>Docker</dt><dd>Build cache and untagged images. A minute later, Soaro tells you how much space really came back. Containers, volumes and tagged images are never touched.</dd></div>
+        <div><dt>Developer caches</dt><dd>Xcode DerivedData, npm, Gradle, Cargo, NuGet, iOS DeviceSupport.</dd></div>
+        <div><dt>Inactive projects</dt><dd><code>node_modules</code>, <code>.build</code>, <code>target</code>, <code>Pods</code> of projects you no longer open.</dd></div>
+        <div><dt>Large files</dt><dd>What takes up the most space in your home folder.</dd></div>
+        <div><dt>Apps and login items</dt><dd>Uninstall an app with its leftovers, and see what starts with your Mac.</dd></div>
+      </dl>
+        </div>
+        <div class="stack">
+          <img class="shot" src="screenshots/en-cleanup-simulators-dark-946.webp" srcset="screenshots/en-cleanup-simulators-dark-946.webp 946w, screenshots/en-cleanup-simulators-dark.webp 1892w" sizes="(min-width: 900px) 540px, calc(100vw - 48px)" width="946" height="782" decoding="async" loading="lazy" alt="Simulators and emulators tool, with iOS simulators and Android virtual devices listed by size">
+          <img class="shot offset" src="screenshots/en-cleanup-docker-dark-946.webp" srcset="screenshots/en-cleanup-docker-dark-946.webp 946w, screenshots/en-cleanup-docker-dark.webp 1892w" sizes="(min-width: 900px) 460px, calc(86vw - 48px)" width="946" height="782" decoding="async" loading="lazy" alt="Docker tool, with the build cache and untagged images selected">
+        </div>
+      </div>
+      <div class="trio">
+        <figure><img class="shot" src="screenshots/en-cleanup-dark-946.webp" srcset="screenshots/en-cleanup-dark-946.webp 946w, screenshots/en-cleanup-dark.webp 1892w" sizes="(min-width: 760px) 350px, calc(100vw - 48px)" width="946" height="782" decoding="async" loading="lazy" alt="Cleanup tab with system and developer caches"><figcaption>Caches</figcaption></figure>
+        <figure><img class="shot" src="screenshots/en-cleanup-devProjects-dark-946.webp" srcset="screenshots/en-cleanup-devProjects-dark-946.webp 946w, screenshots/en-cleanup-devProjects-dark.webp 1892w" sizes="(min-width: 760px) 350px, calc(100vw - 48px)" width="946" height="782" decoding="async" loading="lazy" alt="Inactive projects tool"><figcaption>Inactive projects</figcaption></figure>
+        <figure><img class="shot" src="screenshots/en-cleanup-largeFiles-dark-946.webp" srcset="screenshots/en-cleanup-largeFiles-dark-946.webp 946w, screenshots/en-cleanup-largeFiles-dark.webp 1892w" sizes="(min-width: 760px) 350px, calc(100vw - 48px)" width="946" height="782" decoding="async" loading="lazy" alt="Large files tool"><figcaption>Large files</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <div class="wrap">
       <h2>It suggests. You decide.</h2>
       <p class="intro">Soaro warns you about a full disk, memory under pressure, a probable memory leak, a hot Mac or a worn battery. It only sends a notification when the problem is critical.</p>
-      <div class="cards">
-        <div class="card">
-          <h3>Settings tips</h3>
-          <p>Soaro reads a few macOS settings and tells you what could help: Low Power Mode, an app that blocks sleep, too many login items, storage, updates, backup.</p>
-        </div>
-        <div class="card">
-          <h3>No surprise</h3>
-          <p>Soaro <strong>never changes a setting</strong>. The button opens the right pane in System Settings, and you decide.</p>
-        </div>
-        <div class="card">
-          <h3>Light</h3>
-          <p>About 20-35 MB of memory and 1-2% of one CPU core when idle. When the panel is closed, the interface costs nothing.</p>
-        </div>
+      <div class="cols3">
+        <div><h3>Settings tips</h3><p>Soaro reads a few macOS settings and tells you what could help: Low Power Mode, an app that blocks sleep, too many login items, storage, updates, backup.</p></div>
+        <div><h3>No surprise</h3><p>Soaro <strong>never changes a setting</strong>. The button opens the right pane in System Settings, and you decide. In every confirmation window, Cancel is the default button.</p></div>
+        <div><h3>Light</h3><p>About 20-35 MB of memory and 1-2% of one CPU core when idle. When the panel is closed, the interface costs nothing.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="privacy">
-    <div class="wrap">
-      <h2>Privacy</h2>
-      <p class="intro">Soaro runs on your Mac and keeps your data there.</p>
-      <div class="cards">
-        <div class="card">
-          <h3>Local by default</h3>
-          <ul>
-            <li>History stays in <code>~/Library/Application Support/Soaro</code></li>
-            <li>The app has no account, no analytics and no tracking</li>
-            <li>The code is public: you can check it</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Two optional features</h3>
-          <ul>
-            <li>Latency test: a small ping to 1.1.1.1</li>
-            <li>Public IP and country: a third-party service sees your public IP, about every 5 minutes while the flag shows in the menu bar</li>
-            <li>Both are <strong>off</strong> until you turn them on</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Updates</h3>
-          <p>Once a day, Soaro downloads a small public file to know if a new version exists. It sends no personal data. You can turn it off.</p>
-        </div>
-        <div class="card">
-          <h3>This website</h3>
-          <p>This website counts visits with <a href="https://umami.is">Umami</a>, an open source tool. It sets no cookie, does not follow you from site to site, and respects the "Do Not Track" setting. The app sends nothing of this kind.</p>
-        </div>
-      </div>
-      <h3 class="mt">Cleanup is careful</h3>
-      <ul>
+  <section id="privacy" class="tint">
+    <div class="wrap split">
+      <div>
+        <h2>Privacy</h2>
+        <p class="intro">Soaro runs on your Mac and keeps your data there. The app has no account, no analytics and no tracking. The code is public: you can check it.</p>
+        <h3 class="sub">Cleanup is careful</h3>
+        <ul class="plain">
         <li>Everything is confirmed before it is deleted.</li>
-        <li>Soaro only touches your home folder, and tests check this rule.</li>
+        <li>Soaro only deletes inside your home folder, and tests check this rule. Simulators are removed by Xcode's own command, and Docker is cleaned by Docker's own command, on this Mac only.</li>
         <li>Large files and uninstalled apps go to the Trash, so you can get them back.</li>
         <li>A project folder is only suggested if its project file is next to it. A <code>build</code> or <code>dist</code> folder is never suggested.</li>
       </ul>
+      </div>
+      <dl class="facts">
+        <div><dt>History</dt><dd>Stays in <code>~/Library/Application Support/Soaro</code>.</dd></div>
+        <div><dt>Latency test</dt><dd>A small ping to 1.1.1.1. <strong>Off</strong> until you turn it on.</dd></div>
+        <div><dt>Public IP and country</dt><dd>A third-party service sees your public IP. <strong>Off</strong> until you turn it on.</dd></div>
+        <div><dt>Updates</dt><dd>Once a day, Soaro downloads a small public file to know if a new version exists. It sends no personal data. You can turn it off.</dd></div>
+        <div><dt>This website</dt><dd>Counts visits with <a href="https://umami.is">Umami</a>, an open source tool. It sets no cookie, does not follow you from site to site, and respects the "Do Not Track" setting. The app sends nothing of this kind.</dd></div>
+      </dl>
     </div>
   </section>
 
-  <section id="limits" class="alt">
-    <div class="wrap">
-      <h2>Limits</h2>
-      <p class="intro">I prefer to be clear about what Soaro cannot do.</p>
-      <ul>
+  <section id="limits">
+    <div class="wrap split">
+      <div>
+        <h2>Limits</h2>
+        <p class="intro">I prefer to be clear about what Soaro cannot do.</p>
+      </div>
+      <div>
+        <ul class="plain">
         <li><strong>Apple silicon only.</strong> Intel Macs are not supported.</li>
         <li>Temperature, fan and power readings use <strong>private Apple interfaces</strong>. A new macOS version can break them. If a reading fails, that section disappears.</li>
         <li>Soaro is <strong>not on the Mac App Store</strong>: it needs access to your files to clean them, which the App Store sandbox does not allow.</li>
         <li>Some information needs a permission: the Trash size needs Full Disk Access, and the Wi-Fi name needs location access.</li>
         <li>Most translations were made with AI help and need review by native speakers. <a href="https://github.com/sebmafate/soaro/blob/main/CONTRIBUTING.md#translations">You can help</a>.</li>
       </ul>
-      <h3 class="mt">Languages</h3>
-      <ul class="langs">
-        <li><img class="flag" src="flags/gb.svg" alt="" width="20" height="15" loading="lazy">English</li>
-        <li><img class="flag" src="flags/fr.svg" alt="" width="20" height="15" loading="lazy">Français</li>
-        <li><img class="flag" src="flags/de.svg" alt="" width="20" height="15" loading="lazy">Deutsch</li>
-        <li><img class="flag" src="flags/es.svg" alt="" width="20" height="15" loading="lazy">Español</li>
-        <li><img class="flag" src="flags/it.svg" alt="" width="20" height="15" loading="lazy">Italiano</li>
-        <li><img class="flag" src="flags/br.svg" alt="" width="20" height="15" loading="lazy">Português (Brasil)</li>
-        <li><img class="flag" src="flags/jp.svg" alt="" width="20" height="15" loading="lazy">日本語</li>
-        <li><img class="flag" src="flags/cn.svg" alt="" width="20" height="15" loading="lazy">简体中文</li>
-        <li><img class="flag" src="flags/kr.svg" alt="" width="20" height="15" loading="lazy">한국어</li>
-      </ul>
+        <h3 class="sub">Languages</h3>
+        <ul class="langs">
+          <li><img class="flag" src="flags/gb.svg" alt="" width="20" height="15" loading="lazy">English</li>
+          <li><img class="flag" src="flags/fr.svg" alt="" width="20" height="15" loading="lazy">Français</li>
+          <li><img class="flag" src="flags/de.svg" alt="" width="20" height="15" loading="lazy">Deutsch</li>
+          <li><img class="flag" src="flags/es.svg" alt="" width="20" height="15" loading="lazy">Español</li>
+          <li><img class="flag" src="flags/it.svg" alt="" width="20" height="15" loading="lazy">Italiano</li>
+          <li><img class="flag" src="flags/br.svg" alt="" width="20" height="15" loading="lazy">Português (Brasil)</li>
+          <li><img class="flag" src="flags/jp.svg" alt="" width="20" height="15" loading="lazy">日本語</li>
+          <li><img class="flag" src="flags/cn.svg" alt="" width="20" height="15" loading="lazy">简体中文</li>
+          <li><img class="flag" src="flags/kr.svg" alt="" width="20" height="15" loading="lazy">한국어</li>
+        </ul>
+      </div>
     </div>
   </section>
 
-  <section id="download" class="download">
+  <section id="download" class="deep">
     <div class="wrap">
       <h2>Download</h2>
-      <p class="intro center-intro">Soaro is signed with a Developer ID and notarized by Apple. It updates itself.</p>
-      <div class="narrow">
-        <ol class="steps">
-          <li><span>Download the <code>.dmg</code> file.</span></li>
-          <li><span>Open it and drag <strong>Soaro</strong> to <strong>Applications</strong>.</span></li>
-          <li><span>Open Soaro. It appears in the menu bar.</span></li>
-        </ol>
-      </div>
+      <p class="intro">Soaro is signed with a Developer ID and notarized by Apple. It updates itself.</p>
+      <ol class="steps">
+        <li><span>Download the <code>.dmg</code> file.</span></li>
+        <li><span>Open it and drag <strong>Soaro</strong> to <strong>Applications</strong>.</span></li>
+        <li><span>Open Soaro. It appears in the menu bar.</span></li>
+      </ol>
       <div class="actions">
-        <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Download for macOS</a>
-        <a class="btn" href="https://github.com/sebmafate/soaro">Source code</a>
+        <a class="btn primary" href="https://github.com/sebmafate/soaro/releases/latest">Download Soaro 1.1.0</a>
+        <a class="btn ghost" href="https://github.com/sebmafate/soaro">Source code</a>
       </div>
     </div>
   </section>
 
-  <section class="alt">
-    <div class="wrap centered">
+  <section class="support">
+    <div class="wrap">
       <h2>Support the project</h2>
-      <p class="intro center-intro">Soaro is free and open source. If it saves you time, you can support it. It is optional, and it helps me keep working on it.</p>
+      <p class="intro">Soaro is free and open source. If it saves you time, you can support it. It is optional, and it helps me keep working on it.</p>
       <a class="btn" href="https://buymeacoffee.com/sebmafate">Buy me a coffee</a>
     </div>
   </section>

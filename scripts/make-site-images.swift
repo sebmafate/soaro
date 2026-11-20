@@ -1,7 +1,7 @@
 // Makes the images of the website that are not screenshots: favicons, app icons and the social cards.
 //
 // Usage: swift scripts/make-site-images.swift
-// Needs: assets/icon.svg, site/screenshots/en-overview.webp and fr-overview.webp (see scripts/make-screenshots.sh).
+// Needs: assets/icon.svg, site/screenshots/en-overview-dark.webp and fr-overview-dark.webp (see scripts/make-screenshots.sh).
 // Writes into site/. The icon artwork itself is never changed.
 import AppKit
 
@@ -81,9 +81,9 @@ struct Card {
 }
 
 let cards = [
-    Card(file: "og-en.png", screenshot: "en-overview.webp", headline: "A lighter Mac.",
+    Card(file: "og-en.png", screenshot: "en-overview-dark.webp", headline: "A lighter Mac.",
          subtitle: "Menu bar monitor and cleaner for macOS", footer: "soaro.app  ·  Free and open source"),
-    Card(file: "og-fr.png", screenshot: "fr-overview.webp", headline: "Un Mac plus léger.",
+    Card(file: "og-fr.png", screenshot: "fr-overview-dark.webp", headline: "Un Mac plus léger.",
          subtitle: "Moniteur et nettoyeur pour la barre de menus du Mac", footer: "soaro.app  ·  Gratuit et open source"),
 ]
 

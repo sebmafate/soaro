@@ -6,12 +6,12 @@ The website is plain HTML and CSS in the `site/` folder. There is no build step,
 | --- | --- |
 | `site/index.html` | English page (`https://soaro.app/`) |
 | `site/fr/index.html` | French page (`https://soaro.app/fr/`) |
-| `site/style.css` | The only stylesheet. Light and dark mode follow the visitor's system |
-| `site/screenshots/` | WebP screenshots, each in two sizes (`name.webp` at 2x, `name-946.webp` at 1x) used with `srcset` |
+| `site/style.css` | The only stylesheet. Light and dark mode follow the visitor's system. The menu bar at the top of the page is drawn in HTML and CSS (an illustration, labelled as such), and the wave under the hero is an inline SVG |
+| `site/screenshots/` | WebP screenshots of version 1.1.0, named `<language>-<screen>-<light or dark>.webp` at 2x and `...-946.webp` at 1x, used with `srcset`. A `<picture>` element serves the light or the dark one to match the visitor's mode; the screens of the dark blue "Cleanup" band exist in dark only |
 | `site/og-en.png`, `site/og-fr.png` | Social cards (1200 x 630) shown when the page is shared |
 | `site/favicon.ico`, `favicon-32.png`, `icon.svg`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-512-maskable.png` | Favicons and app icons |
 | `site/site.webmanifest` | Web app manifest (name, colors, icons) |
-| `site/flags/` | Flag images for the language selector and the list of languages. They come from [flag-icons](https://github.com/lipis/flag-icons) (MIT, license in the folder); `es.svg` is a simplified drawing |
+| `site/flags/` | Flag images for the list of languages (the language selector is text, FR and EN). They come from [flag-icons](https://github.com/lipis/flag-icons) (MIT, license in the folder); `es.svg` is a simplified drawing |
 | `site/404.html` | Page shown for an unknown address |
 | `site/.well-known/security.txt` | How to report a vulnerability. Renew its `Expires` date every year |
 | `site/_headers`, `site/_redirects` | Security headers, cache rules and redirections (Cloudflare Pages). `/download` and `/github` are short links |
@@ -44,6 +44,8 @@ The script opens the app once per screen and per language, and captures its wind
 - It converts the images to WebP (2x and 1x) if `cwebp` is installed (`brew install webp`), and removes the PNG files.
 - Run it with nothing else on top of the Soaro window, and do not touch the keyboard during the capture.
 
+**The screenshots now on the site (2026-11-20) were not made by this script as it is.** They show version 1.1.0 (built from the tag `v1.1.0`, not from `main`), in light and in dark, at a fixed window size of 946 x 782 points. This needed a temporary change to a copy of the app, which is not in the repository: an environment variable forcing the appearance, a window that draws as active without taking the focus, and the fixed size. The script still writes `<language>-<screen>.webp` in the current appearance of the Mac only. Until the script and the app can do the same, new screenshots must be renamed by hand to the names above, and the pages only use these screens: `overview`, `settings`, `performance`, `battery`, `network`, `history` (light and dark), and `cleanup`, `cleanup-devProjects`, `cleanup-largeFiles`, `cleanup-simulators`, `cleanup-docker` (dark).
+
 To try the demo mode by hand: `SOARO_DEMO=1 build/Soaro.app/Contents/MacOS/Soaro`. In this mode the app measures nothing, writes nothing, and sends no notification. The made-up data is in `Sources/Soaro/DemoData.swift`.
 
 ## SEO
@@ -52,7 +54,7 @@ Each page has, in its `<head>`: a title (about 50-60 characters) and a descripti
 
 Things to do when something changes:
 
-- **New release or new screenshots:** update `lastmod` in `sitemap.xml`.
+- **New release or new screenshots:** update `lastmod` in `sitemap.xml`, and the version written in the pages (the pill above the title, the download button and `softwareVersion` in the structured data). The pages describe the latest **published** version, not a beta.
 - **New language page:** add its `hreflang` links to every page and to the sitemap.
 - **Change of text in a page:** keep the title and description in sync with the Open Graph and JSON-LD copies (they repeat the same sentences).
 - **Search Console:** add the property `soaro.app` (domain verification with a DNS record), then submit `https://soaro.app/sitemap.xml`. Do the same in Bing Webmaster Tools.
@@ -77,7 +79,7 @@ The **app** has no statistics of any kind. Do not add some: this is part of its 
 swift scripts/make-site-images.swift
 ```
 
-It draws the favicons, the app icons and the two social cards from `assets/icon.svg` and the overview screenshots. The icon artwork is never changed; only a copy without rounded corners is made for `apple-touch-icon.png` and the maskable icon, because iOS and Android round them on their own. Run it again after new screenshots.
+It draws the favicons, the app icons and the two social cards from `assets/icon.svg` and the dark overview screenshots (`en-overview-dark.webp`, `fr-overview-dark.webp`). The icon artwork is never changed; only a copy without rounded corners is made for `apple-touch-icon.png` and the maskable icon, because iOS and Android round them on their own. Run it again after new screenshots.
 
 ## Writing rules
 
